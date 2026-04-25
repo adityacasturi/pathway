@@ -7,22 +7,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
+  --font-sans: var(--font-geist);
+  --font-mono: var(--font-jetbrains-mono);
+  --font-heading: var(--font-fraunces);
+  --font-display: var(--font-fraunces);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -39,6 +27,11 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-paper: var(--paper);
+  --color-paper-sunk: var(--paper-sunk);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -49,82 +42,367 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --motion-duration-fast: 140ms;
+  --motion-duration-base: 240ms;
+  --motion-duration-slow: 420ms;
+  --motion-ease-smooth: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --motion-ease-standard: cubic-bezier(0.3, 0.1, 0.3, 1);
+
+  /* Cool neutral base — near-white with a whisper of blue so whites don't
+     feel flat-sRGB. Think Linear / Vercel, not paper. */
+  --paper: oklch(0.99 0.002 260);
+  --paper-sunk: oklch(0.972 0.004 260);
+  --ink: oklch(0.18 0.03 260);
+
+  --background: var(--paper);
+  --foreground: var(--ink);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: var(--ink);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --popover-foreground: var(--ink);
+
+  /* Citadel-deep cobalt. The one color that carries emphasis. */
+  --primary: oklch(0.36 0.18 262);
+  --primary-foreground: oklch(0.985 0.004 260);
+  --secondary: oklch(0.955 0.004 260);
+  --secondary-foreground: var(--ink);
+  --muted: oklch(0.96 0.004 260);
+  --muted-foreground: oklch(0.52 0.018 260);
+  --accent: oklch(0.94 0.008 260);
+  --accent-foreground: var(--ink);
+  --destructive: oklch(0.55 0.2 25);
+
+  /* Hairlines. `rule` for dividers, `rule-strong` for stronger borders. */
+  --rule: oklch(0.905 0.006 260);
+  --rule-strong: oklch(0.82 0.008 260);
+  --border: var(--rule);
+  --input: var(--rule);
+  --ring: oklch(0.55 0.15 262);
+  --radius: 0.5rem;
+
+  /* Dark-on-light glows and highlight tints. Reused across cards / buttons. */
+  --primary-wash: color-mix(in oklab, var(--primary) 8%, transparent);
+  --primary-glow: 0 0 0 1px color-mix(in oklab, var(--primary) 30%, transparent),
+                  0 18px 50px -24px color-mix(in oklab, var(--primary) 55%, transparent);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* Deep navy-tinted near-black. Not pure black — keeps the cobalt family. */
+  --paper: oklch(0.16 0.018 260);
+  --paper-sunk: oklch(0.135 0.018 260);
+  --ink: oklch(0.97 0.006 260);
+
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: oklch(0.195 0.02 260);
+  --card-foreground: var(--ink);
+  --popover: oklch(0.19 0.02 260);
+  --popover-foreground: var(--ink);
+
+  /* Brighter cobalt so it sings on dark. */
+  --primary: oklch(0.7 0.2 262);
+  --primary-foreground: oklch(0.14 0.018 260);
+  --secondary: oklch(0.23 0.022 260);
+  --secondary-foreground: var(--ink);
+  --muted: oklch(0.23 0.02 260);
+  --muted-foreground: oklch(0.72 0.02 260);
+  --accent: oklch(0.27 0.025 260);
+  --accent-foreground: var(--ink);
+  --destructive: oklch(0.7 0.2 25);
+
+  --rule: oklch(1 0 0 / 0.08);
+  --rule-strong: oklch(1 0 0 / 0.18);
+  --border: var(--rule);
+  --input: var(--rule);
+  --ring: oklch(0.72 0.18 262);
+
+  --primary-wash: color-mix(in oklab, var(--primary) 14%, transparent);
+  --primary-glow: 0 0 0 1px color-mix(in oklab, var(--primary) 40%, transparent),
+                  0 22px 60px -28px color-mix(in oklab, var(--primary) 70%, transparent);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
   html {
-    @apply font-sans;
+    font-feature-settings: "ss01", "ss02", "cv11";
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "ss01", "ss02", "cv11", "liga";
+    letter-spacing: -0.005em;
+  }
+  h1, h2, h3, h4 {
+    @apply font-heading text-foreground;
+    font-feature-settings: "ss01", "lnum";
+    letter-spacing: -0.022em;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--primary) 28%, transparent);
+    color: var(--foreground);
+  }
+  /* Tabular, lining figures by default for data density. */
+  .tabular,
+  [data-numbers] {
+    font-variant-numeric: tabular-nums lining-nums;
+    font-feature-settings: "tnum", "lnum", "ss01";
+  }
+}
+
+@layer utilities {
+  /*
+   * Editorial page shell — a quiet paper sheet. A single hairline rule at the
+   * very top gives the page a printed-masthead feel. No radial halos, no
+   * gridded backgrounds.
+   */
+  .page-shell {
+    position: relative;
+    isolation: isolate;
+  }
+  .page-shell::before {
+    content: "";
+    position: fixed;
+    inset: 0 0 auto 0;
+    height: 1px;
+    pointer-events: none;
+    z-index: -1;
+    background: linear-gradient(90deg, transparent, var(--rule-strong) 12%, var(--rule-strong) 88%, transparent);
+    opacity: 0.55;
+  }
+
+  /*
+   * Masthead: the editorial block at the top of a page. Rule above, tiny
+   * kicker (date / section), serif display title, short lede in prose.
+   */
+  .masthead {
+    @apply relative w-full;
+    padding-top: 0;
+  }
+  .masthead-rule {
+    @apply block w-full;
+    height: 1px;
+    background: var(--rule-strong);
+  }
+  /* Display / headline type. Tight-tracked sans — Linear/Vercel register. */
+  .display-serif {
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "ss02", "cv11", "lnum";
+    letter-spacing: -0.035em;
+    line-height: 0.98;
+    font-weight: 500;
+  }
+  .display-serif-italic {
+    font-family: var(--font-sans);
+    font-style: italic;
+    font-feature-settings: "ss01", "ss02";
+    letter-spacing: -0.015em;
+    font-weight: 400;
+  }
+  .numeral-display {
+    font-family: var(--font-sans);
+    font-variant-numeric: lining-nums tabular-nums;
+    font-feature-settings: "lnum", "tnum", "ss01";
+    letter-spacing: -0.045em;
+    font-weight: 500;
+  }
+  /* Small caps style micro-label. Use sparingly — meta only. */
+  .label-micro {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    line-height: 1;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+  .label-meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    color: var(--muted-foreground);
+  }
+
+  /*
+   * Paper card — a flat sheet with a single hairline border. No blur, no
+   * shadow by default. The only "weight" is the subtle paper-vs-paper-sunk
+   * contrast in dark mode.
+   */
+  .paper-card {
+    @apply relative rounded-lg border bg-card;
+    border-color: var(--rule);
+  }
+  .paper-card-hover {
+    transition: border-color 160ms var(--motion-ease-standard),
+                background-color 160ms var(--motion-ease-standard);
+  }
+  .paper-card-hover:hover {
+    border-color: var(--rule-strong);
+    background: color-mix(in oklab, var(--card) 92%, var(--ink) 2%);
+  }
+
+  /* Horizontal hairline. Single-purpose utility used everywhere as a
+     structural divider — an editorial workhorse. */
+  .rule {
+    display: block;
+    width: 100%;
+    height: 1px;
+    background: var(--rule);
+  }
+  .rule-strong {
+    display: block;
+    width: 100%;
+    height: 1px;
+    background: var(--rule-strong);
+  }
+
+  /*
+   * Stamp — a flat, slightly inset tag used for status/season markers.
+   * Replaces the old gradient iOS-style pills. Tone classes below.
+   */
+  .stamp {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    line-height: 1.4;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 500;
+    white-space: nowrap;
+    border: 1px solid transparent;
+  }
+  .stamp-ink {
+    color: var(--ink);
+    background: color-mix(in oklab, var(--ink) 6%, transparent);
+    border-color: color-mix(in oklab, var(--ink) 14%, transparent);
+  }
+  .stamp-muted {
+    color: var(--muted-foreground);
+    background: color-mix(in oklab, var(--ink) 4%, transparent);
+    border-color: var(--rule);
+  }
+  .stamp-oxblood {
+    color: var(--primary);
+    background: var(--primary-wash);
+    border-color: color-mix(in oklab, var(--primary) 24%, transparent);
+  }
+
+  /* Tech-premium primary surface: thin glow ring + soft cobalt halo. Use on
+     the hero CTA and other true-focus affordances. */
+  .primary-surface {
+    background: var(--primary);
+    color: var(--primary-foreground);
+    box-shadow: var(--primary-glow);
+  }
+
+  /* Very subtle ambient aura behind primary numbers / KPIs. */
+  .aura-cobalt {
+    position: relative;
+  }
+  .aura-cobalt::before {
+    content: "";
+    position: absolute;
+    inset: -40% -20%;
+    z-index: -1;
+    pointer-events: none;
+    background: radial-gradient(closest-side, color-mix(in oklab, var(--primary) 18%, transparent), transparent 70%);
+    opacity: 0.35;
+    filter: blur(18px);
+  }
+  .dark .stamp-ink {
+    background: color-mix(in oklab, var(--ink) 10%, transparent);
+    border-color: color-mix(in oklab, var(--ink) 18%, transparent);
+  }
+
+  /*
+   * Figure — a typographic block: oversized numeral sitting above its
+   * lowercase label. Becomes the heart of KPI blocks; swaps the old glossy
+   * gradient cards for quiet typography.
+   */
+  .figure {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .figure-number {
+    font-family: var(--font-sans);
+    font-variant-numeric: lining-nums tabular-nums;
+    font-feature-settings: "lnum", "tnum", "ss01";
+    font-size: 3rem;
+    line-height: 0.92;
+    letter-spacing: -0.05em;
+    font-weight: 500;
+    color: var(--ink);
+  }
+  .figure-label {
+    font-family: var(--font-sans);
+    font-size: 13px;
+    color: var(--muted-foreground);
+    letter-spacing: -0.005em;
+  }
+
+  .animate-fade-in {
+    animation: fade-in var(--motion-duration-base) var(--motion-ease-standard) both;
+  }
+  .animate-rise-in {
+    animation: rise-in var(--motion-duration-slow) var(--motion-ease-smooth) both;
+  }
+  .animate-modal-in {
+    animation: modal-in var(--motion-duration-base) var(--motion-ease-smooth) both;
+  }
+
+  /* Underline that grows from the left on hover — used on inline "read more"
+     links and editorial affordances. */
+  .link-edit {
+    position: relative;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    color: var(--ink);
+    transition: opacity 160ms var(--motion-ease-standard);
+  }
+  .link-edit::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -2px;
+    height: 1px;
+    width: 100%;
+    background: currentColor;
+    opacity: 0.22;
+    transform-origin: left;
+    transition: opacity 160ms var(--motion-ease-standard),
+                transform 240ms var(--motion-ease-smooth);
+  }
+  .link-edit:hover::after {
+    opacity: 0.9;
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes modal-in {
+  from { opacity: 0; transform: scale(0.98) translateY(6px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
   }
 }

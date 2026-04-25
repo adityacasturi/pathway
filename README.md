@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Launchpad
 
-## Getting Started
+A minimal internship application tracker. Log in, add applications, and track each one through its lifecycle of events (applied → OA → interview → offer / rejected). Status is always derived from the events on each application.
 
-First, run the development server:
+Built with Next.js 16 (App Router + Server Actions), Supabase (Auth + Postgres with RLS), Tailwind CSS v4, and shadcn-style components on top of `@base-ui/react`.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Getting started
+
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+2. Create a Supabase project and copy the credentials into a `.env.local`:
+   ```bash
+   NEXT_PUBLIC_SUPABASE_URL=...
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+   # Optional: enables cached company logos via https://logo.dev
+   LOGO_DEV_TOKEN=...
+   ```
+3. Apply the SQL migrations in `supabase/migrations/` in order via the Supabase SQL editor.
+4. Run the dev server:
+   ```bash
+   npm run dev
+   ```
+   Visit [http://localhost:3000](http://localhost:3000).
+
+## Scripts
+
+| Command         | What it does                       |
+| --------------- | ---------------------------------- |
+| `npm run dev`   | Start the dev server               |
+| `npm run build` | Production build                   |
+| `npm run lint`  | Run ESLint                         |
+
+## Project layout
+
+```
+app/                Next.js App Router routes (server components + auth pages)
+components/         UI components — dashboard, detail modal, table, badges
+components/ui/      Reusable primitives (buttons, inputs, dialogs, etc.)
+lib/actions/        Next.js server actions (mutations)
+lib/config/         Pure config + state helpers (events, status derivation)
+lib/supabase/       Supabase client factories (server / browser)
+lib/ui/             Shared UI utilities (motion variants)
+proxy.ts            Auth gate — redirects to /login when no session
+supabase/migrations Append-only SQL migrations
+types/              TypeScript types (`Application`, `ApplicationEvent`, …)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See [`CLAUDE.md`](./CLAUDE.md) for a deeper architectural walkthrough.

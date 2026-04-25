@@ -1,0 +1,172 @@
+"use client";
+
+import { memo, useCallback, useMemo } from "react";
+import { Check, Plus, RotateCcw, X } from "lucide-react";
+import { formatDistanceToNowStrict } from "date-fns";
+import { CompanyLogo } from "@/components/company-logo";
+import { SeasonPill } from "@/components/season-pill";
+import { safeExternalHref } from "@/lib/url";
+import type { FeedPosting } from "@/lib/feed/source";
+
+interface RowProps {
+  posting: FeedPosting;
+  dismissed: boolean;
+  tracked: boolean;
+  isNew: boolean;
+  pending?: boolean;
+  onTrack: (posting: FeedPosting) => void;
+  onToggleDismiss: (posting: FeedPosting, next: boolean) => void;
+}
+
+export const PostingRow = memo(function PostingRow({
+  posting,
+  dismissed,
+  tracked,
+  isNew,
+  pending,
+  onTrack,
+  onToggleDismiss,
+}: RowProps) {
+  const posted = useMemo(() => {
+    if (!posting.datePosted) return "";
+    try {
+      return formatDistanceToNowStrict(new Date(posting.datePosted * 1000), { addSuffix: true })
+        .replace("about ", "");
+    } catch {
+      return "";
+    }
+  }, [posting.datePosted]);
+
+  const locationLabel = useMemo(() => formatLocations(posting.locations), [posting.locations]);
+  const postingHref = useMemo(() => safeExternalHref(posting.url), [posting.url]);
+
+  const handleTrack = useCallback(() => onTrack(posting), [onTrack, posting]);
+  const handleToggle = useCallback(
+    () => onToggleDismiss(posting, !dismissed),
+    [onToggleDismiss, posting, dismissed],
+  );
+
+  return (
+    <li
+      style={dismissed ? { opacity: 0.5 } : undefined}
+      className={`group transition-colors duration-150 hover:bg-[color-mix(in_oklab,var(--ink)_3%,transparent)] ${
+        dismissed ? "saturate-50" : ""
+      }`}
+    >
+      <div className="flex items-center gap-5 px-2 py-4">
+        <CompanyLogo company={posting.company} size={30} />
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2.5 text-[11px] text-muted-foreground">
+            <span className="truncate font-medium text-foreground/80">{posting.company}</span>
+            <SeasonPill season={posting.season} />
+            {isNew && !tracked && (
+              <span
+                className="inline-flex items-center font-mono text-[9px] font-medium uppercase tracking-[0.16em]"
+                style={{ color: "var(--primary)" }}
+              >
+                · New
+              </span>
+            )}
+          </div>
+          <div className="mt-1 flex items-center gap-2">
+            {postingHref ? (
+              <a
+                href={postingHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="truncate text-[14px] font-medium text-foreground tracking-tight hover:underline underline-offset-4 decoration-muted-foreground/40"
+              >
+                {posting.title}
+              </a>
+            ) : (
+              <span className="truncate text-[14px] font-medium text-foreground tracking-tight">
+                {posting.title}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="hidden md:block min-w-0 w-48 shrink-0 text-[12px] text-muted-foreground truncate">
+          {locationLabel}
+        </div>
+
+        <div className="w-24 shrink-0 text-right label-meta tabular whitespace-nowrap">
+          {posted}
+        </div>
+
+        <div className="flex items-center gap-0.5 shrink-0">
+          {tracked ? (
+            <span
+              aria-label="Tracked"
+              title="Already in your pipeline"
+              className="inline-flex size-7 items-center justify-center rounded-full"
+              style={{
+                color: "var(--primary)",
+                background: "color-mix(in oklab, var(--primary) 10%, transparent)",
+              }}
+            >
+              <Check size={13} strokeWidth={2.5} />
+            </span>
+          ) : (
+            <IconButton label="Track" onClick={handleTrack} tone="positive">
+              <Plus size={14} strokeWidth={1.75} />
+            </IconButton>
+          )}
+          <IconButton
+            label={dismissed ? "Restore" : "Dismiss"}
+            onClick={handleToggle}
+            disabled={pending}
+            tone={dismissed ? "neutral" : "negative"}
+          >
+            {dismissed ? <RotateCcw size={13} strokeWidth={1.75} /> : <X size={13} strokeWidth={1.75} />}
+          </IconButton>
+        </div>
+      </div>
+    </li>
+  );
+});
+
+type IconButtonTone = "positive" | "negative" | "neutral";
+
+const TONE_CLASSES: Record<IconButtonTone, string> = {
+  positive:
+    "text-muted-foreground/60 hover:text-[color:var(--primary)] hover:bg-[color-mix(in_oklab,var(--primary)_10%,transparent)]",
+  negative:
+    "text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10",
+  neutral:
+    "text-muted-foreground/60 hover:text-foreground hover:bg-[color-mix(in_oklab,var(--ink)_6%,transparent)]",
+};
+
+function IconButton({
+  children,
+  label,
+  onClick,
+  disabled,
+  tone,
+}: {
+  children: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  tone: IconButtonTone;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      disabled={disabled}
+      className={`inline-flex size-7 items-center justify-center rounded-full transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50 ${TONE_CLASSES[tone]}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function formatLocations(locations: string[]): string {
+  if (locations.length === 0) return "—";
+  if (locations.length <= 2) return locations.join(" · ");
+  return `${locations.slice(0, 2).join(" · ")} +${locations.length - 2}`;
+}
