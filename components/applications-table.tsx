@@ -28,6 +28,8 @@ interface Props {
   onSortChange: (key: SortKey) => void;
   hideRejected: boolean;
   onHideRejectedChange: (next: boolean) => void;
+  hideArchived: boolean;
+  onHideArchivedChange: (next: boolean) => void;
   archivedIds: Set<string>;
   onArchiveChange: (applicationId: string, archived: boolean) => void;
 }
@@ -45,12 +47,16 @@ function SortToolbar({
   onSortChange,
   hideRejected,
   onHideRejectedChange,
+  hideArchived,
+  onHideArchivedChange,
 }: {
   sortKey: SortKey | null;
   sortDirection: SortDirection;
   onSortChange: (key: SortKey) => void;
   hideRejected: boolean;
   onHideRejectedChange: (next: boolean) => void;
+  hideArchived: boolean;
+  onHideArchivedChange: (next: boolean) => void;
 }) {
   return (
     <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
@@ -79,17 +85,42 @@ function SortToolbar({
           );
         })}
       </div>
-      <label className="ml-auto inline-flex cursor-pointer select-none items-center gap-2 text-[12px] text-muted-foreground hover:text-foreground transition-colors duration-150">
-        <input
-          type="checkbox"
+      <div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-2">
+        <FilterCheckbox
           checked={hideRejected}
-          onChange={(e) => onHideRejectedChange(e.target.checked)}
-          className="size-3 rounded-[2px] border accent-foreground cursor-pointer"
-          style={{ borderColor: "var(--rule-strong)" }}
+          onChange={onHideRejectedChange}
+          label="Hide rejected"
         />
-        Hide rejected
-      </label>
+        <FilterCheckbox
+          checked={hideArchived}
+          onChange={onHideArchivedChange}
+          label="Hide archived"
+        />
+      </div>
     </div>
+  );
+}
+
+function FilterCheckbox({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  label: string;
+}) {
+  return (
+    <label className="inline-flex cursor-pointer select-none items-center gap-2 text-[12px] text-muted-foreground transition-colors duration-150 hover:text-foreground">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="size-3 cursor-pointer rounded-[2px] border accent-foreground"
+        style={{ borderColor: "var(--rule-strong)" }}
+      />
+      {label}
+    </label>
   );
 }
 
@@ -103,6 +134,8 @@ export function ApplicationsTable({
   onSortChange,
   hideRejected,
   onHideRejectedChange,
+  hideArchived,
+  onHideArchivedChange,
   archivedIds,
   onArchiveChange,
 }: Props) {
@@ -149,6 +182,8 @@ export function ApplicationsTable({
         onSortChange={onSortChange}
         hideRejected={hideRejected}
         onHideRejectedChange={onHideRejectedChange}
+        hideArchived={hideArchived}
+        onHideArchivedChange={onHideArchivedChange}
       />
       <span className="rule" />
 
@@ -192,10 +227,10 @@ export function ApplicationsTable({
                 archived ? "opacity-60" : ""
               }`}
             >
-              <div className="flex items-center gap-5 px-2 py-4">
+              <div className="grid grid-cols-[2.125rem_minmax(0,1fr)_5.75rem_auto] items-center gap-x-4 px-2 py-4 md:grid-cols-[2.125rem_minmax(12rem,28rem)_minmax(8rem,12rem)_5.75rem_5.75rem_1.75rem] lg:grid-cols-[2.125rem_minmax(14rem,30rem)_minmax(10rem,14rem)_5.75rem_5.75rem_1.75rem]">
                 <CompanyLogo company={app.company} size={34} />
 
-                <div className="min-w-0 flex-1 max-w-xl">
+                <div className="min-w-0">
                   <div className="flex items-center gap-2.5 text-[11px] text-muted-foreground">
                     <span className="truncate font-medium text-foreground/80">{app.company}</span>
                     {app.season && <SeasonPill season={app.season} />}
@@ -223,17 +258,15 @@ export function ApplicationsTable({
                   </div>
                 </div>
 
-                {app.location && (
-                  <div className="hidden md:block min-w-0 w-44 shrink-0 text-[12px] text-muted-foreground truncate">
-                    {app.location}
-                  </div>
-                )}
+                <div className="hidden min-w-0 text-[12px] text-muted-foreground md:block">
+                  <span className="block truncate">{app.location ?? ""}</span>
+                </div>
 
-                <div className="shrink-0">
+                <div>
                   <StatusBadge status={app.status} variant="compact" />
                 </div>
 
-                <div className="hidden sm:block ml-auto shrink-0 label-meta tabular">
+                <div className="hidden text-right label-meta tabular md:block">
                   {formatDate(app.last_activity_date)}
                 </div>
 
@@ -245,7 +278,7 @@ export function ApplicationsTable({
                   }}
                   aria-label={archived ? "Unarchive application" : "Archive application"}
                   title={archived ? "Unarchive application" : "Archive application"}
-                  className="inline-flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground/40 opacity-0 transition-colors duration-150 hover:bg-[color-mix(in_oklab,var(--ink)_6%,transparent)] hover:text-foreground group-hover:opacity-100 focus:opacity-100"
+                  className="hidden size-7 items-center justify-center rounded-full text-muted-foreground/40 opacity-0 transition-colors duration-150 hover:bg-[color-mix(in_oklab,var(--ink)_6%,transparent)] hover:text-foreground group-hover:opacity-100 focus:opacity-100 md:inline-flex"
                 >
                   {archived ? <ArchiveRestore size={13} strokeWidth={1.75} /> : <Archive size={13} strokeWidth={1.75} />}
                 </button>

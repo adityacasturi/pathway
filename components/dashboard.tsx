@@ -25,6 +25,7 @@ type SortKey = "company" | "role" | "status" | "last_activity";
 type SortDirection = "asc" | "desc";
 
 const HIDE_REJECTED_STORAGE_KEY = "launchpad:hide-rejected";
+const HIDE_ARCHIVED_STORAGE_KEY = "launchpad:hide-archived";
 
 const DASHBOARD_QUERY_SUGGESTIONS: QuerySuggestion[] = [
   { token: "status:applied", label: "Status: Applied", hint: "Applications that have reached applied" },
@@ -73,6 +74,7 @@ export function Dashboard({ applications: initialApplications }: Props) {
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [hideRejected, setHideRejected] = useState(true);
+  const [hideArchived, setHideArchived] = useState(true);
   const [archivedIds, setArchivedIds] = useState<Set<string>>(
     () => new Set(applications.filter((app) => app.archived_at).map((app) => app.id)),
   );
@@ -90,8 +92,16 @@ export function Dashboard({ applications: initialApplications }: Props) {
     if (saved !== null) setHideRejected(saved === "true");
   }, []);
   useEffect(() => {
+    const saved = window.localStorage.getItem(HIDE_ARCHIVED_STORAGE_KEY);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (saved !== null) setHideArchived(saved === "true");
+  }, []);
+  useEffect(() => {
     window.localStorage.setItem(HIDE_REJECTED_STORAGE_KEY, String(hideRejected));
   }, [hideRejected]);
+  useEffect(() => {
+    window.localStorage.setItem(HIDE_ARCHIVED_STORAGE_KEY, String(hideArchived));
+  }, [hideArchived]);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setArchivedIds(new Set(applications.filter((app) => app.archived_at).map((app) => app.id)));
@@ -200,7 +210,7 @@ export function Dashboard({ applications: initialApplications }: Props) {
 
       if (showArchivedOnly && !isArchived) return false;
       if (showActiveOnly && isArchived) return false;
-      if (!showArchivedOnly && !showActiveOnly && isArchived) return false;
+      if (!showArchivedOnly && !showActiveOnly && hideArchived && isArchived) return false;
       if (hideRejected && commandStatusFilter !== "rejected" && isRejected) {
         return false;
       }
@@ -224,6 +234,7 @@ export function Dashboard({ applications: initialApplications }: Props) {
   }, [
     applications,
     hideRejected,
+    hideArchived,
     commandStatusFilter,
     commandSeasonFilter,
     archivedIds,
@@ -467,6 +478,8 @@ export function Dashboard({ applications: initialApplications }: Props) {
           onSortChange={handleSortChange}
           hideRejected={hideRejected}
           onHideRejectedChange={setHideRejected}
+          hideArchived={hideArchived}
+          onHideArchivedChange={setHideArchived}
           archivedIds={archivedIds}
           onArchiveChange={setApplicationArchived}
         />

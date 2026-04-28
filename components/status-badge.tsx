@@ -46,7 +46,7 @@ export function StatusBadge({ status, variant = "default" }: { status: Status; v
   if (variant === "compact") {
     return (
       <span
-        className="inline-flex items-center rounded-[3px] border px-1.5 py-[2px] font-mono text-[9.5px] font-medium uppercase tracking-[0.14em]"
+        className="inline-flex min-w-[5.75rem] items-center justify-center rounded-[3px] border px-1.5 py-[2px] font-mono text-[9.5px] font-medium uppercase tracking-[0.14em]"
         style={baseStyle}
       >
         {label}
