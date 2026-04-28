@@ -17,11 +17,6 @@ const THEME_OPTIONS = [
   { value: "system", label: "System", description: "Follow your OS.", icon: Monitor },
 ] as const;
 
-const SHORTCUTS: { keys: string[]; label: string }[] = [
-  { keys: ["/"], label: "Focus search" },
-  { keys: ["N"], label: "Add application" },
-];
-
 export function SettingsPage({ userEmail }: Props) {
   const safeEmail = userEmail ?? "";
   const initials = getInitials(safeEmail);
@@ -51,7 +46,7 @@ export function SettingsPage({ userEmail }: Props) {
               Settings
             </h1>
             <p className="mt-5 max-w-lg text-[15px] leading-relaxed text-muted-foreground">
-              Your account, theme, and keyboard shortcuts.
+              Your account and theme.
             </p>
           </div>
         </motion.header>
@@ -136,30 +131,6 @@ export function SettingsPage({ userEmail }: Props) {
                 );
               })}
             </div>
-          </Section>
-
-          <Section label="03" title="Keyboard shortcuts">
-            <ul className="divide-y" style={{ borderColor: "var(--rule)" }}>
-              {SHORTCUTS.map((shortcut) => (
-                <li
-                  key={shortcut.label}
-                  className="flex items-center justify-between gap-4 py-3"
-                >
-                  <span className="text-[14px] text-foreground">{shortcut.label}</span>
-                  <span className="flex shrink-0 items-center gap-1">
-                    {shortcut.keys.map((key) => (
-                      <kbd
-                        key={key}
-                        className="inline-flex min-w-6 justify-center rounded-[4px] border bg-card px-1.5 py-0.5 font-mono text-[10px] font-medium text-foreground"
-                        style={{ borderColor: "var(--rule-strong)" }}
-                      >
-                        {key}
-                      </kbd>
-                    ))}
-                  </span>
-                </li>
-              ))}
-            </ul>
           </Section>
         </motion.div>
       </main>

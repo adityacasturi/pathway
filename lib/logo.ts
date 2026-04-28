@@ -9,5 +9,5 @@ function slugify(company: string): string {
 
 export function logoUrl(company: string): string {
   const slug = encodeURIComponent(slugify(company));
-  return `/api/logo?company=${slug}`;
+  return `/api/logo?company=${slug}&v=2`;
 }

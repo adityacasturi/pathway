@@ -3,6 +3,16 @@
 import { updateTag } from "next/cache";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { clearFeedMemo } from "@/lib/feed/source";
+import { consumeAuthenticatedRateLimit } from "@/lib/rate-limit";
+
+const MAX_POSTING_ID_LENGTH = 300;
+
+function cleanPostingId(postingId: unknown): string | null {
+  if (typeof postingId !== "string") return null;
+  const value = postingId.trim();
+  if (!value || value.length > MAX_POSTING_ID_LENGTH) return null;
+  return value;
+}
 
 /**
  * Persisted feed interactions. The current app flow only reads and writes
@@ -18,11 +28,13 @@ import { clearFeedMemo } from "@/lib/feed/source";
 export async function dismissPosting(postingId: string) {
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
+  const cleanedPostingId = cleanPostingId(postingId);
+  if (!cleanedPostingId) return { error: "Invalid posting id." };
 
   const { error } = await supabase
     .from("feed_interactions")
     .upsert(
-      { user_id: user.id, posting_id: postingId, kind: "dismissed" },
+      { user_id: user.id, posting_id: cleanedPostingId, kind: "dismissed" },
       { onConflict: "user_id,posting_id,kind" },
     );
   if (error) return { error: error.message };
@@ -33,12 +45,14 @@ export async function dismissPosting(postingId: string) {
 export async function undismissPosting(postingId: string) {
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
+  const cleanedPostingId = cleanPostingId(postingId);
+  if (!cleanedPostingId) return { error: "Invalid posting id." };
 
   const { error } = await supabase
     .from("feed_interactions")
     .delete()
     .eq("user_id", user.id)
-    .eq("posting_id", postingId)
+    .eq("posting_id", cleanedPostingId)
     .eq("kind", "dismissed");
   if (error) return { error: error.message };
 
@@ -56,8 +70,10 @@ export async function undismissPosting(postingId: string) {
  * read-your-own-writes semantics inside this server action.
  */
 export async function refreshFeed() {
-  const { user } = await getAuthenticatedUser();
+  const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
+  const rateLimit = await consumeAuthenticatedRateLimit(supabase, "feed:refresh", 10, 600);
+  if (!rateLimit.ok) return { error: rateLimit.error };
 
   // Bust both caches: Next's fetch-cache (tagged sources like vanshb03 and
   // Northwestern) and our in-process memo (SimplifyJobs, whose raw payload

@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const isDev = process.env.NODE_ENV === "development";
+
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
@@ -18,9 +20,11 @@ const securityHeaders = [
       "img-src 'self' data: blob: https:",
       "font-src 'self' data: https://fonts.gstatic.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
       "connect-src 'self' https: wss:",
-      "frame-src https://*.browserbase.com https://browserbase.com",
+      "frame-src 'none'",
+      "worker-src 'self' blob:",
+      "manifest-src 'self'",
       "form-action 'self'",
     ].join("; "),
   },

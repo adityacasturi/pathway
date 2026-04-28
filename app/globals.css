@@ -87,38 +87,39 @@
 }
 
 .dark {
-  /* Deep navy-tinted near-black. Not pure black — keeps the cobalt family. */
-  --paper: oklch(0.16 0.018 260);
-  --paper-sunk: oklch(0.135 0.018 260);
-  --ink: oklch(0.97 0.006 260);
+  /* Graphite neutral with a small blue cast. Softer than the old navy stack,
+     with enough separation between page, cards, and sunk panels to scan. */
+  --paper: oklch(0.185 0.008 255);
+  --paper-sunk: oklch(0.145 0.009 255);
+  --ink: oklch(0.94 0.006 255);
 
   --background: var(--paper);
   --foreground: var(--ink);
-  --card: oklch(0.195 0.02 260);
+  --card: oklch(0.225 0.009 255);
   --card-foreground: var(--ink);
-  --popover: oklch(0.19 0.02 260);
+  --popover: oklch(0.235 0.01 255);
   --popover-foreground: var(--ink);
 
-  /* Brighter cobalt so it sings on dark. */
-  --primary: oklch(0.7 0.2 262);
-  --primary-foreground: oklch(0.14 0.018 260);
-  --secondary: oklch(0.23 0.022 260);
+  /* Softer blue: still clearly branded, less neon against graphite. */
+  --primary: oklch(0.68 0.145 258);
+  --primary-foreground: oklch(0.145 0.012 255);
+  --secondary: oklch(0.27 0.012 255);
   --secondary-foreground: var(--ink);
-  --muted: oklch(0.23 0.02 260);
-  --muted-foreground: oklch(0.72 0.02 260);
-  --accent: oklch(0.27 0.025 260);
+  --muted: oklch(0.285 0.011 255);
+  --muted-foreground: oklch(0.76 0.014 255);
+  --accent: oklch(0.32 0.014 255);
   --accent-foreground: var(--ink);
-  --destructive: oklch(0.7 0.2 25);
+  --destructive: oklch(0.72 0.17 25);
 
-  --rule: oklch(1 0 0 / 0.08);
-  --rule-strong: oklch(1 0 0 / 0.18);
+  --rule: oklch(0.78 0.012 255 / 0.2);
+  --rule-strong: oklch(0.82 0.014 255 / 0.34);
   --border: var(--rule);
   --input: var(--rule);
-  --ring: oklch(0.72 0.18 262);
+  --ring: oklch(0.7 0.14 258);
 
-  --primary-wash: color-mix(in oklab, var(--primary) 14%, transparent);
-  --primary-glow: 0 0 0 1px color-mix(in oklab, var(--primary) 40%, transparent),
-                  0 22px 60px -28px color-mix(in oklab, var(--primary) 70%, transparent);
+  --primary-wash: color-mix(in oklab, var(--primary) 16%, transparent);
+  --primary-glow: 0 0 0 1px color-mix(in oklab, var(--primary) 34%, transparent),
+                  0 20px 54px -30px color-mix(in oklab, var(--primary) 52%, transparent);
 }
 
 @layer base {
@@ -153,23 +154,12 @@
 
 @layer utilities {
   /*
-   * Editorial page shell — a quiet paper sheet. A single hairline rule at the
-   * very top gives the page a printed-masthead feel. No radial halos, no
-   * gridded backgrounds.
+   * Editorial page shell — a quiet paper sheet. No radial halos, no gridded
+   * backgrounds.
    */
   .page-shell {
     position: relative;
     isolation: isolate;
-  }
-  .page-shell::before {
-    content: "";
-    position: fixed;
-    inset: 0 0 auto 0;
-    height: 1px;
-    pointer-events: none;
-    z-index: -1;
-    background: linear-gradient(90deg, transparent, var(--rule-strong) 12%, var(--rule-strong) 88%, transparent);
-    opacity: 0.55;
   }
 
   /*

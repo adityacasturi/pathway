@@ -8,6 +8,19 @@ import { revalidatePath } from "next/cache";
 const MAX_COMPANY_LENGTH = 120;
 const MAX_ROLE_LENGTH = 160;
 const MAX_LOCATION_LENGTH = 240;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+type ApplicationPatch = {
+  company?: string;
+  role?: string;
+  posting_url?: string | null;
+  location?: string | null;
+  season?: ApplicationSeason | null;
+};
+
+function isUuid(value: string): boolean {
+  return UUID_RE.test(value);
+}
 
 function cleanRequiredText(raw: FormDataEntryValue | null, label: string, max: number) {
   const value = typeof raw === "string" ? raw.trim() : "";
@@ -34,6 +47,68 @@ function coerceSeason(raw: string | null): ApplicationSeason | null {
   return (APPLICATION_SEASONS as readonly string[]).includes(raw)
     ? (raw as ApplicationSeason)
     : null;
+}
+
+function parseApplicationPatch(fields: unknown): { patch: ApplicationPatch } | { error: string } {
+  if (!fields || typeof fields !== "object" || Array.isArray(fields)) {
+    return { error: "Invalid application update." };
+  }
+
+  const source = fields as Record<string, unknown>;
+  const patch: ApplicationPatch = {};
+
+  if ("company" in source) {
+    const cleaned = cleanRequiredText(
+      typeof source.company === "string" ? source.company : "",
+      "Company",
+      MAX_COMPANY_LENGTH,
+    );
+    if (cleaned.error) return { error: cleaned.error };
+    patch.company = cleaned.value;
+  }
+
+  if ("role" in source) {
+    const cleaned = cleanRequiredText(
+      typeof source.role === "string" ? source.role : "",
+      "Role",
+      MAX_ROLE_LENGTH,
+    );
+    if (cleaned.error) return { error: cleaned.error };
+    patch.role = cleaned.value;
+  }
+
+  if ("posting_url" in source) {
+    const postingUrl = typeof source.posting_url === "string" ? source.posting_url : null;
+    const validated = validateExternalHttpUrl(postingUrl);
+    if (validated.error) return { error: validated.error };
+    patch.posting_url = validated.url;
+  }
+
+  if ("location" in source) {
+    const location = typeof source.location === "string" ? source.location : null;
+    const cleaned = cleanOptionalText(location, "Location", MAX_LOCATION_LENGTH);
+    if (cleaned.error) return { error: cleaned.error };
+    patch.location = cleaned.value;
+  }
+
+  if ("season" in source) {
+    if (source.season !== null && typeof source.season !== "string") {
+      return { error: "Invalid season." };
+    }
+    if (source.season === null || source.season === "") {
+      patch.season = null;
+    } else {
+      const season = coerceSeason(source.season);
+      if (!season) return { error: "Invalid season." };
+      patch.season = season;
+    }
+  }
+
+  if (Object.keys(patch).length === 0) {
+    return { error: "No valid fields to update." };
+  }
+
+  return { patch };
 }
 
 function parseFormData(formData: FormData) {
@@ -111,46 +186,20 @@ export async function createApplication(
 
 export async function updateApplicationFields(
   id: string,
-  fields: {
-    company?: string;
-    role?: string;
-    posting_url?: string | null;
-    location?: string | null;
-    season?: ApplicationSeason | null;
-  },
+  fields: ApplicationPatch,
 ) {
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
+  if (!isUuid(id)) return { error: "Invalid application id." };
 
-  // Normalize server-side too so a crafted client can't bypass client rules.
-  const patch = { ...fields };
-  if ("company" in patch) {
-    const cleaned = cleanRequiredText(patch.company ?? "", "Company", MAX_COMPANY_LENGTH);
-    if (cleaned.error) return { error: cleaned.error };
-    patch.company = cleaned.value;
-  }
-  if ("role" in patch) {
-    const cleaned = cleanRequiredText(patch.role ?? "", "Role", MAX_ROLE_LENGTH);
-    if (cleaned.error) return { error: cleaned.error };
-    patch.role = cleaned.value;
-  }
-  if ("posting_url" in patch) {
-    const validated = validateExternalHttpUrl(patch.posting_url ?? "");
-    if (validated.error) return { error: validated.error };
-    patch.posting_url = validated.url;
-  }
-  if ("location" in patch) {
-    const cleaned = cleanOptionalText(patch.location, "Location", MAX_LOCATION_LENGTH);
-    if (cleaned.error) return { error: cleaned.error };
-    patch.location = cleaned.value;
-  }
-  if ("season" in patch && patch.season !== null) {
-    patch.season = coerceSeason(patch.season ?? null);
-  }
+  // Normalize and whitelist server-side too so a crafted POST cannot smuggle
+  // arbitrary columns into the update payload.
+  const parsed = parseApplicationPatch(fields);
+  if ("error" in parsed) return { error: parsed.error };
 
   const { error } = await supabase
     .from("applications")
-    .update(patch)
+    .update(parsed.patch)
     .eq("id", id)
     .eq("user_id", user.id);
 
@@ -162,6 +211,8 @@ export async function updateApplicationFields(
 export async function updateApplicationArchive(id: string, archived: boolean) {
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
+  if (!isUuid(id)) return { error: "Invalid application id." };
+  if (typeof archived !== "boolean") return { error: "Invalid archive state." };
 
   const { error } = await supabase
     .from("applications")
@@ -177,6 +228,7 @@ export async function updateApplicationArchive(id: string, archived: boolean) {
 export async function deleteApplication(id: string) {
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
+  if (!isUuid(id)) return { error: "Invalid application id." };
 
   const { error } = await supabase
     .from("applications")

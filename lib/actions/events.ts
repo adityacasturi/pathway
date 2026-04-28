@@ -7,6 +7,7 @@ import { ApplicationEvent, EventType, Status } from "@/types/application";
 
 const EVENT_TYPES: readonly EventType[] = ["applied", "oa", "interview", "offer", "rejected", "note"];
 const MAX_NOTES_LENGTH = 2000;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function revalidateApplicationSurfaces() {
   revalidatePath("/");
@@ -17,7 +18,12 @@ function isEventType(value: string): value is EventType {
   return (EVENT_TYPES as readonly string[]).includes(value);
 }
 
-function isIsoDate(raw: string): boolean {
+function isUuid(value: string): boolean {
+  return UUID_RE.test(value);
+}
+
+function isIsoDate(raw: unknown): raw is string {
+  if (typeof raw !== "string") return false;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return false;
   const parsed = new Date(`${raw}T00:00:00.000Z`);
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === raw;
@@ -63,9 +69,15 @@ export async function createEvent(
 ) {
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
+  if (!isUuid(applicationId)) return { error: "Invalid application id." };
+  if (typeof eventType !== "string" || typeof eventDate !== "string") {
+    return { error: "Invalid event." };
+  }
   if (!isEventType(eventType)) return { error: "Invalid event type." };
   if (!isIsoDate(eventDate)) return { error: "Invalid event date." };
-  if ((notes ?? "").length > MAX_NOTES_LENGTH) return { error: "Notes are too long." };
+  if (notes !== undefined && typeof notes !== "string") return { error: "Invalid notes." };
+  const cleanedNotes = notes?.trim() ?? "";
+  if (cleanedNotes.length > MAX_NOTES_LENGTH) return { error: "Notes are too long." };
   if (!(await ensureOwnsApplication(supabase, user.id, applicationId))) {
     return { error: "Application not found" };
   }
@@ -89,7 +101,7 @@ export async function createEvent(
       user_id: user.id,
       event_type: eventType,
       event_date: eventDate,
-      notes: notes || null,
+      notes: cleanedNotes || null,
       round_number: roundNumber,
     })
     .select("*")
@@ -120,6 +132,7 @@ export async function createEvent(
 export async function updateEventDate(eventId: string, applicationId: string, newDate: string) {
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
+  if (!isUuid(eventId) || !isUuid(applicationId)) return { error: "Invalid event id." };
   if (!isIsoDate(newDate)) return { error: "Invalid event date." };
 
   const thisEvent = await getOwnedEvent(supabase, user.id, eventId, applicationId);
@@ -155,12 +168,15 @@ export async function updateEventDate(eventId: string, applicationId: string, ne
 export async function updateEventNotes(eventId: string, notes: string) {
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
-  if (notes.length > MAX_NOTES_LENGTH) return { error: "Notes are too long." };
+  if (!isUuid(eventId)) return { error: "Invalid event id." };
+  if (typeof notes !== "string") return { error: "Invalid notes." };
+  const cleanedNotes = notes.trim();
+  if (cleanedNotes.length > MAX_NOTES_LENGTH) return { error: "Notes are too long." };
   if (!(await getOwnedEvent(supabase, user.id, eventId))) return { error: "Event not found" };
 
   const { data: updatedEvent, error } = await supabase
     .from("application_events")
-    .update({ notes: notes.trim() || null })
+    .update({ notes: cleanedNotes || null })
     .eq("id", eventId)
     .eq("user_id", user.id)
     .select("*")
@@ -174,6 +190,7 @@ export async function updateEventNotes(eventId: string, notes: string) {
 export async function deleteEvent(eventId: string, applicationId: string) {
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
+  if (!isUuid(eventId) || !isUuid(applicationId)) return { error: "Invalid event id." };
   const event = await getOwnedEvent(supabase, user.id, eventId, applicationId);
   if (!event) return { error: "Event not found" };
 

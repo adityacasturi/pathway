@@ -1,10 +1,13 @@
 import { NextRequest } from "next/server";
+import { limitRequestByIp } from "@/lib/rate-limit";
 
-const LOGO_DEV_TOKEN = process.env.LOGO_DEV_TOKEN ?? process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN;
+const LOGO_DEV_TOKEN = process.env.LOGO_DEV_TOKEN;
 const CANONICAL_SIZE = 128;
 const CACHE_SECONDS = 60 * 60 * 24 * 30;
 const NEGATIVE_CACHE_SECONDS = 60 * 60 * 24;
 const FETCH_TIMEOUT_MS = 2500;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_REQUESTS = 120;
 
 function cleanCompany(raw: string | null): string | null {
   const value = (raw ?? "").trim().toLowerCase();
@@ -26,12 +29,30 @@ async function fetchWithTimeout(url: string): Promise<Response> {
 }
 
 export async function GET(request: NextRequest) {
+  const rateLimit = limitRequestByIp(
+    request,
+    "api:logo",
+    RATE_LIMIT_REQUESTS,
+    RATE_LIMIT_WINDOW_MS,
+  );
+  if (!rateLimit.ok) {
+    return new Response(rateLimit.error, {
+      status: 429,
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-store",
+      },
+    });
+  }
+
   const company = cleanCompany(request.nextUrl.searchParams.get("company"));
   if (!company || !LOGO_DEV_TOKEN) {
     return new Response(null, {
       status: 404,
       headers: {
-        "Cache-Control": `public, max-age=${NEGATIVE_CACHE_SECONDS}, stale-while-revalidate=${CACHE_SECONDS}`,
+        "Cache-Control": LOGO_DEV_TOKEN
+          ? `public, max-age=${NEGATIVE_CACHE_SECONDS}, stale-while-revalidate=${CACHE_SECONDS}`
+          : "no-store",
       },
     });
   }
@@ -55,7 +76,7 @@ export async function GET(request: NextRequest) {
     return new Response(upstream.body, {
       status: 200,
       headers: {
-        "Content-Type": upstream.headers.get("Content-Type") ?? "image/png",
+        "Content-Type": "image/png",
         "Cache-Control": `public, max-age=${CACHE_SECONDS}, immutable`,
       },
     });
@@ -68,4 +89,3 @@ export async function GET(request: NextRequest) {
     });
   }
 }
-
