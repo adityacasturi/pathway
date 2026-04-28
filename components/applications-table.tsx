@@ -59,7 +59,7 @@ function SortToolbar({
   onHideArchivedChange: (next: boolean) => void;
 }) {
   return (
-    <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
+    <div className="flex min-h-14 flex-wrap items-center gap-x-4 gap-y-2 py-2">
       <span className="label-micro">Sort by</span>
       <div className="flex items-center gap-0.5">
         {SORT_OPTIONS.map((opt) => {
@@ -227,7 +227,7 @@ export function ApplicationsTable({
                 archived ? "opacity-60" : ""
               }`}
             >
-              <div className="grid grid-cols-[2.125rem_minmax(0,1fr)_5.75rem_auto] items-center gap-x-4 px-2 py-4 md:grid-cols-[2.125rem_minmax(12rem,28rem)_minmax(8rem,12rem)_5.75rem_5.75rem_1.75rem] lg:grid-cols-[2.125rem_minmax(14rem,30rem)_minmax(10rem,14rem)_5.75rem_5.75rem_1.75rem]">
+              <div className="grid grid-cols-[2.125rem_minmax(0,1fr)_5.75rem] items-center gap-x-4 px-2 py-4 md:grid-cols-[2.125rem_minmax(12rem,22rem)_minmax(0,14rem)_minmax(1rem,1fr)_5.75rem_6.75rem] lg:grid-cols-[2.125rem_minmax(14rem,24rem)_minmax(0,16rem)_minmax(1rem,1fr)_5.75rem_6.75rem]">
                 <CompanyLogo company={app.company} size={34} />
 
                 <div className="min-w-0">
@@ -262,6 +262,8 @@ export function ApplicationsTable({
                   <span className="block truncate">{app.location ?? ""}</span>
                 </div>
 
+                <div className="hidden min-w-0 md:block" aria-hidden />
+
                 <div>
                   <StatusBadge status={app.status} variant="compact" />
                 </div>
@@ -269,19 +271,6 @@ export function ApplicationsTable({
                 <div className="hidden text-right label-meta tabular md:block">
                   {formatDate(app.last_activity_date)}
                 </div>
-
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onArchiveChange(app.id, !archived);
-                  }}
-                  aria-label={archived ? "Unarchive application" : "Archive application"}
-                  title={archived ? "Unarchive application" : "Archive application"}
-                  className="hidden size-7 items-center justify-center rounded-full text-muted-foreground/40 opacity-0 transition-colors duration-150 hover:bg-[color-mix(in_oklab,var(--ink)_6%,transparent)] hover:text-foreground group-hover:opacity-100 focus:opacity-100 md:inline-flex"
-                >
-                  {archived ? <ArchiveRestore size={13} strokeWidth={1.75} /> : <Archive size={13} strokeWidth={1.75} />}
-                </button>
               </div>
             </motion.li>
           );
