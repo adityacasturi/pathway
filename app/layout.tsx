@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Fraunces, Geist, JetBrains_Mono } from "next/font/google";
-import { Providers } from "@/app/providers";
 import { AppChrome } from "@/components/app-chrome";
 import "./globals.css";
 
@@ -33,13 +32,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    // suppressHydrationWarning is required by next-themes (it modifies the class attribute on mount)
-    <html lang="en" className={`${fraunces.variable} ${geist.variable} ${jetbrainsMono.variable} h-full antialiased`} suppressHydrationWarning>
+    <html lang="en" className={`${fraunces.variable} ${geist.variable} ${jetbrainsMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
-        <Providers>
-          <AppChrome />
-          {children}
-        </Providers>
+        <AppChrome />
+        {children}
       </body>
     </html>
   );

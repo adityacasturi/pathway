@@ -6,12 +6,12 @@ import { logoUrl } from "@/lib/logo";
 // Deterministic color per company name so the same company always gets the
 // same avatar color across renders.
 const AVATAR_COLORS = [
-  "bg-blue-100 text-blue-950 dark:bg-blue-400/15 dark:text-blue-200",
-  "bg-slate-100 text-slate-700 dark:bg-slate-300/12 dark:text-slate-200",
-  "bg-indigo-100 text-indigo-700 dark:bg-indigo-400/15 dark:text-indigo-200",
-  "bg-zinc-100 text-zinc-700 dark:bg-zinc-300/12 dark:text-zinc-200",
-  "bg-stone-100 text-stone-700 dark:bg-stone-300/12 dark:text-stone-200",
-  "bg-slate-200 text-slate-700 dark:bg-slate-200/16 dark:text-slate-100",
+  "bg-blue-100 text-blue-950",
+  "bg-slate-100 text-slate-700",
+  "bg-indigo-100 text-indigo-700",
+  "bg-zinc-100 text-zinc-700",
+  "bg-stone-100 text-stone-700",
+  "bg-slate-200 text-slate-700",
 ];
 
 function avatarColor(company: string): string {

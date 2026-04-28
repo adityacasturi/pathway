@@ -49,7 +49,7 @@ All mutations go through **Next.js Server Actions** in `lib/actions/` — `appli
 ### UI
 
 - Component library: shadcn/ui style components in `components/ui/`, built on top of `@base-ui/react` primitives, with Tailwind CSS v4
-- Theme: `next-themes` with `ThemeProvider` in `app/providers.tsx`; `suppressHydrationWarning` is required on `<html>`
+- Theme: light-only tokens in `app/globals.css`; no runtime theme provider
 - Font: JetBrains Mono via `next/font/google`
 - Company logos: `lib/logo.ts` + `components/company-logo.tsx` using the [logo.dev](https://logo.dev) API; falls back to a deterministic colored initial when no API token is set or the image fails to load
 - Animations: `framer-motion` with shared variants in `lib/ui/motion.ts`

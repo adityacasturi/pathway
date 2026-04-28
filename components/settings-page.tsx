@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { useTheme } from "next-themes";
-import { LogOut, Monitor, Moon, Sun } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { logout } from "@/lib/actions/auth";
 import { motionVariants } from "@/lib/ui/motion";
 
@@ -11,22 +9,9 @@ interface Props {
   userEmail: string | null | undefined;
 }
 
-const THEME_OPTIONS = [
-  { value: "light", label: "Light", description: "Paper, always.", icon: Sun },
-  { value: "dark", label: "Dark", description: "Ink, always.", icon: Moon },
-  { value: "system", label: "System", description: "Follow your OS.", icon: Monitor },
-] as const;
-
 export function SettingsPage({ userEmail }: Props) {
   const safeEmail = userEmail ?? "";
   const initials = getInitials(safeEmail);
-  const [mounted, setMounted] = useState(false);
-  const { theme, setTheme } = useTheme();
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMounted(true);
-  }, []);
 
   return (
     <div className="page-shell min-h-screen bg-background">
@@ -46,7 +31,7 @@ export function SettingsPage({ userEmail }: Props) {
               Settings
             </h1>
             <p className="mt-5 max-w-lg text-[15px] leading-relaxed text-muted-foreground">
-              Your account and theme.
+              Your account.
             </p>
           </div>
         </motion.header>
@@ -80,56 +65,6 @@ export function SettingsPage({ userEmail }: Props) {
                   Sign out
                 </button>
               </form>
-            </div>
-          </Section>
-
-          <Section label="02" title="Appearance" description="How Launchpad looks in this browser.">
-            <div
-              role="radiogroup"
-              aria-label="Theme"
-              className="grid grid-cols-1 sm:grid-cols-3 divide-x divide-y border-y sm:divide-y-0"
-              style={{ borderColor: "var(--rule)" }}
-            >
-              {THEME_OPTIONS.map((opt) => {
-                const active = mounted && theme === opt.value;
-                const Icon = opt.icon;
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    role="radio"
-                    aria-checked={active}
-                    onClick={() => setTheme(opt.value)}
-                    suppressHydrationWarning
-                    className={`relative flex flex-col items-start gap-3 p-5 text-left transition-colors duration-150 ${
-                      active
-                        ? "bg-[color-mix(in_oklab,var(--primary)_6%,transparent)]"
-                        : "hover:bg-[color-mix(in_oklab,var(--ink)_3%,transparent)]"
-                    }`}
-                    style={{ borderColor: "var(--rule)" }}
-                  >
-                    <Icon
-                      size={18}
-                      strokeWidth={1.5}
-                      className={active ? "text-foreground" : "text-muted-foreground"}
-                    />
-                    <div>
-                      <p className="display-serif text-[18px] font-normal text-foreground tracking-tight">
-                        {opt.label}
-                      </p>
-                      <p className="mt-0.5 text-[12px] text-muted-foreground">
-                        {opt.description}
-                      </p>
-                    </div>
-                    {active && (
-                      <span
-                        className="absolute left-0 bottom-0 h-[2px] w-full"
-                        style={{ background: "var(--primary)" }}
-                      />
-                    )}
-                  </button>
-                );
-              })}
             </div>
           </Section>
         </motion.div>
