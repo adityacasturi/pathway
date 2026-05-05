@@ -75,6 +75,32 @@ export function DashboardSkeleton() {
   );
 }
 
+export function StatsSkeleton() {
+  return (
+    <div className="min-h-screen bg-background">
+      <main className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 pt-20 sm:pt-20 lg:pt-24 pb-20">
+        <div className="mb-10 space-y-2">
+          <SkeletonBlock className="h-9 w-32" />
+          <SkeletonBlock className="h-4 w-72" />
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5 mb-10">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <SkeletonBlock key={i} className="h-[138px] rounded-md" />
+          ))}
+        </div>
+
+        <SkeletonBlock className="h-[420px] w-full rounded-md mb-10" />
+
+        <div className="grid gap-4 lg:grid-cols-[1.12fr_0.88fr]">
+          <SkeletonBlock className="h-[320px] rounded-md" />
+          <SkeletonBlock className="h-[320px] rounded-md" />
+        </div>
+      </main>
+    </div>
+  );
+}
+
 export function SettingsSkeleton() {
   return (
     <div className="min-h-screen bg-background">

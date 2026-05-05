@@ -137,6 +137,7 @@ function revalidateApplicationSurfaces() {
   revalidatePath("/");
   revalidatePath("/applications");
   revalidatePath("/discover");
+  revalidatePath("/stats");
 }
 
 export async function createApplication(

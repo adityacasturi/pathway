@@ -23,11 +23,12 @@ interface Props {
   pendingSkeleton: React.ReactNode;
   prefetch?: boolean;
   onClick?: React.MouseEventHandler<HTMLAnchorElement>;
+  ariaLabel?: string;
 }
 
-export function NavLink({ href, children, className, pendingSkeleton, prefetch, onClick }: Props) {
+export function NavLink({ href, children, className, pendingSkeleton, prefetch, onClick, ariaLabel }: Props) {
   return (
-    <Link href={href} className={className} prefetch={prefetch} onClick={onClick}>
+    <Link href={href} className={className} prefetch={prefetch} onClick={onClick} aria-label={ariaLabel}>
       {children}
       <PendingOverlay skeleton={pendingSkeleton} />
     </Link>
