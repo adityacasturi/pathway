@@ -17,27 +17,23 @@ import { PostingRow } from "@/components/posting-row";
 import { InlineError } from "@/components/ui/inline-error";
 import { FilterChip, FilterOption } from "@/components/ui/filter-chip";
 import { motionVariants } from "@/lib/ui/motion";
-import { getFieldTerms, getLastFieldTerm, hasAnyFlag, parseCommandQuery } from "@/lib/ui/query";
-import { type QuerySuggestion } from "@/components/query-autocomplete";
-import { TokenizedQueryInput } from "@/components/tokenized-query-input";
+import { SearchInput } from "@/components/search-input";
 import { normalizeUrl } from "@/lib/url";
-import { dismissPosting, refreshFeed, undismissPosting } from "@/lib/actions/feed";
+import {
+  dismissPosting,
+  refreshFeed,
+  savePosting,
+  undismissPosting,
+  unsavePosting,
+} from "@/lib/actions/feed";
 import type { FeedPosting, FeedSeason } from "@/lib/feed/source";
 
 type SeasonFilter = "all" | FeedSeason;
 
 const SHOW_DISMISSED_STORAGE_KEY = "launchpad:discover-show-dismissed";
+const HIDE_APPLIED_STORAGE_KEY = "launchpad:discover-hide-applied";
 const LAST_SEEN_STORAGE_KEY = "launchpad:feed-last-seen-at";
-const DISCOVER_QUERY_SUGGESTIONS: QuerySuggestion[] = [
-  { token: "new", label: "New listings", hint: "Only listings new since your last visit" },
-  { token: "tracked", label: "Tracked listings", hint: "Only listings already linked to applications" },
-  { token: "dismissed", label: "Dismissed listings", hint: "Review the listings you hid" },
-  { token: "season:summer", label: "Season: Summer", hint: "Summer internship listings" },
-  { token: "season:fall", label: "Season: Fall", hint: "Fall internship listings" },
-  { token: "company:", label: "Company filter", hint: "Example: company:ramp" },
-  { token: "role:", label: "Role filter", hint: "Example: role:backend" },
-  { token: "location:", label: "Location filter", hint: "Example: location:remote" },
-];
+const SEARCH_TOKEN_PATTERN = /"[^"]*"|'[^']*'|\S+/g;
 
 const SEASON_FILTER_OPTIONS: FilterOption<SeasonFilter>[] = [
   { value: "all", label: "All" },
@@ -55,7 +51,13 @@ const LOAD_BATCH = 40;
 interface Props {
   postings: FeedPosting[];
   dismissedIds: string[];
+  savedIds: string[];
   trackedUrls: string[];
+  cutoffDate: string;
+  oldestAllowedCutoffDate: string;
+  latestAllowedCutoffDate: string;
+  initialQuery?: string;
+  initialSavedOnly?: boolean;
 }
 
 interface Prefill {
@@ -66,18 +68,32 @@ interface Prefill {
   season: FeedSeason;
 }
 
+function getSearchTerms(value: string) {
+  return (value.match(SEARCH_TOKEN_PATTERN) ?? [])
+    .map((term) => term.replace(/^["']|["']$/g, "").trim().toLowerCase())
+    .filter(Boolean);
+}
+
 export function DiscoverFeed({
   postings,
   dismissedIds,
+  savedIds,
   trackedUrls,
+  cutoffDate,
+  oldestAllowedCutoffDate,
+  latestAllowedCutoffDate,
+  initialQuery = "",
+  initialSavedOnly = false,
 }: Props) {
   const router = useRouter();
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   // Typing stays snappy because the filter runs against the deferred value,
   // letting React keep the input responsive while it catches up on the list.
   const deferredQuery = useDeferredValue(query);
   const [seasonFilter, setSeasonFilter] = useState<SeasonFilter>("all");
   const [showDismissed, setShowDismissed] = useState(false);
+  const [showSavedOnly, setShowSavedOnly] = useState(initialSavedOnly);
+  const [hideApplied, setHideApplied] = useState(false);
   const [dialogPrefill, setDialogPrefill] = useState<Prefill | null>(null);
   const [trackedUrlOverrides, setTrackedUrlOverrides] = useState<Set<string>>(() => new Set());
   const [isRefreshing, startRefresh] = useTransition();
@@ -113,6 +129,11 @@ export function DiscoverFeed({
       setShowDismissed(true);
     }
 
+    const hideAppliedPref = localStorage.getItem(HIDE_APPLIED_STORAGE_KEY);
+    if (hideAppliedPref === "1") {
+      setHideApplied(true);
+    }
+
     return () => {
       localStorage.setItem(LAST_SEEN_STORAGE_KEY, String(Math.floor(Date.now() / 1000)));
     };
@@ -121,6 +142,20 @@ export function DiscoverFeed({
   useEffect(() => {
     localStorage.setItem(SHOW_DISMISSED_STORAGE_KEY, showDismissed ? "1" : "0");
   }, [showDismissed]);
+
+  useEffect(() => {
+    localStorage.setItem(HIDE_APPLIED_STORAGE_KEY, hideApplied ? "1" : "0");
+  }, [hideApplied]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setQuery(initialQuery);
+  }, [initialQuery]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setShowSavedOnly(initialSavedOnly);
+  }, [initialSavedOnly]);
 
   // Dismissed state lives here (not on each row) so we can update
   // optimistically without round-tripping through the server. Re-syncs if
@@ -131,10 +166,17 @@ export function DiscoverFeed({
     setDismissedSet(new Set(dismissedIds));
   }, [dismissedIds]);
 
+  const [savedSet, setSavedSet] = useState<Set<string>>(() => new Set(savedIds));
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSavedSet(new Set(savedIds));
+  }, [savedIds]);
+
   // Per-posting pending flag while a dismiss/restore server call is flying.
   // Stored as a Set rather than boolean so rapid toggles across different
   // rows don't stomp on each other's pending state.
   const [pendingIds, setPendingIds] = useState<Set<string>>(() => new Set());
+  const [pendingSavedIds, setPendingSavedIds] = useState<Set<string>>(() => new Set());
   const searchInputRef = useRef<HTMLDivElement | null>(null);
 
   function focusCommandBar() {
@@ -172,6 +214,43 @@ export function DiscoverFeed({
           });
         }
         setPendingIds((prev) => {
+          if (!prev.has(id)) return prev;
+          const out = new Set(prev);
+          out.delete(id);
+          return out;
+        });
+      })();
+    },
+    [],
+  );
+
+  const onToggleSaved = useCallback(
+    (posting: FeedPosting, next: boolean) => {
+      const id = posting.id;
+      setActionError(null);
+      setSavedSet((prev) => {
+        const out = new Set(prev);
+        if (next) out.add(id);
+        else out.delete(id);
+        return out;
+      });
+      setPendingSavedIds((prev) => {
+        const out = new Set(prev);
+        out.add(id);
+        return out;
+      });
+      (async () => {
+        const result = next ? await savePosting(id) : await unsavePosting(id);
+        if (result?.error) {
+          setActionError(result.error);
+          setSavedSet((prev) => {
+            const out = new Set(prev);
+            if (next) out.delete(id);
+            else out.add(id);
+            return out;
+          });
+        }
+        setPendingSavedIds((prev) => {
           if (!prev.has(id)) return prev;
           const out = new Set(prev);
           out.delete(id);
@@ -231,60 +310,33 @@ export function DiscoverFeed({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  const parsedQuery = useMemo(() => parseCommandQuery(deferredQuery), [deferredQuery]);
-  const tokenSeason = getLastFieldTerm(parsedQuery, "season");
-  const commandSeasonFilter =
-    tokenSeason === "summer" || tokenSeason === "fall"
-      ? ((tokenSeason[0].toUpperCase() + tokenSeason.slice(1)) as SeasonFilter)
-      : seasonFilter;
-  const companyTerms = getFieldTerms(parsedQuery, "company");
-  const roleTerms = getFieldTerms(parsedQuery, "role", "title");
-  const locationTerms = getFieldTerms(parsedQuery, "location", "loc");
-  const showTrackedOnly = hasAnyFlag(parsedQuery, "tracked");
-  const showNewOnly = hasAnyFlag(parsedQuery, "new");
-  const showDismissedOnly = hasAnyFlag(parsedQuery, "dismissed");
-  const freeTextTerms = parsedQuery.textTerms.filter(
-    (term) => !["tracked", "new", "dismissed"].includes(term),
-  );
+  const searchTerms = useMemo(() => getSearchTerms(deferredQuery), [deferredQuery]);
 
   const filtered = useMemo(() => {
     const out: FeedPosting[] = [];
     for (const p of postings) {
-      if (commandSeasonFilter !== "all" && p.season !== commandSeasonFilter) continue;
+      if (seasonFilter !== "all" && p.season !== seasonFilter) continue;
       const isDismissed = dismissedSet.has(p.id);
-      const isTracked = trackedIdSet.has(p.id);
-      const isNew = lastSeen != null && lastSeen > 0 && p.datePosted > lastSeen;
-      if (showDismissedOnly && !isDismissed) continue;
-      if (!showDismissed && !showDismissedOnly && isDismissed) continue;
-      if (showTrackedOnly && !isTracked) continue;
-      if (showNewOnly && !isNew) continue;
+      if (!showDismissed && isDismissed) continue;
+      if (showSavedOnly && !savedSet.has(p.id)) continue;
+      if (hideApplied && trackedIdSet.has(p.id)) continue;
 
-      const company = p.company.toLowerCase();
-      const title = p.title.toLowerCase();
-      const locations = p.locations.join(" ").toLowerCase();
       const hay = haystacks.get(p.id) ?? "";
-      if (companyTerms.length && !companyTerms.every((term) => company.includes(term))) continue;
-      if (roleTerms.length && !roleTerms.every((term) => title.includes(term))) continue;
-      if (locationTerms.length && !locationTerms.every((term) => locations.includes(term))) continue;
-      if (freeTextTerms.length && !freeTextTerms.every((term) => hay.includes(term))) continue;
+      if (searchTerms.length && !searchTerms.every((term) => hay.includes(term))) continue;
       out.push(p);
     }
     return out;
   }, [
     postings,
-    commandSeasonFilter,
+    seasonFilter,
     showDismissed,
+    showSavedOnly,
+    hideApplied,
     dismissedSet,
-    haystacks,
-    companyTerms,
-    roleTerms,
-    locationTerms,
-    freeTextTerms,
-    showTrackedOnly,
-    showNewOnly,
-    showDismissedOnly,
+    savedSet,
     trackedIdSet,
-    lastSeen,
+    haystacks,
+    searchTerms,
   ]);
 
   const isPostingNew = useCallback(
@@ -309,7 +361,7 @@ export function DiscoverFeed({
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setVisibleCount(INITIAL_VISIBLE);
-  }, [deferredQuery, seasonFilter, showDismissed]);
+  }, [deferredQuery, seasonFilter, showDismissed, showSavedOnly, hideApplied]);
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -378,6 +430,7 @@ export function DiscoverFeed({
             <span className="label-meta hidden sm:inline tabular">
               {postings.length} listings
               {newCount > 0 && ` · ${newCount} new`}
+              {` · since ${formatCompactDate(cutoffDate)}`}
             </span>
           </div>
           <span className="rule-strong" />
@@ -387,7 +440,7 @@ export function DiscoverFeed({
                 Discover
               </h1>
               <p className="mt-5 max-w-lg text-[15px] leading-relaxed text-muted-foreground">
-                {postings.length} open internships. Refreshed daily, sourced from the open web.
+                {postings.length} open internships since {formatCompactDate(cutoffDate)}. Refreshed daily, sourced from the open web.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -428,16 +481,14 @@ export function DiscoverFeed({
         >
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <div ref={searchInputRef} className="relative z-[210] flex-1">
-              <TokenizedQueryInput
+              <SearchInput
                 value={query}
                 onChange={setQuery}
-                suggestions={DISCOVER_QUERY_SUGGESTIONS}
                 placeholder="Search company, role, or location…"
-                focused={searchFocused}
                 onFocusChange={setSearchFocused}
               />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <FilterChip
                 label="Season"
                 value={seasonFilter}
@@ -445,6 +496,28 @@ export function DiscoverFeed({
                 defaultValue="all"
                 options={SEASON_FILTER_OPTIONS}
               />
+              <label className="inline-flex cursor-pointer select-none items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] text-muted-foreground transition-colors duration-150 hover:text-foreground"
+                style={{ borderColor: showSavedOnly ? "var(--rule-strong)" : "var(--rule)" }}
+              >
+                <input
+                  type="checkbox"
+                  checked={showSavedOnly}
+                  onChange={(e) => setShowSavedOnly(e.target.checked)}
+                  className="size-3 rounded-[2px] accent-foreground cursor-pointer"
+                />
+                Saved only
+              </label>
+              <label className="inline-flex cursor-pointer select-none items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] text-muted-foreground transition-colors duration-150 hover:text-foreground"
+                style={{ borderColor: hideApplied ? "var(--rule-strong)" : "var(--rule)" }}
+              >
+                <input
+                  type="checkbox"
+                  checked={hideApplied}
+                  onChange={(e) => setHideApplied(e.target.checked)}
+                  className="size-3 rounded-[2px] accent-foreground cursor-pointer"
+                />
+                Hide applied
+              </label>
               <label className="inline-flex cursor-pointer select-none items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] text-muted-foreground transition-colors duration-150 hover:text-foreground"
                 style={{ borderColor: showDismissed ? "var(--rule-strong)" : "var(--rule)" }}
               >
@@ -461,9 +534,15 @@ export function DiscoverFeed({
           <div className="mt-4 flex flex-wrap items-baseline gap-x-5 gap-y-2 label-meta">
             <span><span className="text-foreground tabular">{filtered.length}</span> matching</span>
             <span className="opacity-50">·</span>
+            <span><span className="text-foreground tabular">{savedSet.size}</span> saved</span>
+            <span className="opacity-50">·</span>
             <span><span className="text-foreground tabular">{trackedIdSet.size}</span> tracked</span>
             <span className="opacity-50">·</span>
             <span><span className="text-foreground tabular">{newCount}</span> new</span>
+            <span className="opacity-50">·</span>
+            <span title={`Allowed range: ${oldestAllowedCutoffDate} to ${latestAllowedCutoffDate}`}>
+              since <span className="text-foreground tabular">{formatCompactDate(cutoffDate)}</span>
+            </span>
           </div>
           {actionError && (
             <div className="mt-4">
@@ -496,10 +575,13 @@ export function DiscoverFeed({
                   key={posting.id}
                   posting={posting}
                   dismissed={dismissedSet.has(posting.id)}
+                  saved={savedSet.has(posting.id)}
                   tracked={trackedIdSet.has(posting.id)}
                   isNew={isPostingNew(posting)}
                   pending={pendingIds.has(posting.id)}
+                  savePending={pendingSavedIds.has(posting.id)}
                   onTrack={openTrack}
+                  onToggleSaved={onToggleSaved}
                   onToggleDismiss={onToggleDismiss}
                 />
               ))}
@@ -519,4 +601,14 @@ export function DiscoverFeed({
       />
     </div>
   );
+}
+
+function formatCompactDate(isoDate: string): string {
+  const parsed = new Date(`${isoDate}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime())) return isoDate;
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(parsed);
 }

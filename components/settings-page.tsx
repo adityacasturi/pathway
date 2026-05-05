@@ -1,17 +1,60 @@
 "use client";
 
+import { type FormEvent, useState, useTransition } from "react";
 import { motion } from "framer-motion";
-import { LogOut } from "lucide-react";
+import { CalendarDays, LogOut } from "lucide-react";
 import { logout } from "@/lib/actions/auth";
+import { updateDiscoverCutoffDate } from "@/lib/actions/settings";
 import { motionVariants } from "@/lib/ui/motion";
+import { AsyncButton } from "@/components/ui/async-button";
+import { InlineError } from "@/components/ui/inline-error";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface Props {
   userEmail: string | null | undefined;
+  discoverCutoffDate: string;
+  oldestAllowedDiscoverCutoffDate: string;
+  latestAllowedDiscoverCutoffDate: string;
 }
 
-export function SettingsPage({ userEmail }: Props) {
+export function SettingsPage({
+  userEmail,
+  discoverCutoffDate,
+  oldestAllowedDiscoverCutoffDate,
+  latestAllowedDiscoverCutoffDate,
+}: Props) {
   const safeEmail = userEmail ?? "";
   const initials = getInitials(safeEmail);
+  const [cutoffDate, setCutoffDate] = useState(discoverCutoffDate);
+  const [savedCutoffDate, setSavedCutoffDate] = useState(discoverCutoffDate);
+  const [isPending, startTransition] = useTransition();
+  const [saveState, setSaveState] = useState<"idle" | "success" | "error">("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  function onCutoffChange(next: string) {
+    setCutoffDate(next);
+    setSaveState("idle");
+    setError(null);
+  }
+
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    startTransition(async () => {
+      setError(null);
+      const result = await updateDiscoverCutoffDate(cutoffDate);
+      if (result?.error) {
+        setSaveState("error");
+        setError(result.error);
+        return;
+      }
+      setSaveState("success");
+      if (result?.cutoffDate) {
+        setCutoffDate(result.cutoffDate);
+        setSavedCutoffDate(result.cutoffDate);
+      }
+    });
+  }
 
   return (
     <div className="page-shell min-h-screen bg-background">
@@ -66,6 +109,56 @@ export function SettingsPage({ userEmail }: Props) {
                 </button>
               </form>
             </div>
+          </Section>
+
+          <Section label="02" title="Discover">
+            <form onSubmit={onSubmit}>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div className="min-w-0 flex-1">
+                  <Label htmlFor="discover-cutoff" className="label-meta mb-2 block">
+                    Posted after
+                  </Label>
+                  <div className="relative max-w-56">
+                    <CalendarDays
+                      size={14}
+                      strokeWidth={1.75}
+                      className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+                      aria-hidden
+                    />
+                    <Input
+                      id="discover-cutoff"
+                      type="date"
+                      value={cutoffDate}
+                      min={oldestAllowedDiscoverCutoffDate}
+                      max={latestAllowedDiscoverCutoffDate}
+                      required
+                      onChange={(event) => onCutoffChange(event.target.value)}
+                      className="h-9 pl-8 tabular"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="label-meta tabular">
+                    {oldestAllowedDiscoverCutoffDate} - {latestAllowedDiscoverCutoffDate}
+                  </span>
+                  <AsyncButton
+                    type="submit"
+                    size="sm"
+                    state={isPending ? "pending" : saveState}
+                    idleLabel="Save"
+                    pendingLabel="Saving"
+                    successLabel="Saved"
+                    errorLabel="Retry"
+                    disabled={cutoffDate === savedCutoffDate && saveState !== "error"}
+                  />
+                </div>
+              </div>
+              {error && (
+                <div className="mt-4">
+                  <InlineError message={error} onRetry={() => setError(null)} />
+                </div>
+              )}
+            </form>
           </Section>
         </motion.div>
       </main>

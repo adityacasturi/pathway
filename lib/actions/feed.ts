@@ -15,8 +15,7 @@ function cleanPostingId(postingId: unknown): string | null {
 }
 
 /**
- * Persisted feed interactions. The current app flow only reads and writes
- * dismissed postings, keyed by upstream posting id.
+ * Persisted feed interactions, keyed by upstream posting id.
  *
  * Intentionally no revalidatePath here. The client tracks dismissed state
  * optimistically (see DiscoverFeed / Home dismissedSet), so revalidating the
@@ -54,6 +53,40 @@ export async function undismissPosting(postingId: string) {
     .eq("user_id", user.id)
     .eq("posting_id", cleanedPostingId)
     .eq("kind", "dismissed");
+  if (error) return { error: error.message };
+
+  return { ok: true };
+}
+
+export async function savePosting(postingId: string) {
+  const { supabase, user } = await getAuthenticatedUser();
+  if (!user) return { error: "Not authenticated" };
+  const cleanedPostingId = cleanPostingId(postingId);
+  if (!cleanedPostingId) return { error: "Invalid posting id." };
+
+  const { error } = await supabase
+    .from("feed_interactions")
+    .upsert(
+      { user_id: user.id, posting_id: cleanedPostingId, kind: "saved" },
+      { onConflict: "user_id,posting_id,kind" },
+    );
+  if (error) return { error: error.message };
+
+  return { ok: true };
+}
+
+export async function unsavePosting(postingId: string) {
+  const { supabase, user } = await getAuthenticatedUser();
+  if (!user) return { error: "Not authenticated" };
+  const cleanedPostingId = cleanPostingId(postingId);
+  if (!cleanedPostingId) return { error: "Invalid posting id." };
+
+  const { error } = await supabase
+    .from("feed_interactions")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("posting_id", cleanedPostingId)
+    .eq("kind", "saved");
   if (error) return { error: error.message };
 
   return { ok: true };

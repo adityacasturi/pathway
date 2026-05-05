@@ -13,6 +13,7 @@
  */
 
 import { unstable_noStore } from "next/cache";
+import { resolveDiscoverCutoffDate } from "@/lib/config/discover";
 
 /** How long (in seconds) to cache a fetched source before re-pulling. */
 const FEED_REVALIDATE_SECONDS = 60 * 60; // 1h
@@ -21,13 +22,6 @@ const SOURCE_TIMEOUT_MS = 8000;
 export type FeedSeason = "Summer" | "Fall";
 
 const ALLOWED_SEASONS: readonly FeedSeason[] = ["Summer", "Fall"];
-
-/**
- * Upstream lists still carry postings from previous cycles (e.g. Summer 2025).
- * Drop anything older than this so the feed reflects the current recruiting
- * season without us having to think about it. Bump this each cycle.
- */
-const POSTED_AFTER_UNIX = Math.floor(new Date("2026-03-01T00:00:00Z").getTime() / 1000);
 
 /** Minimum acceptable term year — used when parsing "Summer 2026" style terms. */
 const MIN_TERM_YEAR = 2026;
@@ -97,7 +91,9 @@ function extractSeasonFromTerms(terms: string[] | undefined): FeedSeason | null 
 function baseValid(row: RawListing): boolean {
   if (!row?.id || !row.company_name || !row.title || !row.url) return false;
   if (row.active === false || row.is_visible === false) return false;
-  if (typeof row.date_posted === "number" && row.date_posted < POSTED_AFTER_UNIX) return false;
+  if (typeof row.date_posted === "number" && row.date_posted < resolveDiscoverCutoffDate().cutoffUnix) {
+    return false;
+  }
   return true;
 }
 

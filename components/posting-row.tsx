@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useCallback, useMemo } from "react";
-import { Check, Plus, RotateCcw, X } from "lucide-react";
+import { Bookmark, Check, Plus, RotateCcw, X } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
 import { CompanyLogo } from "@/components/company-logo";
 import { SeasonPill } from "@/components/season-pill";
@@ -11,20 +11,26 @@ import type { FeedPosting } from "@/lib/feed/source";
 interface RowProps {
   posting: FeedPosting;
   dismissed: boolean;
+  saved: boolean;
   tracked: boolean;
   isNew: boolean;
   pending?: boolean;
+  savePending?: boolean;
   onTrack: (posting: FeedPosting) => void;
+  onToggleSaved: (posting: FeedPosting, next: boolean) => void;
   onToggleDismiss: (posting: FeedPosting, next: boolean) => void;
 }
 
 export const PostingRow = memo(function PostingRow({
   posting,
   dismissed,
+  saved,
   tracked,
   isNew,
   pending,
+  savePending,
   onTrack,
+  onToggleSaved,
   onToggleDismiss,
 }: RowProps) {
   const posted = useMemo(() => {
@@ -41,6 +47,10 @@ export const PostingRow = memo(function PostingRow({
   const postingHref = useMemo(() => safeExternalHref(posting.url), [posting.url]);
 
   const handleTrack = useCallback(() => onTrack(posting), [onTrack, posting]);
+  const handleSave = useCallback(
+    () => onToggleSaved(posting, !saved),
+    [onToggleSaved, posting, saved],
+  );
   const handleToggle = useCallback(
     () => onToggleDismiss(posting, !dismissed),
     [onToggleDismiss, posting, dismissed],
@@ -110,16 +120,28 @@ export const PostingRow = memo(function PostingRow({
             </span>
           ) : (
             <IconButton label="Track" onClick={handleTrack} tone="positive">
-              <Plus size={14} strokeWidth={1.75} />
+              <Plus size={14} strokeWidth={1.85} />
             </IconButton>
           )}
+          <IconButton
+            label={saved ? "Unsave" : "Save for later"}
+            onClick={handleSave}
+            disabled={savePending}
+            tone={saved ? "saved" : "neutral"}
+          >
+            <Bookmark
+              size={14}
+              strokeWidth={1.85}
+              fill={saved ? "currentColor" : "none"}
+            />
+          </IconButton>
           <IconButton
             label={dismissed ? "Restore" : "Dismiss"}
             onClick={handleToggle}
             disabled={pending}
             tone={dismissed ? "neutral" : "negative"}
           >
-            {dismissed ? <RotateCcw size={13} strokeWidth={1.75} /> : <X size={13} strokeWidth={1.75} />}
+            {dismissed ? <RotateCcw size={14} strokeWidth={1.85} /> : <X size={14} strokeWidth={1.85} />}
           </IconButton>
         </div>
       </div>
@@ -127,7 +149,7 @@ export const PostingRow = memo(function PostingRow({
   );
 });
 
-type IconButtonTone = "positive" | "negative" | "neutral";
+type IconButtonTone = "positive" | "negative" | "neutral" | "saved";
 
 const TONE_CLASSES: Record<IconButtonTone, string> = {
   positive:
@@ -136,6 +158,8 @@ const TONE_CLASSES: Record<IconButtonTone, string> = {
     "text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10",
   neutral:
     "text-muted-foreground/60 hover:text-foreground hover:bg-[color-mix(in_oklab,var(--ink)_6%,transparent)]",
+  saved:
+    "text-[color:var(--primary)] bg-[color-mix(in_oklab,var(--primary)_10%,transparent)] hover:bg-[color-mix(in_oklab,var(--primary)_14%,transparent)]",
 };
 
 function IconButton({
@@ -158,7 +182,7 @@ function IconButton({
       aria-label={label}
       title={label}
       disabled={disabled}
-      className={`inline-flex size-7 items-center justify-center rounded-full transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50 ${TONE_CLASSES[tone]}`}
+      className={`inline-flex size-7 items-center justify-center rounded-full leading-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50 [&>svg]:block [&>svg]:shrink-0 ${TONE_CLASSES[tone]}`}
     >
       {children}
     </button>

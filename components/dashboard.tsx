@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { Archive, ArchiveRestore, Plus } from "lucide-react";
+import { Archive, Plus } from "lucide-react";
 import { Application, ApplicationSeason } from "@/types/application";
 import { STATUSES, STATUS_LABELS } from "@/lib/config/events";
 import { ApplicationsTable } from "@/components/applications-table";
@@ -13,9 +13,7 @@ import { StatusDot } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { FilterChip, FilterOption } from "@/components/ui/filter-chip";
 import { motionVariants } from "@/lib/ui/motion";
-import { getFieldTerms, getLastFieldTerm, hasAnyFlag, parseCommandQuery } from "@/lib/ui/query";
-import { type QuerySuggestion } from "@/components/query-autocomplete";
-import { TokenizedQueryInput } from "@/components/tokenized-query-input";
+import { SearchInput } from "@/components/search-input";
 import { updateApplicationArchive } from "@/lib/actions/applications";
 import { normalizeApplicationState } from "@/lib/config/application-state";
 
@@ -26,27 +24,7 @@ type SortDirection = "asc" | "desc";
 
 const HIDE_REJECTED_STORAGE_KEY = "launchpad:hide-rejected";
 const HIDE_ARCHIVED_STORAGE_KEY = "launchpad:hide-archived";
-
-const DASHBOARD_QUERY_SUGGESTIONS: QuerySuggestion[] = [
-  { token: "status:applied", label: "Status: Applied", hint: "Applications that have reached applied" },
-  { token: "status:oa", label: "Status: OA", hint: "Applications with an online assessment" },
-  { token: "status:interview", label: "Status: Interview", hint: "Applications with interview activity" },
-  { token: "status:offer", label: "Status: Offer", hint: "Applications with an offer" },
-  { token: "status:rejected", label: "Status: Rejected", hint: "Applications marked rejected" },
-  { token: "season:summer", label: "Season: Summer", hint: "Summer applications only" },
-  { token: "season:fall", label: "Season: Fall", hint: "Fall applications only" },
-  { token: "sort:company", label: "Sort by company", hint: "Alphabetize the visible queue" },
-  { token: "sort:role", label: "Sort by role", hint: "Group similar roles together" },
-  { token: "sort:recent", label: "Sort by recent", hint: "Most recently active first" },
-  { token: "dir:asc", label: "Direction: Asc", hint: "Ascending sort direction" },
-  { token: "dir:desc", label: "Direction: Desc", hint: "Descending sort direction" },
-  { token: "company:", label: "Company filter", hint: "Example: company:citadel" },
-  { token: "role:", label: "Role filter", hint: "Example: role:quant" },
-  { token: "location:", label: "Location filter", hint: "Example: location:nyc" },
-  { token: "has:url", label: "Has posting URL", hint: "Only applications with links" },
-  { token: "archived", label: "Archived lane", hint: "Show applications you archived" },
-  { token: "active", label: "Active lane", hint: "Hide archived applications" },
-];
+const SEARCH_TOKEN_PATTERN = /"[^"]*"|'[^']*'|\S+/g;
 
 const SEASON_FILTER_OPTIONS: FilterOption<SeasonFilter>[] = [
   { value: "all", label: "All" },
@@ -56,6 +34,12 @@ const SEASON_FILTER_OPTIONS: FilterOption<SeasonFilter>[] = [
 
 interface Props {
   applications: Application[];
+}
+
+function getSearchTerms(value: string) {
+  return (value.match(SEARCH_TOKEN_PATTERN) ?? [])
+    .map((term) => term.replace(/^["']|["']$/g, "").trim().toLowerCase())
+    .filter(Boolean);
 }
 
 export function Dashboard({ applications: initialApplications }: Props) {
@@ -170,64 +154,26 @@ export function Dashboard({ applications: initialApplications }: Props) {
     return application.events.some((e) => e.event_type === status);
   }
 
-  const parsedQuery = useMemo(() => parseCommandQuery(query), [query]);
-  const tokenStatus = getLastFieldTerm(parsedQuery, "status");
-  const tokenSeason = getLastFieldTerm(parsedQuery, "season");
-  const tokenSort = getLastFieldTerm(parsedQuery, "sort");
-  const tokenDir = getLastFieldTerm(parsedQuery, "dir");
-  const commandStatusFilter =
-    tokenStatus && (STATUSES as readonly string[]).includes(tokenStatus)
-      ? (tokenStatus as StatusFilter)
-      : statusFilter;
-  const commandSeasonFilter =
-    tokenSeason === "summer" || tokenSeason === "fall"
-      ? ((tokenSeason[0].toUpperCase() + tokenSeason.slice(1)) as SeasonFilter)
-      : seasonFilter;
-  const commandSortKey: SortKey | null =
-    tokenSort === "company" || tokenSort === "role" || tokenSort === "status"
-      ? tokenSort
-      : tokenSort === "last" || tokenSort === "recent" || tokenSort === "activity"
-        ? "last_activity"
-        : sortKey;
-  const commandSortDirection: SortDirection =
-    tokenDir === "desc" || tokenDir === "asc" ? tokenDir : sortDirection;
-  const showArchivedOnly = hasAnyFlag(parsedQuery, "archived", "archive");
-  const showActiveOnly = hasAnyFlag(parsedQuery, "active");
-  const companyTerms = getFieldTerms(parsedQuery, "company");
-  const roleTerms = getFieldTerms(parsedQuery, "role");
-  const locationTerms = getFieldTerms(parsedQuery, "location", "loc");
-  const hasTerms = getFieldTerms(parsedQuery, "has");
-  const freeTextTerms = parsedQuery.textTerms.filter(
-    (term) =>
-      !["archived", "archive", "active"].includes(term) &&
-      !(STATUSES as readonly string[]).includes(term),
-  );
+  const searchTerms = useMemo(() => getSearchTerms(query), [query]);
 
   const filtered = useMemo(() => {
     return applications.filter((application) => {
       const isRejected = hasReachedStatus(application, "rejected");
       const isArchived = archivedIds.has(application.id);
 
-      if (showArchivedOnly && !isArchived) return false;
-      if (showActiveOnly && isArchived) return false;
-      if (!showArchivedOnly && !showActiveOnly && hideArchived && isArchived) return false;
-      if (hideRejected && commandStatusFilter !== "rejected" && isRejected) {
+      if (hideArchived && isArchived) return false;
+      if (hideRejected && statusFilter !== "rejected" && isRejected) {
         return false;
       }
-      if (commandStatusFilter !== "all" && !hasReachedStatus(application, commandStatusFilter)) return false;
-      if (commandSeasonFilter !== "all" && application.season !== commandSeasonFilter) return false;
+      if (statusFilter !== "all" && !hasReachedStatus(application, statusFilter)) return false;
+      if (seasonFilter !== "all" && application.season !== seasonFilter) return false;
 
       const company = application.company.toLowerCase();
       const role = application.role.toLowerCase();
       const location = (application.location ?? "").toLowerCase();
       const haystack = [company, role, location].join(" ");
 
-      if (companyTerms.length && !companyTerms.every((term) => company.includes(term))) return false;
-      if (roleTerms.length && !roleTerms.every((term) => role.includes(term))) return false;
-      if (locationTerms.length && !locationTerms.every((term) => location.includes(term))) return false;
-      if (freeTextTerms.length && !freeTextTerms.every((term) => haystack.includes(term))) return false;
-      if (hasTerms.includes("url") && !application.posting_url) return false;
-      if (hasTerms.includes("location") && !application.location) return false;
+      if (searchTerms.length && !searchTerms.every((term) => haystack.includes(term))) return false;
 
       return true;
     });
@@ -235,22 +181,16 @@ export function Dashboard({ applications: initialApplications }: Props) {
     applications,
     hideRejected,
     hideArchived,
-    commandStatusFilter,
-    commandSeasonFilter,
+    statusFilter,
+    seasonFilter,
     archivedIds,
-    showArchivedOnly,
-    showActiveOnly,
-    companyTerms,
-    roleTerms,
-    locationTerms,
-    freeTextTerms,
-    hasTerms,
+    searchTerms,
   ]);
 
   const sorted = useMemo(
     () => {
-      const activeSortKey = commandSortKey ?? "last_activity";
-      const activeSortDirection = commandSortKey ? commandSortDirection : "desc";
+      const activeSortKey = sortKey ?? "last_activity";
+      const activeSortDirection = sortKey ? sortDirection : "desc";
 
       return [...filtered].sort((a, b) => {
         let comparison = 0;
@@ -271,7 +211,7 @@ export function Dashboard({ applications: initialApplications }: Props) {
         return activeSortDirection === "asc" ? comparison : -comparison;
       });
     },
-    [filtered, commandSortKey, commandSortDirection],
+    [filtered, sortKey, sortDirection],
   );
 
   const statusCounts = useMemo(
@@ -291,9 +231,9 @@ export function Dashboard({ applications: initialApplications }: Props) {
         status,
         label: STATUS_LABELS[status],
         count: statusCounts[status],
-        active: commandStatusFilter === status,
+        active: statusFilter === status,
       })),
-    [statusCounts, commandStatusFilter],
+    [statusCounts, statusFilter],
   );
 
   useEffect(() => {
@@ -421,12 +361,10 @@ export function Dashboard({ applications: initialApplications }: Props) {
 
           <div className="mt-6 flex flex-col gap-3 md:flex-row md:items-center">
             <div ref={searchInputRef} className="relative z-[210] flex-1">
-              <TokenizedQueryInput
+              <SearchInput
                 value={query}
                 onChange={setQuery}
-                suggestions={DASHBOARD_QUERY_SUGGESTIONS}
                 placeholder="Search company, role, or location…"
-                focused={searchFocused}
                 onFocusChange={setSearchFocused}
               />
             </div>
@@ -438,17 +376,6 @@ export function Dashboard({ applications: initialApplications }: Props) {
                 defaultValue="all"
                 options={SEASON_FILTER_OPTIONS}
               />
-              {showArchivedOnly && (
-                <button
-                  type="button"
-                  onClick={() => setQuery((current) => current.replace(/\barchived\b/g, "").replace(/\s+/g, " ").trim())}
-                  className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] text-muted-foreground transition-colors duration-150 hover:text-foreground"
-                  style={{ borderColor: "var(--rule)" }}
-                >
-                  <ArchiveRestore size={12} strokeWidth={1.75} />
-                  Exit archive
-                </button>
-              )}
             </div>
           </div>
 
@@ -473,8 +400,8 @@ export function Dashboard({ applications: initialApplications }: Props) {
           hasActiveFilters={Boolean(query || statusFilter !== "all" || seasonFilter !== "all")}
           searchQuery={query}
           onOpen={setDetail}
-          sortKey={commandSortKey}
-          sortDirection={commandSortDirection}
+          sortKey={sortKey}
+          sortDirection={sortDirection}
           onSortChange={handleSortChange}
           hideRejected={hideRejected}
           onHideRejectedChange={setHideRejected}

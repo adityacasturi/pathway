@@ -23,7 +23,7 @@ export default async function HomePage() {
     supabase
       .from("applications")
       .select("id, posting_url, archived_at, application_events(event_type)"),
-    supabase.from("feed_interactions").select("posting_id").eq("kind", "dismissed"),
+    supabase.from("feed_interactions").select("posting_id, kind, created_at"),
   ]);
 
   if (!userResult.data.user) redirect("/login");
@@ -52,8 +52,14 @@ export default async function HomePage() {
 
   const totalApplications = activeApplications.length;
 
-  const dismissedIds = (interactionsRes.data ?? []).map((row) => row.posting_id);
+  const dismissedIds: string[] = [];
+  const savedRows: { posting_id: string; created_at: string }[] = [];
+  for (const row of interactionsRes.data ?? []) {
+    if (row.kind === "dismissed") dismissedIds.push(row.posting_id);
+    if (row.kind === "saved") savedRows.push(row);
+  }
   const dismissedSet = new Set(dismissedIds);
+  const savedAtById = new Map(savedRows.map((row) => [row.posting_id, row.created_at]));
 
   const trackedUrls = new Set<string>();
   for (const row of activeApplications) {
@@ -69,6 +75,13 @@ export default async function HomePage() {
   const newPostings = postings
     .filter((p) => p.datePosted >= cutoff && !dismissedSet.has(p.id))
     .sort((a, b) => b.datePosted - a.datePosted);
+  const savedPostings = postings
+    .filter((p) => savedAtById.has(p.id) && !dismissedSet.has(p.id))
+    .sort((a, b) => {
+      const aSavedAt = savedAtById.get(a.id) ?? "";
+      const bSavedAt = savedAtById.get(b.id) ?? "";
+      return bSavedAt.localeCompare(aSavedAt);
+    });
 
   return (
     <Home
@@ -76,6 +89,8 @@ export default async function HomePage() {
       totalApplications={totalApplications}
       newPostings={newPostings}
       dismissedIds={dismissedIds}
+      savedIds={Array.from(savedAtById.keys())}
+      savedPostings={savedPostings}
       trackedUrls={Array.from(trackedUrls)}
     />
   );

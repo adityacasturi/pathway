@@ -12,17 +12,26 @@ import { InlineError } from "@/components/ui/inline-error";
 import { motionVariants } from "@/lib/ui/motion";
 import { normalizeUrl } from "@/lib/url";
 import { STATUSES, STATUS_LABELS } from "@/lib/config/events";
-import { dismissPosting, refreshFeed, undismissPosting } from "@/lib/actions/feed";
+import {
+  dismissPosting,
+  refreshFeed,
+  savePosting,
+  undismissPosting,
+  unsavePosting,
+} from "@/lib/actions/feed";
 import type { FeedPosting, FeedSeason } from "@/lib/feed/source";
 import type { Status } from "@/types/application";
 
 const MAX_NEW_ROWS = 20;
+const MAX_SAVED_ROWS = 12;
 
 interface Props {
   statusCounts: Record<Status, number>;
   totalApplications: number;
   newPostings: FeedPosting[];
   dismissedIds: string[];
+  savedIds: string[];
+  savedPostings: FeedPosting[];
   trackedUrls: string[];
 }
 
@@ -39,6 +48,8 @@ export function Home({
   totalApplications,
   newPostings,
   dismissedIds,
+  savedIds,
+  savedPostings,
   trackedUrls,
 }: Props) {
   const router = useRouter();
@@ -65,7 +76,15 @@ export function Home({
     setDismissedSet(new Set(dismissedIds));
   }, [dismissedIds]);
 
+  const [savedSet, setSavedSet] = useState<Set<string>>(() => new Set(savedIds));
+  const [savedOverrides, setSavedOverrides] = useState<Map<string, FeedPosting>>(() => new Map());
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSavedSet(new Set(savedIds));
+  }, [savedIds]);
+
   const [pendingIds, setPendingIds] = useState<Set<string>>(() => new Set());
+  const [pendingSavedIds, setPendingSavedIds] = useState<Set<string>>(() => new Set());
 
   const onToggleDismiss = useCallback(
     (posting: FeedPosting, next: boolean) => {
@@ -104,20 +123,81 @@ export function Home({
     [],
   );
 
+  const onToggleSaved = useCallback(
+    (posting: FeedPosting, next: boolean) => {
+      const id = posting.id;
+      setActionError(null);
+      setSavedSet((prev) => {
+        const out = new Set(prev);
+        if (next) out.add(id);
+        else out.delete(id);
+        return out;
+      });
+      if (next) {
+        setSavedOverrides((prev) => {
+          const out = new Map(prev);
+          out.set(id, posting);
+          return out;
+        });
+      }
+      setPendingSavedIds((prev) => {
+        const out = new Set(prev);
+        out.add(id);
+        return out;
+      });
+      (async () => {
+        const result = next ? await savePosting(id) : await unsavePosting(id);
+        if (result?.error) {
+          setActionError(result.error);
+          setSavedSet((prev) => {
+            const out = new Set(prev);
+            if (next) out.delete(id);
+            else out.add(id);
+            return out;
+          });
+        }
+        setPendingSavedIds((prev) => {
+          if (!prev.has(id)) return prev;
+          const out = new Set(prev);
+          out.delete(id);
+          return out;
+        });
+      })();
+    },
+    [],
+  );
+
   const trackedIdSet = useMemo(() => {
     const urls = new Set([...trackedUrls, ...trackedUrlOverrides]);
     const ids = new Set<string>();
-    for (const p of newPostings) {
+    const rows = new Map<string, FeedPosting>();
+    for (const p of newPostings) rows.set(p.id, p);
+    for (const p of savedPostings) rows.set(p.id, p);
+    for (const p of savedOverrides.values()) rows.set(p.id, p);
+    for (const p of rows.values()) {
       const key = normalizeUrl(p.url) ?? p.url;
       if (urls.has(key)) ids.add(p.id);
     }
     return ids;
-  }, [newPostings, trackedUrls, trackedUrlOverrides]);
+  }, [newPostings, savedOverrides, savedPostings, trackedUrls, trackedUrlOverrides]);
 
   const visibleNew = useMemo(
     () => newPostings.slice(0, MAX_NEW_ROWS),
     [newPostings],
   );
+  const visibleSaved = useMemo(() => {
+    const byId = new Map<string, FeedPosting>();
+    for (const posting of savedPostings) byId.set(posting.id, posting);
+    for (const posting of savedOverrides.values()) byId.set(posting.id, posting);
+
+    const rows: FeedPosting[] = [];
+    for (const posting of byId.values()) {
+      if (savedSet.has(posting.id) && !dismissedSet.has(posting.id)) {
+        rows.push(posting);
+      }
+    }
+    return rows.slice(0, MAX_SAVED_ROWS);
+  }, [dismissedSet, savedOverrides, savedPostings, savedSet]);
 
   const openTrack = useCallback((posting: FeedPosting) => {
     setDialogPrefill({
@@ -242,13 +322,73 @@ export function Home({
         </motion.section>
 
         <motion.section
+          className="mb-20"
           variants={motionVariants.fadeIn}
           initial="hidden"
           animate="visible"
         >
           <div className="mb-6 flex items-baseline justify-between">
             <div className="flex items-baseline gap-3">
-              <span className="label-micro">02 / New</span>
+              <span className="label-micro">02 / Saved</span>
+              <h2 className="display-serif text-[22px] text-foreground">
+                For later
+                {visibleSaved.length > 0 && (
+                  <span className="ml-2 font-mono text-[13px] font-normal tracking-normal text-muted-foreground">
+                    {visibleSaved.length}
+                  </span>
+                )}
+              </h2>
+            </div>
+            <Link
+              href="/discover?saved"
+              className="label-meta link-edit hover:text-foreground"
+            >
+              Open saved <ArrowRight size={11} strokeWidth={1.75} />
+            </Link>
+          </div>
+          <span className="rule" />
+
+          {visibleSaved.length === 0 ? (
+            <div className="py-16 text-center">
+              <p className="text-[15px] text-muted-foreground">
+                Saved postings will collect here.
+              </p>
+              <Link
+                href="/discover"
+                className="mt-4 inline-flex items-center gap-1 text-[13px] text-foreground hover:text-muted-foreground transition-colors duration-150"
+              >
+                Browse listings <ArrowRight size={13} strokeWidth={1.75} />
+              </Link>
+            </div>
+          ) : (
+            <ul className="divide-y" style={{ borderColor: "var(--rule)" }}>
+              {visibleSaved.map((posting) => (
+                <PostingRow
+                  key={posting.id}
+                  posting={posting}
+                  dismissed={dismissedSet.has(posting.id)}
+                  saved={savedSet.has(posting.id)}
+                  tracked={trackedIdSet.has(posting.id)}
+                  isNew={false}
+                  pending={pendingIds.has(posting.id)}
+                  savePending={pendingSavedIds.has(posting.id)}
+                  onTrack={openTrack}
+                  onToggleSaved={onToggleSaved}
+                  onToggleDismiss={onToggleDismiss}
+                />
+              ))}
+            </ul>
+          )}
+        </motion.section>
+
+        <motion.section
+          variants={motionVariants.fadeIn}
+          initial="hidden"
+          animate="visible"
+        >
+          <div className="mb-6 flex items-baseline justify-between">
+            <div className="flex items-baseline gap-3">
+              <span className="label-micro">03 / New</span>
               <h2 className="display-serif text-[22px] text-foreground">
                 Since yesterday
                 {visibleNew.length > 0 && (
@@ -286,10 +426,13 @@ export function Home({
                   key={posting.id}
                   posting={posting}
                   dismissed={dismissedSet.has(posting.id)}
+                  saved={savedSet.has(posting.id)}
                   tracked={trackedIdSet.has(posting.id)}
                   isNew
                   pending={pendingIds.has(posting.id)}
+                  savePending={pendingSavedIds.has(posting.id)}
                   onTrack={openTrack}
+                  onToggleSaved={onToggleSaved}
                   onToggleDismiss={onToggleDismiss}
                 />
               ))}
