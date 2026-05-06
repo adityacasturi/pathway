@@ -291,9 +291,6 @@ export function Dashboard({ applications: initialApplications }: Props) {
               <h1 className="display-serif text-[4.5rem] sm:text-[5.25rem] lg:text-[6rem] text-foreground">
                 Applications
               </h1>
-              <p className="mt-5 max-w-lg text-[15px] leading-relaxed text-muted-foreground">
-                Every application you&rsquo;re tracking, with live status and event history.
-              </p>
             </div>
             <Button
               onClick={() => setDialogOpen(true)}

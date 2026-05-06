@@ -108,9 +108,8 @@ export async function refreshFeed() {
   const rateLimit = await consumeAuthenticatedRateLimit(supabase, "feed:refresh", 10, 600);
   if (!rateLimit.ok) return { error: rateLimit.error };
 
-  // Bust both caches: Next's fetch-cache (tagged sources like vanshb03 and
-  // Northwestern) and our in-process memo (SimplifyJobs, whose raw payload
-  // exceeds Next's 2MB limit).
+  // Bust both caches: Next's fetch-cache (vanshb03) and our in-process memo
+  // (SimplifyJobs, whose raw payload exceeds Next's 2MB limit).
   updateTag("discover-feed");
   clearFeedMemo();
   return { ok: true };

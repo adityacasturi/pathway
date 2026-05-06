@@ -44,9 +44,6 @@ export default function LoginPage() {
             <h1 className="display-serif mt-5 text-[2.25rem] text-foreground">
               {mode === "login" ? "Sign in" : "Create account"}
             </h1>
-            <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">
-              A quiet place to track your internship search.
-            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">

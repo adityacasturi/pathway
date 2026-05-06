@@ -836,9 +836,6 @@ export function StatsPage({ applications }: Props) {
               <h1 className="display-serif text-[4.5rem] sm:text-[5.75rem] lg:text-[6.5rem] text-foreground">
                 Stats
               </h1>
-              <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-muted-foreground">
-                A cleaner read on volume, timing, and where applications fall out of the funnel.
-              </p>
             </div>
             <Link
               href="/applications"

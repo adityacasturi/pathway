@@ -27,7 +27,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "Launchpad",
-  description: "A quiet place to track your internship search.",
+  description: "Internship application tracker.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

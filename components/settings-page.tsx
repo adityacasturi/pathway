@@ -73,9 +73,6 @@ export function SettingsPage({
             <h1 className="display-serif text-[4.5rem] sm:text-[5.25rem] text-foreground">
               Settings
             </h1>
-            <p className="mt-5 max-w-lg text-[15px] leading-relaxed text-muted-foreground">
-              Your account.
-            </p>
           </div>
         </motion.header>
 

@@ -248,8 +248,8 @@ export function Home({
               </h1>
               <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-muted-foreground">
                 {totalApplications === 0
-                  ? "A quiet place for a loud search. Begin when you're ready — the feed below is already listening."
-                  : `You're tracking ${totalApplications} application${totalApplications === 1 ? "" : "s"}. A fresh run of openings is below, gathered since yesterday.`}
+                  ? "No applications yet."
+                  : `Tracking ${totalApplications} application${totalApplications === 1 ? "" : "s"}. Openings from yesterday are below.`}
               </p>
             </div>
             <button

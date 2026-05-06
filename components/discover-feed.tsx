@@ -440,7 +440,7 @@ export function DiscoverFeed({
                 Discover
               </h1>
               <p className="mt-5 max-w-lg text-[15px] leading-relaxed text-muted-foreground">
-                {postings.length} open internships since {formatCompactDate(cutoffDate)}. Refreshed daily, sourced from the open web.
+                {postings.length} open internships since {formatCompactDate(cutoffDate)}.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 shrink-0">
