@@ -272,17 +272,7 @@ export function Dashboard({ applications: initialApplications }: Props) {
       archived_at: null,
       created_at: now,
       last_activity_date: created.dateApplied,
-      events: [
-        {
-          id: `local-${created.id}-applied`,
-          application_id: created.id,
-          event_type: "applied",
-          event_date: created.dateApplied,
-          notes: null,
-          round_number: null,
-          created_at: now,
-        },
-      ],
+      events: [created.appliedEvent],
     });
     setApplications((current) => [application, ...current]);
   }

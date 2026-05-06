@@ -3,28 +3,8 @@ import { ArrowRight, ChartNoAxesCombined, Clock3, Percent, TimerReset, Trophy } 
 import { STATUS_LABELS } from "@/lib/config/events";
 import type { Application, EventType, Status } from "@/types/application";
 
-type FlowNodeId =
-  | "applications"
-  | "no_response"
-  | "oa"
-  | "interviews"
-  | "offers"
-  | "rejected";
-
-type FlowLinkId =
-  | "applications_no_response"
-  | "applications_rejected"
-  | "applications_oa"
-  | "applications_interviews"
-  | "applications_offers"
-  | "oa_interviews"
-  | "oa_offers"
-  | "oa_rejected"
-  | "interviews_offers"
-  | "interviews_rejected";
-
 type FlowNode = {
-  id: FlowNodeId;
+  id: string;
   label: string;
   count: number;
   x: number;
@@ -33,9 +13,9 @@ type FlowNode = {
 };
 
 type FlowLink = {
-  id: FlowLinkId;
-  source: FlowNodeId;
-  target: FlowNodeId;
+  id: string;
+  source: string;
+  target: string;
   value: number;
   color: string;
 };
@@ -69,7 +49,15 @@ function hasEvent(application: Application, eventType: EventType) {
 }
 
 function firstEventDate(application: Application, eventType: EventType) {
-  return application.events.find((event) => event.event_type === eventType)?.event_date ?? null;
+  return (
+    application.events
+      .filter((event) => event.event_type === eventType)
+      .sort((a, b) => {
+        const byDate = a.event_date.localeCompare(b.event_date);
+        if (byDate !== 0) return byDate;
+        return a.created_at.localeCompare(b.created_at);
+      })[0]?.event_date ?? null
+  );
 }
 
 function applicationStartDate(application: Application) {
@@ -89,10 +77,23 @@ function average(values: number[]) {
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
+function pluralize(count: number, singular: string, plural = `${singular}s`) {
+  return count === 1 ? singular : plural;
+}
+
+function sampleDetail(count: number) {
+  return `${count} ${pluralize(count, "application")} sample`;
+}
+
 function formatDays(days: number | null) {
   if (days == null) return "n/a";
   const rounded = days < 10 ? Math.round(days * 10) / 10 : Math.round(days);
   return `${rounded}d`;
+}
+
+function formatDecimal(value: number | null) {
+  if (value == null) return "n/a";
+  return Number.isInteger(value) ? value.toString() : value.toFixed(1);
 }
 
 function formatPercent(numerator: number, denominator: number) {
@@ -140,6 +141,26 @@ function buildMonthlyCounts(applications: Application[]): MonthlyCount[] {
   return months.slice(-12);
 }
 
+function firstProgressDate(application: Application) {
+  return (
+    application.events
+      .filter((event) => event.event_type !== "applied" && event.event_type !== "note")
+      .sort((a, b) => {
+        const byDate = a.event_date.localeCompare(b.event_date);
+        if (byDate !== 0) return byDate;
+        return a.created_at.localeCompare(b.created_at);
+      })[0]?.event_date ?? null
+  );
+}
+
+function hasProgress(application: Application) {
+  return firstProgressDate(application) != null;
+}
+
+function hasTerminalDecision(application: Application) {
+  return hasEvent(application, "offer") || hasEvent(application, "rejected");
+}
+
 function buildStageCounts(applications: Application[]): StageCount {
   return {
     applied: applications.length,
@@ -150,187 +171,167 @@ function buildStageCounts(applications: Application[]): StageCount {
   };
 }
 
+function getOrderedInterviewEvents(application: Application) {
+  return application.events
+    .filter((event) => event.event_type === "interview")
+    .sort((a, b) => {
+      if (a.round_number != null && b.round_number != null) {
+        const byRound = a.round_number - b.round_number;
+        if (byRound !== 0) return byRound;
+      }
+
+      const byDate = a.event_date.localeCompare(b.event_date);
+      if (byDate !== 0) return byDate;
+      return a.created_at.localeCompare(b.created_at);
+    });
+}
+
 function buildSankey(applications: Application[]) {
-  const linkValues: Record<FlowLinkId, number> = {
-    applications_no_response: 0,
-    applications_rejected: 0,
-    applications_oa: 0,
-    applications_interviews: 0,
-    applications_offers: 0,
-    oa_interviews: 0,
-    oa_offers: 0,
-    oa_rejected: 0,
-    interviews_offers: 0,
-    interviews_rejected: 0,
-  };
+  const nodeCounts = new Map<string, number>([
+    ["applications", applications.length],
+  ]);
+  const linkValues = new Map<string, FlowLink>();
+  let maxInterviewRounds = 0;
+
+  function addNodeVisit(id: string) {
+    nodeCounts.set(id, (nodeCounts.get(id) ?? 0) + 1);
+  }
+
+  function addLink(source: string, target: string, color: string) {
+    const id = `${source}_${target}`;
+    const existing = linkValues.get(id);
+    if (existing) {
+      existing.value += 1;
+      return;
+    }
+
+    linkValues.set(id, { id, source, target, value: 1, color });
+  }
 
   for (const application of applications) {
     const hasOa = hasEvent(application, "oa");
-    const hasInterview = hasEvent(application, "interview");
+    const interviewEvents = getOrderedInterviewEvents(application);
+    const hasInterview = interviewEvents.length > 0;
     const hasOffer = hasEvent(application, "offer");
     const hasRejected = hasEvent(application, "rejected");
 
-    if (hasOa) {
-      linkValues.applications_oa += 1;
+    maxInterviewRounds = Math.max(maxInterviewRounds, interviewEvents.length);
 
-      if (hasInterview) {
-        linkValues.oa_interviews += 1;
-        if (hasOffer) linkValues.interviews_offers += 1;
-        else if (hasRejected) linkValues.interviews_rejected += 1;
-      } else if (hasOffer) {
-        linkValues.oa_offers += 1;
+    if (!hasOa && !hasInterview && !hasOffer && !hasRejected) {
+      addNodeVisit("no_response");
+      addLink("applications", "no_response", FLOW_COLORS.pending);
+      continue;
+    }
+
+    if (hasOa) {
+      addNodeVisit("oa");
+      addLink("applications", "oa", FLOW_COLORS.oa);
+    }
+
+    if (hasInterview) {
+      let source = hasOa ? "oa" : "applications";
+      for (let index = 0; index < interviewEvents.length; index += 1) {
+        const roundId = `interview_${index + 1}`;
+        addNodeVisit(roundId);
+        addLink(source, roundId, FLOW_COLORS.interview);
+        source = roundId;
+      }
+
+      if (hasOffer) {
+        addNodeVisit("offers");
+        addLink(source, "offers", FLOW_COLORS.offer);
       } else if (hasRejected) {
-        linkValues.oa_rejected += 1;
+        addNodeVisit("rejected");
+        addLink(source, "rejected", FLOW_COLORS.rejected);
       }
 
       continue;
     }
 
-    if (hasInterview) {
-      linkValues.applications_interviews += 1;
-      if (hasOffer) linkValues.interviews_offers += 1;
-      else if (hasRejected) linkValues.interviews_rejected += 1;
+    if (hasOa) {
+      if (hasOffer) {
+        addNodeVisit("offers");
+        addLink("oa", "offers", FLOW_COLORS.offer);
+      } else if (hasRejected) {
+        addNodeVisit("rejected");
+        addLink("oa", "rejected", FLOW_COLORS.rejected);
+      }
+
       continue;
     }
 
     if (hasOffer) {
-      linkValues.applications_offers += 1;
+      addNodeVisit("offers");
+      addLink("applications", "offers", FLOW_COLORS.offer);
       continue;
     }
 
     if (hasRejected) {
-      linkValues.applications_rejected += 1;
-      continue;
+      addNodeVisit("rejected");
+      addLink("applications", "rejected", FLOW_COLORS.rejected);
     }
-
-    linkValues.applications_no_response += 1;
   }
 
-  const allLinks: FlowLink[] = [
-    {
-      id: "applications_no_response",
-      source: "applications",
-      target: "no_response",
-      value: linkValues.applications_no_response,
-      color: FLOW_COLORS.pending,
-    },
-    {
-      id: "applications_rejected",
-      source: "applications",
-      target: "rejected",
-      value: linkValues.applications_rejected,
-      color: FLOW_COLORS.rejected,
-    },
-    {
-      id: "applications_oa",
-      source: "applications",
-      target: "oa",
-      value: linkValues.applications_oa,
-      color: FLOW_COLORS.oa,
-    },
-    {
-      id: "applications_interviews",
-      source: "applications",
-      target: "interviews",
-      value: linkValues.applications_interviews,
-      color: FLOW_COLORS.interview,
-    },
-    {
-      id: "applications_offers",
-      source: "applications",
-      target: "offers",
-      value: linkValues.applications_offers,
-      color: FLOW_COLORS.offer,
-    },
-    {
-      id: "oa_interviews",
-      source: "oa",
-      target: "interviews",
-      value: linkValues.oa_interviews,
-      color: FLOW_COLORS.interview,
-    },
-    {
-      id: "oa_offers",
-      source: "oa",
-      target: "offers",
-      value: linkValues.oa_offers,
-      color: FLOW_COLORS.offer,
-    },
-    {
-      id: "oa_rejected",
-      source: "oa",
-      target: "rejected",
-      value: linkValues.oa_rejected,
-      color: FLOW_COLORS.rejected,
-    },
-    {
-      id: "interviews_offers",
-      source: "interviews",
-      target: "offers",
-      value: linkValues.interviews_offers,
-      color: FLOW_COLORS.offer,
-    },
-    {
-      id: "interviews_rejected",
-      source: "interviews",
-      target: "rejected",
-      value: linkValues.interviews_rejected,
-      color: FLOW_COLORS.rejected,
-    },
-  ];
+  const terminalX = 650 + Math.max(1, maxInterviewRounds) * 170;
+  const allNodes: FlowNode[] = [];
 
-  const allNodes: FlowNode[] = [
-    {
-      id: "applications",
-      label: "Applications",
-      count: applications.length,
-      x: 64,
-      cy: 260,
-      color: FLOW_COLORS.applied,
-    },
-    {
-      id: "no_response",
-      label: "No response yet",
-      count: linkValues.applications_no_response,
-      x: 804,
-      cy: 90,
-      color: FLOW_COLORS.pending,
-    },
-    {
-      id: "oa",
-      label: "OA",
-      count: linkValues.applications_oa,
-      x: 314,
-      cy: 284,
-      color: FLOW_COLORS.oa,
-    },
-    {
-      id: "interviews",
-      label: "Interviews",
-      count: linkValues.oa_interviews + linkValues.applications_interviews,
-      x: 558,
-      cy: 284,
-      color: FLOW_COLORS.interview,
-    },
-    {
-      id: "offers",
-      label: "Offers",
-      count: linkValues.interviews_offers + linkValues.oa_offers + linkValues.applications_offers,
-      x: 804,
-      cy: 284,
-      color: FLOW_COLORS.offer,
-    },
-    {
-      id: "rejected",
-      label: "Rejected",
-      count: linkValues.applications_rejected + linkValues.oa_rejected + linkValues.interviews_rejected,
-      x: 804,
-      cy: 426,
-      color: FLOW_COLORS.rejected,
-    },
-  ];
+  allNodes.push({
+    id: "applications",
+    label: "Applications",
+    count: applications.length,
+    x: 64,
+    cy: 300,
+    color: FLOW_COLORS.applied,
+  });
 
-  const links = allLinks.filter((link) => link.value > 0);
+  allNodes.push({
+    id: "no_response",
+    label: "No response",
+    count: nodeCounts.get("no_response") ?? 0,
+    x: terminalX,
+    cy: 96,
+    color: FLOW_COLORS.pending,
+  });
+
+  allNodes.push({
+    id: "oa",
+    label: "OA",
+    count: nodeCounts.get("oa") ?? 0,
+    x: 286,
+    cy: 318,
+    color: FLOW_COLORS.oa,
+  });
+
+  for (let round = 1; round <= maxInterviewRounds; round += 1) {
+    allNodes.push({
+      id: `interview_${round}`,
+      label: `Round ${round}`,
+      count: nodeCounts.get(`interview_${round}`) ?? 0,
+      x: 480 + (round - 1) * 170,
+      cy: 318,
+      color: FLOW_COLORS.interview,
+    });
+  }
+
+  allNodes.push({
+    id: "offers",
+    label: "Offers",
+    count: nodeCounts.get("offers") ?? 0,
+    x: terminalX,
+    cy: 318,
+    color: FLOW_COLORS.offer,
+  });
+
+  allNodes.push({
+    id: "rejected",
+    label: "Rejected",
+    count: nodeCounts.get("rejected") ?? 0,
+    x: terminalX,
+    cy: 498,
+    color: FLOW_COLORS.rejected,
+  });
+
+  const links = [...linkValues.values()].filter((link) => link.value > 0);
   const nodes = allNodes.filter((node) => node.count > 0);
 
   return { nodes, links };
@@ -361,6 +362,34 @@ function computeStats(applications: Application[]) {
       return interviewDate ? daysBetween(appliedDate, interviewDate) : null;
     })
     .filter((value): value is number => value != null);
+  const daysToFirstProgress = active
+    .map((application) => {
+      const appliedDate = applicationStartDate(application);
+      const progressDate = firstProgressDate(application);
+      return progressDate ? daysBetween(appliedDate, progressDate) : null;
+    })
+    .filter((value): value is number => value != null);
+  const daysToOffer = active
+    .map((application) => {
+      const appliedDate = applicationStartDate(application);
+      const offerDate = firstEventDate(application, "offer");
+      return offerDate ? daysBetween(appliedDate, offerDate) : null;
+    })
+    .filter((value): value is number => value != null);
+  const daysToRejection = active
+    .map((application) => {
+      const appliedDate = applicationStartDate(application);
+      const rejectionDate = firstEventDate(application, "rejected");
+      return rejectionDate ? daysBetween(appliedDate, rejectionDate) : null;
+    })
+    .filter((value): value is number => value != null);
+  const interviewRoundCounts = active
+    .map((application) => getOrderedInterviewEvents(application).length)
+    .filter((count) => count > 0);
+  const peakMonth = monthlyCounts.reduce<MonthlyCount | null>(
+    (peak, month) => (!peak || month.count > peak.count ? month : peak),
+    null,
+  );
 
   return {
     active,
@@ -368,10 +397,23 @@ function computeStats(applications: Application[]) {
     stageCounts,
     monthlyCounts,
     positiveSignals,
+    noResponseCount: active.filter((application) => !hasProgress(application)).length,
+    inProcessCount: active.filter((application) => hasProgress(application) && !hasTerminalDecision(application)).length,
     avgDaysToOa: average(daysToOa),
     avgDaysToInterview: average(daysToInterview),
+    avgDaysToFirstProgress: average(daysToFirstProgress),
+    avgDaysToOffer: average(daysToOffer),
+    avgDaysToRejection: average(daysToRejection),
+    avgInterviewRounds: average(interviewRoundCounts),
+    maxInterviewRounds: interviewRoundCounts.length > 0 ? Math.max(...interviewRoundCounts) : 0,
+    avgApplicationsPerMonth: monthlyCounts.length > 0 ? average(monthlyCounts.map((month) => month.count)) : null,
+    peakMonth,
     oaSampleSize: daysToOa.length,
     interviewSampleSize: daysToInterview.length,
+    firstProgressSampleSize: daysToFirstProgress.length,
+    offerSampleSize: daysToOffer.length,
+    rejectionSampleSize: daysToRejection.length,
+    interviewRoundSampleSize: interviewRoundCounts.length,
     sankey: buildSankey(active),
   };
 }
@@ -411,13 +453,13 @@ function KpiGrid({
     {
       label: "Avg time to OA",
       value: formatDays(avgDaysToOa),
-      detail: oaSampleSize > 0 ? `${oaSampleSize} application sample` : "No OAs yet",
+      detail: oaSampleSize > 0 ? sampleDetail(oaSampleSize) : "No OAs yet",
       icon: Clock3,
     },
     {
       label: "Avg time to interview",
       value: formatDays(avgDaysToInterview),
-      detail: interviewSampleSize > 0 ? `${interviewSampleSize} application sample` : "No interviews yet",
+      detail: interviewSampleSize > 0 ? sampleDetail(interviewSampleSize) : "No interviews yet",
       icon: TimerReset,
     },
     {
@@ -448,6 +490,12 @@ function KpiGrid({
   );
 }
 
+function sankeyNodeLabel(node: FlowNode) {
+  if (node.id === "applications") return pluralize(node.count, "Application");
+  if (node.id === "offers") return pluralize(node.count, "Offer");
+  return node.label;
+}
+
 function SankeyDiagram({ nodes, links, total }: { nodes: FlowNode[]; links: FlowLink[]; total: number }) {
   if (total === 0) {
     return (
@@ -459,20 +507,20 @@ function SankeyDiagram({ nodes, links, total }: { nodes: FlowNode[]; links: Flow
     );
   }
 
-  const nodeUnit = Math.min(13, 188 / total);
-  const linkUnit = Math.min(8, 112 / total);
-  const linkWidth = (value: number) => Math.max(3, Math.min(76, value * linkUnit));
+  const chartWidth = Math.max(1080, Math.max(...nodes.map((node) => node.x)) + 220);
+  const nodeUnit = Math.min(15, 220 / total);
+  const linkWidth = (value: number) => Math.max(22, Math.min(110, Math.sqrt(value) * 18));
   const nodeById = new Map(
     nodes.map((node) => [
       node.id,
       {
         ...node,
-        height: Math.max(10, node.count * nodeUnit),
+        height: Math.max(36, node.count * nodeUnit),
       },
     ]),
   );
-  const linksBySource = new Map<FlowNodeId, FlowLink[]>();
-  const linksByTarget = new Map<FlowNodeId, FlowLink[]>();
+  const linksBySource = new Map<string, FlowLink[]>();
+  const linksByTarget = new Map<string, FlowLink[]>();
 
   for (const link of links) {
     linksBySource.set(link.source, [...(linksBySource.get(link.source) ?? []), link]);
@@ -512,8 +560,9 @@ function SankeyDiagram({ nodes, links, total }: { nodes: FlowNode[]; links: Flow
       <svg
         role="img"
         aria-label="Internship search Sankey diagram"
-        viewBox="0 0 940 520"
-        className="h-[420px] min-w-[820px] w-full"
+        viewBox={`0 0 ${chartWidth} 620`}
+        className="h-[520px] w-full"
+        style={{ minWidth: chartWidth }}
       >
         <g fill="none">
           {links.map((link) => (
@@ -523,14 +572,14 @@ function SankeyDiagram({ nodes, links, total }: { nodes: FlowNode[]; links: Flow
               stroke={link.color}
               strokeLinecap="butt"
               strokeWidth={linkWidth(link.value)}
-              opacity={link.target === "no_response" ? 0.16 : 0.28}
+              opacity={link.target === "no_response" ? 0.18 : 0.34}
             />
           ))}
         </g>
         <g>
           {[...nodeById.values()].map((node) => {
-            const labelX = node.id === "applications" ? node.x - 12 : node.x + BAR_WIDTH + 12;
-            const textAnchor = node.id === "applications" ? "end" : "start";
+            const labelX = node.x + BAR_WIDTH / 2;
+            const labelY = node.cy + node.height / 2 + 24;
             return (
               <g key={node.id}>
                 <rect
@@ -543,34 +592,34 @@ function SankeyDiagram({ nodes, links, total }: { nodes: FlowNode[]; links: Flow
                 />
                 <text
                   x={labelX}
-                  y={node.cy - 4}
-                  textAnchor={textAnchor}
+                  y={labelY}
+                  textAnchor="middle"
                   dominantBaseline="central"
-                  style={{ fontFamily: "var(--font-mono)" }}
+                  style={{ fontFamily: "var(--font-sans)" }}
                 >
                   <tspan
                     x={labelX}
-                    dy="-0.45em"
                     style={{
                       fill: "var(--ink)",
-                      fontSize: 12,
-                      fontWeight: 500,
-                      letterSpacing: "0.02em",
+                      fontSize: 15,
+                      fontWeight: 650,
+                      letterSpacing: 0,
                     }}
                   >
                     {node.count}
                   </tspan>
                   <tspan
                     x={labelX}
-                    dy="1.35em"
+                    dy="1.45em"
                     style={{
-                      fill: "var(--muted-foreground)",
-                      fontSize: 10,
-                      letterSpacing: "0.08em",
-                      textTransform: "uppercase",
+                      fill: "var(--ink)",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      letterSpacing: 0,
+                      opacity: 0.68,
                     }}
                   >
-                    {node.label}
+                    {sankeyNodeLabel(node)}
                   </tspan>
                 </text>
               </g>
@@ -654,6 +703,99 @@ function StageConversion({ stageCounts, total }: { stageCounts: StageCount; tota
   );
 }
 
+function SearchSnapshot({
+  total,
+  noResponseCount,
+  inProcessCount,
+  avgDaysToFirstProgress,
+  avgDaysToOffer,
+  avgDaysToRejection,
+  avgInterviewRounds,
+  maxInterviewRounds,
+  avgApplicationsPerMonth,
+  peakMonth,
+  firstProgressSampleSize,
+  offerSampleSize,
+  rejectionSampleSize,
+}: {
+  total: number;
+  noResponseCount: number;
+  inProcessCount: number;
+  avgDaysToFirstProgress: number | null;
+  avgDaysToOffer: number | null;
+  avgDaysToRejection: number | null;
+  avgInterviewRounds: number | null;
+  maxInterviewRounds: number;
+  avgApplicationsPerMonth: number | null;
+  peakMonth: MonthlyCount | null;
+  firstProgressSampleSize: number;
+  offerSampleSize: number;
+  rejectionSampleSize: number;
+}) {
+  const stats = [
+    {
+      label: "No response",
+      value: noResponseCount.toString(),
+      detail: `${formatPercent(noResponseCount, total)} of active apps`,
+    },
+    {
+      label: "In process",
+      value: inProcessCount.toString(),
+      detail: "Progress signal, no final decision",
+    },
+    {
+      label: "Avg first response",
+      value: formatDays(avgDaysToFirstProgress),
+      detail: firstProgressSampleSize > 0 ? sampleDetail(firstProgressSampleSize) : "No responses yet",
+    },
+    {
+      label: "Avg time to offer",
+      value: formatDays(avgDaysToOffer),
+      detail: offerSampleSize > 0 ? sampleDetail(offerSampleSize) : "No offers yet",
+    },
+    {
+      label: "Avg time to rejection",
+      value: formatDays(avgDaysToRejection),
+      detail: rejectionSampleSize > 0 ? sampleDetail(rejectionSampleSize) : "No rejections yet",
+    },
+    {
+      label: "Interview depth",
+      value: maxInterviewRounds > 0 ? `${maxInterviewRounds} ${pluralize(maxInterviewRounds, "round")}` : "n/a",
+      detail: avgInterviewRounds != null ? `${formatDecimal(avgInterviewRounds)} avg rounds` : "No interviews yet",
+    },
+    {
+      label: "Avg apps / month",
+      value: formatDecimal(avgApplicationsPerMonth),
+      detail: "Across months shown",
+    },
+    {
+      label: "Peak month",
+      value: peakMonth?.label ?? "n/a",
+      detail: peakMonth ? `${peakMonth.count} ${pluralize(peakMonth.count, "application")}` : "No dates yet",
+    },
+  ];
+
+  return (
+    <section className="paper-card p-5 sm:p-6">
+      <div className="mb-2">
+        <span className="label-micro">04 / Snapshot</span>
+        <h2 className="mt-3 display-serif text-[24px] text-foreground">Search Snapshot</h2>
+      </div>
+      <ul className="grid grid-cols-1 gap-x-8 sm:grid-cols-2 lg:grid-cols-4">
+        {stats.map((stat) => (
+          <li key={stat.label} className="border-t py-5" style={{ borderColor: "var(--rule)" }}>
+            <span className="label-meta">{stat.label}</span>
+            <div className="mt-3 text-[24px] font-medium leading-none tracking-[-0.035em] text-foreground tabular">
+              {stat.value}
+            </div>
+            <p className="mt-3 label-meta">{stat.detail}</p>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export function StatsPage({ applications }: Props) {
   const {
     active,
@@ -661,10 +803,22 @@ export function StatsPage({ applications }: Props) {
     stageCounts,
     monthlyCounts,
     positiveSignals,
+    noResponseCount,
+    inProcessCount,
     avgDaysToOa,
     avgDaysToInterview,
+    avgDaysToFirstProgress,
+    avgDaysToOffer,
+    avgDaysToRejection,
+    avgInterviewRounds,
+    maxInterviewRounds,
+    avgApplicationsPerMonth,
+    peakMonth,
     oaSampleSize,
     interviewSampleSize,
+    firstProgressSampleSize,
+    offerSampleSize,
+    rejectionSampleSize,
     sankey,
   } = computeStats(applications);
 
@@ -722,6 +876,24 @@ export function StatsPage({ applications }: Props) {
         <div className="grid gap-5 lg:grid-cols-[1.12fr_0.88fr]">
           <MonthlyApplicationsChart months={monthlyCounts} />
           <StageConversion stageCounts={stageCounts} total={active.length} />
+        </div>
+
+        <div className="mt-5">
+          <SearchSnapshot
+            total={active.length}
+            noResponseCount={noResponseCount}
+            inProcessCount={inProcessCount}
+            avgDaysToFirstProgress={avgDaysToFirstProgress}
+            avgDaysToOffer={avgDaysToOffer}
+            avgDaysToRejection={avgDaysToRejection}
+            avgInterviewRounds={avgInterviewRounds}
+            maxInterviewRounds={maxInterviewRounds}
+            avgApplicationsPerMonth={avgApplicationsPerMonth}
+            peakMonth={peakMonth}
+            firstProgressSampleSize={firstProgressSampleSize}
+            offerSampleSize={offerSampleSize}
+            rejectionSampleSize={rejectionSampleSize}
+          />
         </div>
       </main>
     </div>

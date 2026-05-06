@@ -2,7 +2,7 @@
 
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { validateExternalHttpUrl } from "@/lib/url";
-import { APPLICATION_SEASONS, ApplicationSeason } from "@/types/application";
+import { APPLICATION_SEASONS, ApplicationEvent, ApplicationSeason } from "@/types/application";
 import { revalidatePath } from "next/cache";
 
 const MAX_COMPANY_LENGTH = 120;
@@ -163,12 +163,16 @@ export async function createApplication(
     ? rawDateApplied
     : new Date().toISOString().slice(0, 10);
 
-  const { error: eventError } = await supabase.from("application_events").insert({
-    application_id: app.id,
-    user_id:        user.id,
-    event_type:     "applied",
-    event_date:     dateApplied,
-  });
+  const { data: appliedEvent, error: eventError } = await supabase
+    .from("application_events")
+    .insert({
+      application_id: app.id,
+      user_id:        user.id,
+      event_type:     "applied",
+      event_date:     dateApplied,
+    })
+    .select("*")
+    .single();
 
   if (eventError) {
     await supabase
@@ -182,7 +186,7 @@ export async function createApplication(
   if (options.revalidate !== false) {
     revalidateApplicationSurfaces();
   }
-  return { ok: true, id: app.id };
+  return { ok: true, id: app.id, appliedEvent: appliedEvent as ApplicationEvent };
 }
 
 export async function updateApplicationFields(

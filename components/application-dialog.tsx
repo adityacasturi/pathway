@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { InlineError } from "@/components/ui/inline-error";
 import { Label } from "@/components/ui/label";
 import { motionVariants } from "@/lib/ui/motion";
-import { APPLICATION_SEASONS, ApplicationSeason } from "@/types/application";
+import { APPLICATION_SEASONS, ApplicationEvent, ApplicationSeason } from "@/types/application";
 
 interface InitialValues {
   company?: string;
@@ -30,6 +30,7 @@ export interface CreatedApplicationSummary {
   location: string | null;
   season: ApplicationSeason | null;
   dateApplied: string;
+  appliedEvent: ApplicationEvent;
 }
 
 interface Props {
@@ -83,6 +84,7 @@ function ApplicationDialogForm({
   const [role, setRole] = useState(initialValues?.role ?? "");
   const [postingUrl, setPostingUrl] = useState(initialValues?.posting_url ?? "");
   const [location, setLocation] = useState(initialValues?.location ?? "");
+  const [dateApplied, setDateApplied] = useState(format(new Date(), "yyyy-MM-dd"));
   // Season has no native input primitive that fits the design, so it rides
   // alongside the rest of the form as component state and is submitted via a
   // hidden input. Empty string = no season set.
@@ -111,14 +113,13 @@ function ApplicationDialogForm({
     formData.set("posting_url", postingUrl);
     formData.set("location", location);
     formData.set("season", season);
-    const dateApplied = format(new Date(), "yyyy-MM-dd");
     formData.set("date_applied", dateApplied);
 
     setState("pending");
     const result = await createApplication(formData, { revalidate: !onCreated });
 
-    if (result?.error) {
-      setError(result.error);
+    if ("error" in result) {
+      setError(result.error ?? "Unable to add application.");
       setState("error");
     } else {
       setState("success");
@@ -131,6 +132,7 @@ function ApplicationDialogForm({
           location: location.trim() || null,
           season: season || null,
           dateApplied,
+          appliedEvent: result.appliedEvent,
         });
       } else {
         router.refresh();
@@ -162,6 +164,18 @@ function ApplicationDialogForm({
               value={role}
               onChange={(event) => setRole(event.target.value)}
               className="h-11 rounded-xl text-sm bg-background/80 border-border/70 placeholder:text-muted-foreground/40"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium">Applied date</Label>
+            <Input
+              name="date_applied"
+              type="date"
+              required
+              value={dateApplied}
+              onChange={(event) => setDateApplied(event.target.value)}
+              className="h-11 rounded-xl text-sm bg-background/80 border-border/70"
             />
           </div>
 

@@ -8,6 +8,7 @@ import { ApplicationEvent, EventType, Status } from "@/types/application";
 const EVENT_TYPES: readonly EventType[] = ["applied", "oa", "interview", "offer", "rejected", "note"];
 const MAX_NOTES_LENGTH = 2000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const LOCAL_APPLIED_EVENT_RE = /^local-([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})-applied$/i;
 
 function revalidateApplicationSurfaces() {
   revalidatePath("/");
@@ -21,6 +22,10 @@ function isEventType(value: string): value is EventType {
 
 function isUuid(value: string): boolean {
   return UUID_RE.test(value);
+}
+
+function getLocalAppliedApplicationId(eventId: string): string | null {
+  return eventId.match(LOCAL_APPLIED_EVENT_RE)?.[1] ?? null;
 }
 
 function isIsoDate(raw: unknown): raw is string {
@@ -60,6 +65,44 @@ async function getOwnedEvent(
 
   const { data } = await query.maybeSingle();
   return (data as Pick<ApplicationEvent, "id" | "application_id" | "event_type"> | null) ?? null;
+}
+
+async function getOwnedAppliedEvent(
+  supabase: Awaited<ReturnType<typeof getAuthenticatedUser>>["supabase"],
+  userId: string,
+  applicationId: string,
+): Promise<Pick<ApplicationEvent, "id" | "application_id" | "event_type"> | null> {
+  const { data } = await supabase
+    .from("application_events")
+    .select("id, application_id, event_type")
+    .eq("application_id", applicationId)
+    .eq("user_id", userId)
+    .eq("event_type", "applied")
+    .order("event_date", { ascending: true })
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  return (data as Pick<ApplicationEvent, "id" | "application_id" | "event_type"> | null) ?? null;
+}
+
+async function resolveOwnedEvent(
+  supabase: Awaited<ReturnType<typeof getAuthenticatedUser>>["supabase"],
+  userId: string,
+  eventId: string,
+  applicationId?: string,
+): Promise<Pick<ApplicationEvent, "id" | "application_id" | "event_type"> | null | { error: string }> {
+  if (isUuid(eventId)) {
+    return getOwnedEvent(supabase, userId, eventId, applicationId);
+  }
+
+  const localAppliedApplicationId = getLocalAppliedApplicationId(eventId);
+  if (!localAppliedApplicationId) return { error: "Invalid event id." };
+  if (applicationId && localAppliedApplicationId !== applicationId) {
+    return { error: "Invalid event id." };
+  }
+
+  return getOwnedAppliedEvent(supabase, userId, localAppliedApplicationId);
 }
 
 export async function createEvent(
@@ -133,10 +176,11 @@ export async function createEvent(
 export async function updateEventDate(eventId: string, applicationId: string, newDate: string) {
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
-  if (!isUuid(eventId) || !isUuid(applicationId)) return { error: "Invalid event id." };
+  if (!isUuid(applicationId)) return { error: "Invalid event id." };
   if (!isIsoDate(newDate)) return { error: "Invalid event date." };
 
-  const thisEvent = await getOwnedEvent(supabase, user.id, eventId, applicationId);
+  const thisEvent = await resolveOwnedEvent(supabase, user.id, eventId, applicationId);
+  if (thisEvent && "error" in thisEvent) return thisEvent;
   if (!thisEvent) return { error: "Event not found" };
 
   // Only applied events have a constraint: they can't be set after any other event
@@ -146,7 +190,7 @@ export async function updateEventDate(eventId: string, applicationId: string, ne
       .select("event_date")
       .eq("application_id", applicationId)
       .eq("user_id", user.id)
-      .neq("id", eventId);
+      .neq("id", thisEvent.id);
 
     if (others?.some((e) => newDate > e.event_date)) {
       return { error: "Applied date cannot be after a later event" };
@@ -156,7 +200,7 @@ export async function updateEventDate(eventId: string, applicationId: string, ne
   const { data: updatedEvent, error } = await supabase
     .from("application_events")
     .update({ event_date: newDate })
-    .eq("id", eventId)
+    .eq("id", thisEvent.id)
     .eq("user_id", user.id)
     .select("*")
     .single();
@@ -169,16 +213,17 @@ export async function updateEventDate(eventId: string, applicationId: string, ne
 export async function updateEventNotes(eventId: string, notes: string) {
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
-  if (!isUuid(eventId)) return { error: "Invalid event id." };
   if (typeof notes !== "string") return { error: "Invalid notes." };
   const cleanedNotes = notes.trim();
   if (cleanedNotes.length > MAX_NOTES_LENGTH) return { error: "Notes are too long." };
-  if (!(await getOwnedEvent(supabase, user.id, eventId))) return { error: "Event not found" };
+  const event = await resolveOwnedEvent(supabase, user.id, eventId);
+  if (event && "error" in event) return event;
+  if (!event) return { error: "Event not found" };
 
   const { data: updatedEvent, error } = await supabase
     .from("application_events")
     .update({ notes: cleanedNotes || null })
-    .eq("id", eventId)
+    .eq("id", event.id)
     .eq("user_id", user.id)
     .select("*")
     .single();

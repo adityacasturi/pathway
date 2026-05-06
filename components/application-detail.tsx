@@ -163,10 +163,11 @@ export function ApplicationDetail({ application, onClose }: Props) {
     const fieldLabel = Object.keys(fields)[0]?.replace("_", " ") ?? "changes";
     startSync(`Saving ${fieldLabel}`);
     const result = await updateApplicationFields(previous.id, fields);
-    if (result?.error) {
+    if ("error" in result) {
+      const message = result.error ?? "Unable to save changes.";
       setOptimisticApplication(previous);
-      setError(result.error);
-      finishSync(result.error);
+      setError(message);
+      finishSync(message);
       return;
     }
     finishSync();
@@ -184,15 +185,18 @@ export function ApplicationDetail({ application, onClose }: Props) {
     setOptimisticApplication(addEvent(previous, tempEvent));
 
     const result = await createEvent(previous.id, eventType, eventDate, notes);
-    if (result?.error) {
+    if ("error" in result) {
+      const message = result.error ?? "Unable to add event.";
       setOptimisticApplication(previous);
-      setError(result.error);
-      finishSync(result.error);
+      setError(message);
+      finishSync(message);
     } else {
+      const insertedEvent = result.event;
+      const nextStatus = result.status;
       setOptimisticApplication((current) => {
-        if (!current || !result.event) return current;
-        const reconciled = replaceEvent(current, tempEvent.id, result.event);
-        return result.status ? { ...reconciled, status: result.status } : reconciled;
+        if (!current || !insertedEvent) return current;
+        const reconciled = replaceEvent(current, tempEvent.id, insertedEvent);
+        return nextStatus ? { ...reconciled, status: nextStatus } : reconciled;
       });
       setNotes("");
       setEventDate(todayISO());
@@ -209,15 +213,17 @@ export function ApplicationDetail({ application, onClose }: Props) {
     setOptimisticApplication(removeEvent(previous, event.id));
 
     const result = await deleteEvent(event.id, previous.id);
-    if (result?.error) {
+    if ("error" in result) {
+      const message = result.error ?? "Unable to delete event.";
       setOptimisticApplication(previous);
-      finishSync(result.error);
-      return result.error;
+      finishSync(message);
+      return message;
     }
 
+    const nextStatus = result.status;
     setOptimisticApplication((current) => {
-      if (!current || !result?.status) return current;
-      return { ...current, status: result.status as Status };
+      if (!current || !nextStatus) return current;
+      return { ...current, status: nextStatus as Status };
     });
     finishSync();
     return null;
@@ -231,15 +237,17 @@ export function ApplicationDetail({ application, onClose }: Props) {
     setOptimisticApplication(applyEventPatch(previous, event.id, { event_date: newDate }));
 
     const result = await updateEventDate(event.id, previous.id, newDate);
-    if (result?.error) {
+    if ("error" in result) {
+      const message = result.error ?? "Unable to save event date.";
       setOptimisticApplication(previous);
-      finishSync(result.error);
-      return result.error;
+      finishSync(message);
+      return message;
     }
 
+    const updatedEvent = result.event;
     setOptimisticApplication((current) => {
-      if (!current || !result.event) return current;
-      return replaceEvent(current, event.id, result.event);
+      if (!current || !updatedEvent) return current;
+      return replaceEvent(current, event.id, updatedEvent);
     });
     finishSync();
     return null;
@@ -253,15 +261,17 @@ export function ApplicationDetail({ application, onClose }: Props) {
     setOptimisticApplication(applyEventPatch(previous, event.id, { notes: nextNotes.trim() || null }));
 
     const result = await updateEventNotes(event.id, nextNotes);
-    if (result?.error) {
+    if ("error" in result) {
+      const message = result.error ?? "Unable to save event notes.";
       setOptimisticApplication(previous);
-      finishSync(result.error);
-      return result.error;
+      finishSync(message);
+      return message;
     }
 
+    const updatedEvent = result.event;
     setOptimisticApplication((current) => {
-      if (!current || !result.event) return current;
-      return replaceEvent(current, event.id, result.event);
+      if (!current || !updatedEvent) return current;
+      return replaceEvent(current, event.id, updatedEvent);
     });
     finishSync();
     return null;
