@@ -60,7 +60,6 @@ export default async function DiscoverPage({ searchParams }: DiscoverPageProps) 
       dismissedIds={Array.from(dismissedIds)}
       savedIds={Array.from(savedIds)}
       trackedUrls={Array.from(trackedUrls)}
-      cutoffDate={cutoff.cutoffDate}
       oldestAllowedCutoffDate={cutoff.oldestAllowedDate}
       latestAllowedCutoffDate={cutoff.today}
       initialQuery={initialQuery}

@@ -7,13 +7,12 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, RefreshCw } from "lucide-react";
 import { ApplicationDialog } from "@/components/application-dialog";
 import { ApplicationDetail } from "@/components/application-detail";
+import { CompanyLogo } from "@/components/company-logo";
 import { PostingRow } from "@/components/posting-row";
-import { StatusDot } from "@/components/status-badge";
 import { InlineError } from "@/components/ui/inline-error";
 import { motionVariants } from "@/lib/ui/motion";
 import { preserveScrollPositionIfScrollable } from "@/lib/ui/scroll";
 import { normalizeUrl } from "@/lib/url";
-import { STATUSES, STATUS_LABELS } from "@/lib/config/events";
 import {
   compareOaDeadlineStates,
   deadlineStatusLabel,
@@ -27,14 +26,32 @@ import {
   unsavePosting,
 } from "@/lib/actions/feed";
 import type { FeedPosting, FeedSeason } from "@/lib/feed/source";
-import type { Application, Status } from "@/types/application";
+import type { Application } from "@/types/application";
 
 const MAX_NEW_ROWS = 20;
 const MAX_SAVED_ROWS = 12;
 
+function deadlineCountdown(deadline: { daysUntilDue: number }) {
+  if (deadline.daysUntilDue < 0) {
+    const days = Math.abs(deadline.daysUntilDue);
+    return {
+      value: days.toLocaleString("en-US"),
+      label: days === 1 ? "day overdue" : "days overdue",
+    };
+  }
+  if (deadline.daysUntilDue === 0) {
+    return { value: "Today", label: "due" };
+  }
+  if (deadline.daysUntilDue === 1) {
+    return { value: "1", label: "day left" };
+  }
+  return {
+    value: deadline.daysUntilDue.toLocaleString("en-US"),
+    label: "days left",
+  };
+}
+
 interface Props {
-  statusCounts: Record<Status, number>;
-  totalApplications: number;
   applications: Application[];
   newPostings: FeedPosting[];
   dismissedIds: string[];
@@ -52,8 +69,6 @@ interface Prefill {
 }
 
 export function Home({
-  statusCounts,
-  totalApplications,
   applications,
   newPostings,
   dismissedIds,
@@ -193,8 +208,11 @@ export function Home({
   }, [newPostings, savedOverrides, savedPostings, trackedUrls, trackedUrlOverrides]);
 
   const visibleNew = useMemo(
-    () => newPostings.slice(0, MAX_NEW_ROWS),
-    [newPostings],
+    () =>
+      newPostings
+        .filter((posting) => !dismissedSet.has(posting.id) && !trackedIdSet.has(posting.id))
+        .slice(0, MAX_NEW_ROWS),
+    [dismissedSet, newPostings, trackedIdSet],
   );
   const visibleSaved = useMemo(() => {
     const byId = new Map<string, FeedPosting>();
@@ -241,51 +259,29 @@ export function Home({
     });
   }, []);
 
-  const today = useMemo(() => {
-    return new Date().toLocaleDateString("en-US", {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-    });
-  }, []);
-
   return (
     <div className="page-shell min-h-screen bg-background">
-      <main className="max-w-6xl mx-auto px-6 sm:px-10 lg:px-16 pt-24 sm:pt-28 lg:pt-32 pb-24">
+      <main className="max-w-6xl mx-auto px-6 sm:px-10 lg:px-16 pt-18 sm:pt-20 lg:pt-24 pb-24">
         <motion.header
-          className="masthead mb-14 sm:mb-18"
+          className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
           variants={motionVariants.riseIn}
           initial="hidden"
           animate="visible"
         >
-          <div className="flex items-baseline justify-between pb-4">
-            <span className="label-micro">Launchpad / Overview</span>
-            <span className="label-meta hidden sm:inline">{today}</span>
-          </div>
-          <span className="rule-strong" />
-          <div className="mt-8 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-            <div className="max-w-2xl">
-              <h1 className="display-serif text-[4.5rem] sm:text-[5.75rem] lg:text-[6.5rem] text-foreground">
-                Home
-              </h1>
-              <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-muted-foreground">
-                {totalApplications === 0
-                  ? "No applications yet."
-                  : `Tracking ${totalApplications} application${totalApplications === 1 ? "" : "s"}. Openings from yesterday are below.`}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onRefresh}
-              disabled={isRefreshing}
-              aria-label="Refresh feed"
-              className="group inline-flex items-center gap-2 self-start rounded-full border px-4 py-2 text-[13px] text-muted-foreground transition-colors duration-150 hover:text-foreground hover:border-rule-strong disabled:opacity-60 disabled:cursor-wait"
-              style={{ borderColor: "var(--rule)" }}
-            >
-              <RefreshCw size={13} strokeWidth={1.75} className={isRefreshing ? "animate-spin" : "transition-transform duration-300 group-hover:rotate-180"} />
-              Refresh feed
-            </button>
-          </div>
+          <h1 className="display-serif text-[2.75rem] text-foreground sm:text-[3.25rem]">
+            Home
+          </h1>
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            aria-label="Refresh feed"
+            className="group inline-flex items-center gap-2 self-start rounded-full border px-4 py-2 text-[13px] text-muted-foreground transition-colors duration-150 hover:text-foreground hover:border-rule-strong disabled:opacity-60 disabled:cursor-wait"
+            style={{ borderColor: "var(--rule)" }}
+          >
+            <RefreshCw size={13} strokeWidth={1.75} className={isRefreshing ? "animate-spin" : "transition-transform duration-300 group-hover:rotate-180"} />
+            Refresh feed
+          </button>
         </motion.header>
 
         {actionError && (
@@ -301,45 +297,64 @@ export function Home({
           animate="visible"
         >
           <div className="mb-6 flex items-baseline justify-between">
-            <div>
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <h2 className="display-serif text-[22px] text-foreground">
-                Pipeline
+                Since yesterday
               </h2>
+              {visibleNew.length > 0 && (
+                <span className="label-meta tabular">
+                  {visibleNew.length} new
+                </span>
+              )}
             </div>
             <Link
-              href="/applications"
+              href="/discover"
               className="label-meta link-edit hover:text-foreground"
             >
-              View all <ArrowRight size={11} strokeWidth={1.75} />
+              All listings <ArrowRight size={11} strokeWidth={1.75} />
             </Link>
           </div>
-          <span className="rule mb-0" />
-
-          <div className="grid grid-cols-2 md:grid-cols-5 divide-x divide-y md:divide-y-0" style={{ borderColor: "var(--rule)" }}>
-            {STATUSES.map((status) => {
-              const count = statusCounts[status];
-              return (
-                <Link
-                  key={status}
-                  href={`/applications?status=${status}`}
-                  className="group relative p-6 transition-colors duration-200 hover:bg-[color-mix(in_oklab,var(--ink)_3%,transparent)]"
-                  style={{ borderColor: "var(--rule)" }}
-                >
-                  <div className="flex items-center gap-2 mb-6">
-                    <StatusDot status={status} size={6} />
-                    <span className="figure-label">{STATUS_LABELS[status]}</span>
-                  </div>
-                  <div className="figure-number">{count}</div>
-                  <ArrowRight
-                    size={14}
-                    strokeWidth={1.5}
-                    className="absolute top-6 right-6 text-muted-foreground/0 transition-all duration-200 group-hover:text-muted-foreground group-hover:translate-x-0.5"
-                  />
-                </Link>
-              );
-            })}
-          </div>
           <span className="rule" />
+
+          {visibleNew.length === 0 ? (
+            <div className="py-20 text-center">
+              <p className="text-[15px] text-muted-foreground">
+                Nothing new since yesterday.
+              </p>
+              <Link
+                href="/discover"
+                className="mt-4 inline-flex items-center gap-1 text-[13px] text-foreground hover:text-muted-foreground transition-colors duration-150"
+              >
+                Browse the archive <ArrowRight size={13} strokeWidth={1.75} />
+              </Link>
+            </div>
+          ) : (
+            <motion.ul
+              variants={motionVariants.list}
+              initial="hidden"
+              animate="visible"
+              className="divide-y"
+              style={{ borderColor: "var(--rule)" }}
+            >
+              <AnimatePresence initial={false}>
+                {visibleNew.map((posting) => (
+                  <PostingRow
+                    key={posting.id}
+                    posting={posting}
+                    dismissed={dismissedSet.has(posting.id)}
+                    saved={savedSet.has(posting.id)}
+                    tracked={trackedIdSet.has(posting.id)}
+                    isNew
+                    pending={pendingIds.has(posting.id)}
+                    savePending={pendingSavedIds.has(posting.id)}
+                    onTrack={openTrack}
+                    onToggleSaved={onToggleSaved}
+                    onToggleDismiss={onToggleDismiss}
+                  />
+                ))}
+              </AnimatePresence>
+            </motion.ul>
+          )}
         </motion.section>
 
         <motion.section
@@ -376,37 +391,47 @@ export function Home({
             </div>
           ) : (
             <ul className="divide-y" style={{ borderColor: "var(--rule)" }}>
-              {upcomingDeadlines.map(({ application, deadline }) => (
-                <li key={`${application.id}-${deadline.event.id}`}>
-                  <button
-                    type="button"
-                    onClick={() => setDetail(application)}
-                    className="group grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-2 py-4 text-left transition-colors duration-150 hover:bg-[color-mix(in_oklab,var(--ink)_3%,transparent)]"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2.5 text-[11px] text-muted-foreground">
-                        <span className="truncate font-medium text-foreground/80">{application.company}</span>
-                        <span className="font-mono text-[9px] uppercase tracking-[0.16em]">OA</span>
-                      </div>
-                      <p className="mt-1 truncate text-[14px] font-medium tracking-tight text-foreground">
-                        {application.role}
-                      </p>
-                    </div>
-                    <span
-                      className={`rounded-full border px-3 py-1 font-mono text-[10px] uppercase tracking-[0.12em] ${
-                        deadline.status === "overdue"
-                          ? "border-destructive/25 bg-destructive/10 text-destructive"
-                          : deadline.status === "urgent"
-                            ? "border-[color-mix(in_oklab,var(--primary)_28%,transparent)] bg-[color-mix(in_oklab,var(--primary)_9%,transparent)] text-foreground"
-                            : "text-muted-foreground"
-                      }`}
-                      style={deadline.status === "upcoming" ? { borderColor: "var(--rule)" } : undefined}
+              {upcomingDeadlines.map(({ application, deadline }) => {
+                const countdown = deadlineCountdown(deadline);
+                return (
+                  <li key={`${application.id}-${deadline.event.id}`}>
+                    <button
+                      type="button"
+                      onClick={() => setDetail(application)}
+                      className="group grid w-full grid-cols-[2.25rem_minmax(0,1fr)_5.75rem] items-center gap-4 px-2 py-4 text-left transition-colors duration-150 hover:bg-[color-mix(in_oklab,var(--ink)_3%,transparent)] sm:grid-cols-[2.5rem_minmax(0,1fr)_6.5rem]"
                     >
-                      {deadlineStatusLabel(deadline)}
-                    </span>
-                  </button>
-                </li>
-              ))}
+                      <CompanyLogo company={application.company} size={36} />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2.5 text-[11px] text-muted-foreground">
+                          <span className="truncate font-medium text-foreground/80">{application.company}</span>
+                          <span className="font-mono text-[9px] uppercase tracking-[0.16em]">OA</span>
+                        </div>
+                        <p className="mt-1 truncate text-[14px] font-medium tracking-tight text-foreground">
+                          {application.role}
+                        </p>
+                      </div>
+                      <span
+                        className={`flex min-h-14 flex-col items-center justify-center rounded-md border px-2 text-center ${
+                          deadline.status === "overdue"
+                            ? "border-destructive/25 bg-destructive/10 text-destructive"
+                            : deadline.status === "urgent"
+                              ? "border-[color-mix(in_oklab,var(--primary)_28%,transparent)] bg-[color-mix(in_oklab,var(--primary)_9%,transparent)] text-foreground"
+                              : "text-muted-foreground"
+                        }`}
+                        style={deadline.status === "upcoming" ? { borderColor: "var(--rule)" } : undefined}
+                        title={deadlineStatusLabel(deadline)}
+                      >
+                        <span className="font-mono text-[20px] leading-none tracking-normal text-foreground">
+                          {countdown.value}
+                        </span>
+                        <span className="mt-1 font-mono text-[9px] uppercase tracking-[0.12em] leading-none">
+                          {countdown.label}
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </motion.section>
@@ -478,71 +503,6 @@ export function Home({
           )}
         </motion.section>
 
-        <motion.section
-          variants={motionVariants.fadeIn}
-          initial="hidden"
-          animate="visible"
-        >
-          <div className="mb-6 flex items-baseline justify-between">
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <h2 className="display-serif text-[22px] text-foreground">
-                Since yesterday
-              </h2>
-              {visibleNew.length > 0 && (
-                <span className="label-meta tabular">
-                  {visibleNew.length} new
-                </span>
-              )}
-            </div>
-            <Link
-              href="/discover"
-              className="label-meta link-edit hover:text-foreground"
-            >
-              All listings <ArrowRight size={11} strokeWidth={1.75} />
-            </Link>
-          </div>
-          <span className="rule" />
-
-          {visibleNew.length === 0 ? (
-            <div className="py-20 text-center">
-              <p className="text-[15px] text-muted-foreground">
-                Nothing new since yesterday.
-              </p>
-              <Link
-                href="/discover"
-                className="mt-4 inline-flex items-center gap-1 text-[13px] text-foreground hover:text-muted-foreground transition-colors duration-150"
-              >
-                Browse the archive <ArrowRight size={13} strokeWidth={1.75} />
-              </Link>
-            </div>
-          ) : (
-            <motion.ul
-              variants={motionVariants.list}
-              initial="hidden"
-              animate="visible"
-              className="divide-y"
-              style={{ borderColor: "var(--rule)" }}
-            >
-              <AnimatePresence initial={false}>
-                {visibleNew.map((posting) => (
-                  <PostingRow
-                    key={posting.id}
-                    posting={posting}
-                    dismissed={dismissedSet.has(posting.id)}
-                    saved={savedSet.has(posting.id)}
-                    tracked={trackedIdSet.has(posting.id)}
-                    isNew
-                    pending={pendingIds.has(posting.id)}
-                    savePending={pendingSavedIds.has(posting.id)}
-                    onTrack={openTrack}
-                    onToggleSaved={onToggleSaved}
-                    onToggleDismiss={onToggleDismiss}
-                  />
-                ))}
-              </AnimatePresence>
-            </motion.ul>
-          )}
-        </motion.section>
       </main>
 
       <ApplicationDialog

@@ -34,6 +34,7 @@ type StageCount = Record<Status, number>;
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const BAR_WIDTH = 12;
+const LINK_GAP = 16;
 
 const FLOW_COLORS = {
   applied: "#9b9993",
@@ -284,7 +285,7 @@ function buildSankey(applications: Application[]) {
     label: "Applications",
     count: applications.length,
     x: 64,
-    cy: 300,
+    cy: 348,
     color: FLOW_COLORS.applied,
   });
 
@@ -293,7 +294,7 @@ function buildSankey(applications: Application[]) {
     label: "No response",
     count: nodeCounts.get("no_response") ?? 0,
     x: terminalX,
-    cy: 96,
+    cy: 112,
     color: FLOW_COLORS.pending,
   });
 
@@ -302,7 +303,7 @@ function buildSankey(applications: Application[]) {
     label: "OA",
     count: nodeCounts.get("oa") ?? 0,
     x: 286,
-    cy: 318,
+    cy: 348,
     color: FLOW_COLORS.oa,
   });
 
@@ -312,7 +313,7 @@ function buildSankey(applications: Application[]) {
       label: `Round ${round}`,
       count: nodeCounts.get(`interview_${round}`) ?? 0,
       x: 480 + (round - 1) * 170,
-      cy: 318,
+      cy: 348,
       color: FLOW_COLORS.interview,
     });
   }
@@ -322,7 +323,7 @@ function buildSankey(applications: Application[]) {
     label: "Offers",
     count: nodeCounts.get("offers") ?? 0,
     x: terminalX,
-    cy: 318,
+    cy: 348,
     color: FLOW_COLORS.offer,
   });
 
@@ -331,7 +332,7 @@ function buildSankey(applications: Application[]) {
     label: "Rejected",
     count: nodeCounts.get("rejected") ?? 0,
     x: terminalX,
-    cy: 498,
+    cy: 570,
     color: FLOW_COLORS.rejected,
   });
 
@@ -513,7 +514,7 @@ function SankeyDiagram({ nodes, links, total }: { nodes: FlowNode[]; links: Flow
 
   const chartWidth = Math.max(1080, Math.max(...nodes.map((node) => node.x)) + 220);
   const nodeUnit = Math.min(15, 220 / total);
-  const linkWidth = (value: number) => Math.max(22, Math.min(110, Math.sqrt(value) * 18));
+  const linkWidth = (value: number) => Math.max(18, Math.min(82, Math.sqrt(value) * 14));
   const nodeById = new Map(
     nodes.map((node) => [
       node.id,
@@ -531,17 +532,40 @@ function SankeyDiagram({ nodes, links, total }: { nodes: FlowNode[]; links: Flow
     linksByTarget.set(link.target, [...(linksByTarget.get(link.target) ?? []), link]);
   }
 
+  for (const [source, sourceLinks] of linksBySource) {
+    linksBySource.set(
+      source,
+      sourceLinks.toSorted((a, b) => {
+        const aTarget = nodeById.get(a.target);
+        const bTarget = nodeById.get(b.target);
+        return (aTarget?.cy ?? 0) - (bTarget?.cy ?? 0);
+      }),
+    );
+  }
+
+  for (const [target, targetLinks] of linksByTarget) {
+    linksByTarget.set(
+      target,
+      targetLinks.toSorted((a, b) => {
+        const aSource = nodeById.get(a.source);
+        const bSource = nodeById.get(b.source);
+        return (aSource?.cy ?? 0) - (bSource?.cy ?? 0);
+      }),
+    );
+  }
+
   function stackY(link: FlowLink, side: "source" | "target") {
     const nodeId = side === "source" ? link.source : link.target;
     const node = nodeById.get(nodeId);
     const siblings = side === "source" ? linksBySource.get(nodeId) : linksByTarget.get(nodeId);
     if (!node || !siblings) return 0;
 
-    const stackHeight = siblings.reduce((sum, item) => sum + linkWidth(item.value), 0);
+    const stackHeight = siblings.reduce((sum, item) => sum + linkWidth(item.value), 0) +
+      Math.max(0, siblings.length - 1) * LINK_GAP;
     let offset = 0;
     for (const item of siblings) {
       if (item.id === link.id) break;
-      offset += linkWidth(item.value);
+      offset += linkWidth(item.value) + LINK_GAP;
     }
     return node.cy - stackHeight / 2 + offset + linkWidth(link.value) / 2;
   }
@@ -564,8 +588,8 @@ function SankeyDiagram({ nodes, links, total }: { nodes: FlowNode[]; links: Flow
       <svg
         role="img"
         aria-label="Internship search Sankey diagram"
-        viewBox={`0 0 ${chartWidth} 620`}
-        className="h-[520px] w-full"
+        viewBox={`0 0 ${chartWidth} 700`}
+        className="h-[560px] w-full"
         style={{ minWidth: chartWidth }}
       >
         <g fill="none">
@@ -828,33 +852,24 @@ export function StatsPage({ applications }: Props) {
 
   return (
     <div className="page-shell min-h-screen bg-background">
-      <main className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 pt-24 sm:pt-28 lg:pt-32 pb-24">
+      <main className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 pt-18 sm:pt-20 lg:pt-24 pb-24">
         <motion.header
-          className="masthead mb-12"
+          className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
           variants={motionVariants.riseIn}
           initial="hidden"
           animate="visible"
         >
-          <div className="flex items-baseline justify-between pb-4">
-            <span className="label-micro">Launchpad / Stats</span>
-            <span className="label-meta hidden sm:inline">{active.length} active / {archivedCount} archived</span>
-          </div>
-          <span className="rule-strong" />
-          <div className="mt-8 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-            <div className="max-w-2xl">
-              <h1 className="display-serif text-[4.5rem] sm:text-[5.75rem] lg:text-[6.5rem] text-foreground">
-                Stats
-              </h1>
-            </div>
-            <Link
-              href="/applications"
-              className="group inline-flex h-11 items-center gap-2 self-start rounded-md border px-5 text-[13px] font-medium text-foreground transition-colors hover:border-rule-strong"
-              style={{ borderColor: "var(--rule)" }}
-            >
-              Open pipeline
-              <ArrowRight size={14} strokeWidth={1.75} className="transition-transform group-hover:translate-x-0.5" />
-            </Link>
-          </div>
+          <h1 className="display-serif text-[2.75rem] text-foreground sm:text-[3.25rem]">
+            Stats
+          </h1>
+          <Link
+            href="/applications"
+            className="group inline-flex h-11 items-center gap-2 self-start rounded-md border px-5 text-[13px] font-medium text-foreground transition-colors hover:border-rule-strong"
+            style={{ borderColor: "var(--rule)" }}
+          >
+            Open pipeline
+            <ArrowRight size={14} strokeWidth={1.75} className="transition-transform group-hover:translate-x-0.5" />
+          </Link>
         </motion.header>
 
         <motion.div

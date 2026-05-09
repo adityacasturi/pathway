@@ -58,22 +58,16 @@ export function SettingsPage({
 
   return (
     <div className="page-shell min-h-screen bg-background">
-      <main className="max-w-3xl mx-auto px-6 sm:px-10 lg:px-16 pt-24 sm:pt-28 lg:pt-32 pb-24">
+      <main className="max-w-3xl mx-auto px-6 sm:px-10 lg:px-16 pt-18 sm:pt-20 lg:pt-24 pb-24">
         <motion.header
-          className="masthead mb-14"
+          className="mb-10"
           variants={motionVariants.riseIn}
           initial="hidden"
           animate="visible"
         >
-          <div className="flex items-baseline justify-between pb-4">
-            <span className="label-micro">Settings</span>
-          </div>
-          <span className="rule-strong" />
-          <div className="mt-8">
-            <h1 className="display-serif text-[4.5rem] sm:text-[5.25rem] text-foreground">
-              Settings
-            </h1>
-          </div>
+          <h1 className="display-serif text-[2.75rem] text-foreground sm:text-[3.25rem]">
+            Settings
+          </h1>
         </motion.header>
 
         <motion.div

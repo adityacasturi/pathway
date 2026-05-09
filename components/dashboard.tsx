@@ -295,27 +295,18 @@ export function Dashboard({ applications: initialApplications }: Props) {
 
   return (
     <div className="page-shell min-h-screen bg-background">
-      <main className="max-w-6xl mx-auto px-6 sm:px-10 lg:px-16 pt-24 sm:pt-28 lg:pt-32 pb-24">
-        <motion.header className="masthead mb-12" variants={motionVariants.riseIn} initial="hidden" animate="visible">
-          <div className="flex items-baseline justify-between pb-4">
-            <span className="label-micro">Pipeline</span>
-            <span className="label-meta hidden sm:inline">{applications.length} total · {filtered.length} shown</span>
-          </div>
-          <span className="rule-strong" />
-          <div className="mt-8 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-            <div className="max-w-2xl">
-              <h1 className="display-serif text-[4.5rem] sm:text-[5.25rem] lg:text-[6rem] text-foreground">
-                Applications
-              </h1>
-            </div>
-            <Button
-              onClick={() => setDialogOpen(true)}
-              className="h-11 rounded-md px-5 text-[13px] font-medium primary-surface"
-            >
-              <Plus size={14} strokeWidth={2} />
-              Add application
-            </Button>
-          </div>
+      <main className="max-w-6xl mx-auto px-6 sm:px-10 lg:px-16 pt-18 sm:pt-20 lg:pt-24 pb-24">
+        <motion.header className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between" variants={motionVariants.riseIn} initial="hidden" animate="visible">
+          <h1 className="display-serif text-[2.75rem] text-foreground sm:text-[3.25rem]">
+            Applications
+          </h1>
+          <Button
+            onClick={() => setDialogOpen(true)}
+            className="h-11 rounded-md px-5 text-[13px] font-medium primary-surface"
+          >
+            <Plus size={14} strokeWidth={2} />
+            Add application
+          </Button>
         </motion.header>
 
         <motion.div

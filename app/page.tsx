@@ -3,10 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { fetchFeed } from "@/lib/feed/source";
 import { normalizeUrl } from "@/lib/url";
 import { Home } from "@/components/home";
-import { STATUSES } from "@/lib/config/events";
 import { normalizeApplicationState } from "@/lib/config/application-state";
 import { assertSupabaseOk } from "@/lib/supabase/errors";
-import type { Application, Status } from "@/types/application";
+import type { Application } from "@/types/application";
 
 export const dynamic = "force-dynamic";
 
@@ -31,13 +30,6 @@ export default async function HomePage() {
   assertSupabaseOk(appsRes.error, "Load applications");
   assertSupabaseOk(interactionsRes.error, "Load feed interactions");
 
-  // Funnel counts: an application contributes to every status it has ever
-  // passed through (not just its terminal state). Mirrors the dashboard so
-  // numbers are consistent across pages.
-  const statusCounts: Record<Status, number> = Object.fromEntries(
-    STATUSES.map((s) => [s, 0]),
-  ) as Record<Status, number>;
-
   const activeApplications: Application[] = (appsRes.data ?? [])
     .filter((app) => !app.archived_at)
     .map((row) =>
@@ -47,18 +39,6 @@ export default async function HomePage() {
         last_activity_date: row.created_at.slice(0, 10),
       }),
     );
-
-  for (const app of activeApplications) {
-    const seen = new Set<Status>();
-    for (const ev of app.events) {
-      if ((STATUSES as readonly string[]).includes(ev.event_type)) {
-        seen.add(ev.event_type as Status);
-      }
-    }
-    for (const s of seen) statusCounts[s] += 1;
-  }
-
-  const totalApplications = activeApplications.length;
 
   const dismissedIds: string[] = [];
   const savedRows: { posting_id: string; created_at: string }[] = [];
@@ -93,8 +73,6 @@ export default async function HomePage() {
 
   return (
     <Home
-      statusCounts={statusCounts}
-      totalApplications={totalApplications}
       applications={activeApplications}
       newPostings={newPostings}
       dismissedIds={dismissedIds}

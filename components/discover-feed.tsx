@@ -54,7 +54,6 @@ interface Props {
   dismissedIds: string[];
   savedIds: string[];
   trackedUrls: string[];
-  cutoffDate: string;
   oldestAllowedCutoffDate: string;
   latestAllowedCutoffDate: string;
   initialQuery?: string;
@@ -80,7 +79,6 @@ export function DiscoverFeed({
   dismissedIds,
   savedIds,
   trackedUrls,
-  cutoffDate,
   initialQuery = "",
   initialSavedOnly = false,
 }: Props) {
@@ -440,58 +438,42 @@ export function DiscoverFeed({
 
   return (
     <div className="page-shell min-h-screen bg-background">
-      <main className="max-w-6xl mx-auto px-6 sm:px-10 lg:px-16 pt-24 sm:pt-28 lg:pt-32 pb-24">
+      <main className="max-w-6xl mx-auto px-6 sm:px-10 lg:px-16 pt-18 sm:pt-20 lg:pt-24 pb-24">
         <motion.header
-          className="masthead mb-12"
+          className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
           variants={motionVariants.riseIn}
           initial="hidden"
           animate="visible"
         >
-          <div className="flex items-baseline justify-between pb-4">
-            <span className="label-micro">Discover / Live feed</span>
-            <span className="label-meta hidden sm:inline tabular">
-              {postings.length} listings
-              {newCount > 0 && ` · ${newCount} new`}
-              {` · since ${formatCompactDate(cutoffDate)}`}
-            </span>
-          </div>
-          <span className="rule-strong" />
-          <div className="mt-8 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-            <div className="max-w-2xl">
-              <h1 className="display-serif text-[4.5rem] sm:text-[5.25rem] lg:text-[6rem] text-foreground">
-                Discover
-              </h1>
-              <p className="mt-5 max-w-lg text-[15px] leading-relaxed text-muted-foreground">
-                {postings.length} open internships since {formatCompactDate(cutoffDate)}.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 shrink-0">
-              {newCount > 0 && (
-                <button
-                  type="button"
-                  onClick={markAllSeen}
-                  aria-label={`Mark all ${newCount} new postings as seen`}
-                  title="Mark all new as seen"
-                  className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[12px] text-muted-foreground transition-colors duration-150 hover:text-foreground"
-                  style={{ borderColor: "var(--rule)" }}
-                >
-                  <CheckCheck size={13} strokeWidth={1.75} />
-                  <span className="hidden sm:inline">Mark all seen</span>
-                </button>
-              )}
+          <h1 className="display-serif text-[2.75rem] text-foreground sm:text-[3.25rem]">
+            Discover
+          </h1>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {newCount > 0 && (
               <button
                 type="button"
-                onClick={onRefresh}
-                disabled={isRefreshing}
-                aria-label="Refresh feed"
-                title="Refresh feed"
-                className="group inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-[12px] text-muted-foreground transition-colors duration-150 hover:text-foreground disabled:opacity-60 disabled:cursor-wait"
+                onClick={markAllSeen}
+                aria-label={`Mark all ${newCount} new postings as seen`}
+                title="Mark all new as seen"
+                className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[12px] text-muted-foreground transition-colors duration-150 hover:text-foreground"
                 style={{ borderColor: "var(--rule)" }}
               >
-                <RefreshCw size={13} strokeWidth={1.75} className={isRefreshing ? "animate-spin" : "transition-transform duration-300 group-hover:rotate-180"} />
-                <span className="hidden sm:inline">Refresh</span>
+                <CheckCheck size={13} strokeWidth={1.75} />
+                <span className="hidden sm:inline">Mark all seen</span>
               </button>
-            </div>
+            )}
+            <button
+              type="button"
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              aria-label="Refresh feed"
+              title="Refresh feed"
+              className="group inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-[12px] text-muted-foreground transition-colors duration-150 hover:text-foreground disabled:opacity-60 disabled:cursor-wait"
+              style={{ borderColor: "var(--rule)" }}
+            >
+              <RefreshCw size={13} strokeWidth={1.75} className={isRefreshing ? "animate-spin" : "transition-transform duration-300 group-hover:rotate-180"} />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
           </div>
         </motion.header>
 
@@ -637,16 +619,6 @@ export function DiscoverFeed({
       />
     </div>
   );
-}
-
-function formatCompactDate(isoDate: string): string {
-  const parsed = new Date(`${isoDate}T00:00:00.000Z`);
-  if (Number.isNaN(parsed.getTime())) return isoDate;
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  }).format(parsed);
 }
 
 function FilterToggle({
