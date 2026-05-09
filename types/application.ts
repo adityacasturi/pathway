@@ -11,6 +11,8 @@ export interface ApplicationEvent {
   event_date: string;
   notes: string | null;
   round_number: number | null;
+  deadline_date: string | null;
+  deadline_completed_at: string | null;
   created_at: string;
 }
 

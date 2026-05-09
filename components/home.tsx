@@ -3,15 +3,22 @@
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, RefreshCw } from "lucide-react";
 import { ApplicationDialog } from "@/components/application-dialog";
+import { ApplicationDetail } from "@/components/application-detail";
 import { PostingRow } from "@/components/posting-row";
 import { StatusDot } from "@/components/status-badge";
 import { InlineError } from "@/components/ui/inline-error";
 import { motionVariants } from "@/lib/ui/motion";
+import { preserveScrollPositionIfScrollable } from "@/lib/ui/scroll";
 import { normalizeUrl } from "@/lib/url";
 import { STATUSES, STATUS_LABELS } from "@/lib/config/events";
+import {
+  compareOaDeadlineStates,
+  deadlineStatusLabel,
+  getActiveOaDeadlines,
+} from "@/lib/config/deadlines";
 import {
   dismissPosting,
   refreshFeed,
@@ -20,7 +27,7 @@ import {
   unsavePosting,
 } from "@/lib/actions/feed";
 import type { FeedPosting, FeedSeason } from "@/lib/feed/source";
-import type { Status } from "@/types/application";
+import type { Application, Status } from "@/types/application";
 
 const MAX_NEW_ROWS = 20;
 const MAX_SAVED_ROWS = 12;
@@ -28,6 +35,7 @@ const MAX_SAVED_ROWS = 12;
 interface Props {
   statusCounts: Record<Status, number>;
   totalApplications: number;
+  applications: Application[];
   newPostings: FeedPosting[];
   dismissedIds: string[];
   savedIds: string[];
@@ -46,6 +54,7 @@ interface Prefill {
 export function Home({
   statusCounts,
   totalApplications,
+  applications,
   newPostings,
   dismissedIds,
   savedIds,
@@ -54,6 +63,7 @@ export function Home({
 }: Props) {
   const router = useRouter();
   const [dialogPrefill, setDialogPrefill] = useState<Prefill | null>(null);
+  const [detail, setDetail] = useState<Application | null>(null);
   const [trackedUrlOverrides, setTrackedUrlOverrides] = useState<Set<string>>(() => new Set());
   const [isRefreshing, startRefresh] = useTransition();
   const [actionError, setActionError] = useState<string | null>(null);
@@ -89,6 +99,7 @@ export function Home({
   const onToggleDismiss = useCallback(
     (posting: FeedPosting, next: boolean) => {
       const id = posting.id;
+      if (next) preserveScrollPositionIfScrollable();
       setActionError(null);
       setDismissedSet((prev) => {
         const out = new Set(prev);
@@ -199,6 +210,17 @@ export function Home({
     return rows.slice(0, MAX_SAVED_ROWS);
   }, [dismissedSet, savedOverrides, savedPostings, savedSet]);
 
+  const upcomingDeadlines = useMemo(
+    () =>
+      applications
+        .flatMap((application) =>
+          getActiveOaDeadlines(application).map((deadline) => ({ application, deadline })),
+        )
+        .sort((a, b) => compareOaDeadlineStates(a.deadline, b.deadline))
+        .slice(0, 5),
+    [applications],
+  );
+
   const openTrack = useCallback((posting: FeedPosting) => {
     setDialogPrefill({
       company: posting.company,
@@ -279,10 +301,9 @@ export function Home({
           animate="visible"
         >
           <div className="mb-6 flex items-baseline justify-between">
-            <div className="flex items-baseline gap-3">
-              <span className="label-micro">01 / Pipeline</span>
+            <div>
               <h2 className="display-serif text-[22px] text-foreground">
-                Funnel
+                Pipeline
               </h2>
             </div>
             <Link
@@ -328,16 +349,84 @@ export function Home({
           animate="visible"
         >
           <div className="mb-6 flex items-baseline justify-between">
-            <div className="flex items-baseline gap-3">
-              <span className="label-micro">02 / Saved</span>
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <h2 className="display-serif text-[22px] text-foreground">
+                Deadlines
+              </h2>
+              {upcomingDeadlines.length > 0 && (
+                <span className="label-meta tabular">
+                  {upcomingDeadlines.length} upcoming
+                </span>
+              )}
+            </div>
+            <Link
+              href="/applications?status=oa"
+              className="label-meta link-edit hover:text-foreground"
+            >
+              Open OAs <ArrowRight size={11} strokeWidth={1.75} />
+            </Link>
+          </div>
+          <span className="rule" />
+
+          {upcomingDeadlines.length === 0 ? (
+            <div className="py-12 text-center">
+              <p className="text-[15px] text-muted-foreground">
+                No upcoming OA deadlines.
+              </p>
+            </div>
+          ) : (
+            <ul className="divide-y" style={{ borderColor: "var(--rule)" }}>
+              {upcomingDeadlines.map(({ application, deadline }) => (
+                <li key={`${application.id}-${deadline.event.id}`}>
+                  <button
+                    type="button"
+                    onClick={() => setDetail(application)}
+                    className="group grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-2 py-4 text-left transition-colors duration-150 hover:bg-[color-mix(in_oklab,var(--ink)_3%,transparent)]"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2.5 text-[11px] text-muted-foreground">
+                        <span className="truncate font-medium text-foreground/80">{application.company}</span>
+                        <span className="font-mono text-[9px] uppercase tracking-[0.16em]">OA</span>
+                      </div>
+                      <p className="mt-1 truncate text-[14px] font-medium tracking-tight text-foreground">
+                        {application.role}
+                      </p>
+                    </div>
+                    <span
+                      className={`rounded-full border px-3 py-1 font-mono text-[10px] uppercase tracking-[0.12em] ${
+                        deadline.status === "overdue"
+                          ? "border-destructive/25 bg-destructive/10 text-destructive"
+                          : deadline.status === "urgent"
+                            ? "border-[color-mix(in_oklab,var(--primary)_28%,transparent)] bg-[color-mix(in_oklab,var(--primary)_9%,transparent)] text-foreground"
+                            : "text-muted-foreground"
+                      }`}
+                      style={deadline.status === "upcoming" ? { borderColor: "var(--rule)" } : undefined}
+                    >
+                      {deadlineStatusLabel(deadline)}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </motion.section>
+
+        <motion.section
+          className="mb-20"
+          variants={motionVariants.fadeIn}
+          initial="hidden"
+          animate="visible"
+        >
+          <div className="mb-6 flex items-baseline justify-between">
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <h2 className="display-serif text-[22px] text-foreground">
                 For later
-                {visibleSaved.length > 0 && (
-                  <span className="ml-2 font-mono text-[13px] font-normal tracking-normal text-muted-foreground">
-                    {visibleSaved.length}
-                  </span>
-                )}
               </h2>
+              {visibleSaved.length > 0 && (
+                <span className="label-meta tabular">
+                  {visibleSaved.length} saved
+                </span>
+              )}
             </div>
             <Link
               href="/discover?saved"
@@ -361,23 +450,31 @@ export function Home({
               </Link>
             </div>
           ) : (
-            <ul className="divide-y" style={{ borderColor: "var(--rule)" }}>
-              {visibleSaved.map((posting) => (
-                <PostingRow
-                  key={posting.id}
-                  posting={posting}
-                  dismissed={dismissedSet.has(posting.id)}
-                  saved={savedSet.has(posting.id)}
-                  tracked={trackedIdSet.has(posting.id)}
-                  isNew={false}
-                  pending={pendingIds.has(posting.id)}
-                  savePending={pendingSavedIds.has(posting.id)}
-                  onTrack={openTrack}
-                  onToggleSaved={onToggleSaved}
-                  onToggleDismiss={onToggleDismiss}
-                />
-              ))}
-            </ul>
+            <motion.ul
+              variants={motionVariants.list}
+              initial="hidden"
+              animate="visible"
+              className="divide-y"
+              style={{ borderColor: "var(--rule)" }}
+            >
+              <AnimatePresence initial={false}>
+                {visibleSaved.map((posting) => (
+                  <PostingRow
+                    key={posting.id}
+                    posting={posting}
+                    dismissed={dismissedSet.has(posting.id)}
+                    saved={savedSet.has(posting.id)}
+                    tracked={trackedIdSet.has(posting.id)}
+                    isNew={false}
+                    pending={pendingIds.has(posting.id)}
+                    savePending={pendingSavedIds.has(posting.id)}
+                    onTrack={openTrack}
+                    onToggleSaved={onToggleSaved}
+                    onToggleDismiss={onToggleDismiss}
+                  />
+                ))}
+              </AnimatePresence>
+            </motion.ul>
           )}
         </motion.section>
 
@@ -387,16 +484,15 @@ export function Home({
           animate="visible"
         >
           <div className="mb-6 flex items-baseline justify-between">
-            <div className="flex items-baseline gap-3">
-              <span className="label-micro">03 / New</span>
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <h2 className="display-serif text-[22px] text-foreground">
                 Since yesterday
-                {visibleNew.length > 0 && (
-                  <span className="ml-2 font-mono text-[13px] font-normal tracking-normal text-muted-foreground">
-                    {visibleNew.length}
-                  </span>
-                )}
               </h2>
+              {visibleNew.length > 0 && (
+                <span className="label-meta tabular">
+                  {visibleNew.length} new
+                </span>
+              )}
             </div>
             <Link
               href="/discover"
@@ -420,23 +516,31 @@ export function Home({
               </Link>
             </div>
           ) : (
-            <ul className="divide-y" style={{ borderColor: "var(--rule)" }}>
-              {visibleNew.map((posting) => (
-                <PostingRow
-                  key={posting.id}
-                  posting={posting}
-                  dismissed={dismissedSet.has(posting.id)}
-                  saved={savedSet.has(posting.id)}
-                  tracked={trackedIdSet.has(posting.id)}
-                  isNew
-                  pending={pendingIds.has(posting.id)}
-                  savePending={pendingSavedIds.has(posting.id)}
-                  onTrack={openTrack}
-                  onToggleSaved={onToggleSaved}
-                  onToggleDismiss={onToggleDismiss}
-                />
-              ))}
-            </ul>
+            <motion.ul
+              variants={motionVariants.list}
+              initial="hidden"
+              animate="visible"
+              className="divide-y"
+              style={{ borderColor: "var(--rule)" }}
+            >
+              <AnimatePresence initial={false}>
+                {visibleNew.map((posting) => (
+                  <PostingRow
+                    key={posting.id}
+                    posting={posting}
+                    dismissed={dismissedSet.has(posting.id)}
+                    saved={savedSet.has(posting.id)}
+                    tracked={trackedIdSet.has(posting.id)}
+                    isNew
+                    pending={pendingIds.has(posting.id)}
+                    savePending={pendingSavedIds.has(posting.id)}
+                    onTrack={openTrack}
+                    onToggleSaved={onToggleSaved}
+                    onToggleDismiss={onToggleDismiss}
+                  />
+                ))}
+              </AnimatePresence>
+            </motion.ul>
           )}
         </motion.section>
       </main>
@@ -446,6 +550,10 @@ export function Home({
         onClose={() => setDialogPrefill(null)}
         initialValues={dialogPrefill ?? undefined}
         onCreated={onApplicationCreated}
+      />
+      <ApplicationDetail
+        application={detail}
+        onClose={() => setDetail(null)}
       />
     </div>
   );

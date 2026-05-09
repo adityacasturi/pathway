@@ -1,10 +1,12 @@
 "use client";
 
 import { memo, useCallback, useMemo } from "react";
+import { motion } from "framer-motion";
 import { Bookmark, Check, Plus, RotateCcw, X } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
 import { CompanyLogo } from "@/components/company-logo";
 import { SeasonPill } from "@/components/season-pill";
+import { motionVariants } from "@/lib/ui/motion";
 import { safeExternalHref } from "@/lib/url";
 import type { FeedPosting } from "@/lib/feed/source";
 
@@ -57,13 +59,19 @@ export const PostingRow = memo(function PostingRow({
   );
 
   return (
-    <li
-      style={dismissed ? { opacity: 0.5 } : undefined}
+    <motion.li
+      layout
+      variants={motionVariants.row}
+      initial="hidden"
+      animate="visible"
+      exit="exit"
+      whileHover={{ x: 2 }}
+      transition={{ layout: { type: "spring", stiffness: 420, damping: 34, mass: 0.7 } }}
       className={`group transition-colors duration-150 hover:bg-[color-mix(in_oklab,var(--ink)_3%,transparent)] ${
         dismissed ? "saturate-50" : ""
       }`}
     >
-      <div className="flex items-center gap-5 px-2 py-4">
+      <div style={dismissed ? { opacity: 0.5 } : undefined} className="flex items-center gap-5 px-2 py-4">
         <CompanyLogo company={posting.company} size={30} />
 
         <div className="min-w-0 flex-1">
@@ -145,7 +153,7 @@ export const PostingRow = memo(function PostingRow({
           </IconButton>
         </div>
       </div>
-    </li>
+    </motion.li>
   );
 });
 
@@ -176,16 +184,18 @@ function IconButton({
   tone: IconButtonTone;
 }) {
   return (
-    <button
+    <motion.button
       type="button"
       onClick={onClick}
       aria-label={label}
       title={label}
       disabled={disabled}
+      whileTap={{ scale: 0.9 }}
+      whileHover={{ scale: 1.08 }}
       className={`inline-flex size-7 items-center justify-center rounded-full leading-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50 [&>svg]:block [&>svg]:shrink-0 ${TONE_CLASSES[tone]}`}
     >
       {children}
-    </button>
+    </motion.button>
   );
 }
 

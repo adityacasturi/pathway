@@ -32,6 +32,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  poweredByHeader: false,
   async headers() {
     return [
       {

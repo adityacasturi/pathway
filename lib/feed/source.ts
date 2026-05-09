@@ -62,7 +62,7 @@ interface RawListing {
   category?: string;
 }
 
-export interface FeedSource {
+interface FeedSource {
   id: string;
   label: string;
   fetch: () => Promise<FeedPosting[]>;
@@ -260,7 +260,7 @@ async function fetchJsonSource(
  * posting (matched by canonical URL), the *first* one wins. Keep the higher-
  * quality / more-timely source at the top of the list.
  */
-export const FEED_SOURCES: readonly FeedSource[] = [
+const FEED_SOURCES: readonly FeedSource[] = [
   {
     id: "vanshb03-summer2027",
     label: "vanshb03 / Summer2027-Internships",

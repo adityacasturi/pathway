@@ -8,7 +8,7 @@ const PRIVATE_IPV4_RANGES = [
 ];
 
 function looksLikePrivateHost(hostname: string): boolean {
-  const host = hostname.toLowerCase();
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "").replace(/\.$/, "");
   if (
     host === "localhost" ||
     host.endsWith(".localhost") ||

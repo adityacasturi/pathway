@@ -6,7 +6,14 @@ import { format, parseISO } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
 import { Application, APPLICATION_SEASONS, ApplicationEvent, ApplicationSeason, EventType, Status } from "@/types/application";
 import { ADDABLE_EVENT_TYPES, EVENT_CONFIG } from "@/lib/config/events";
-import { createEvent, deleteEvent, updateEventDate, updateEventNotes } from "@/lib/actions/events";
+import {
+  createEvent,
+  deleteEvent,
+  updateEventDate,
+  updateEventDeadline,
+  updateEventDeadlineCompletion,
+  updateEventNotes,
+} from "@/lib/actions/events";
 import { updateApplicationFields } from "@/lib/actions/applications";
 import {
   addEvent,
@@ -26,7 +33,7 @@ import { InlineSpinner } from "@/components/ui/loading-indicator";
 import { Label } from "@/components/ui/label";
 import { motionVariants } from "@/lib/ui/motion";
 import { displayUrl, normalizeUrl, safeExternalHref } from "@/lib/url";
-import { CalendarDays, Check, Link as LinkIcon, X } from "lucide-react";
+import { CalendarDays, CalendarRange, Check, Link as LinkIcon, MapPin, X } from "lucide-react";
 
 function todayISO(): string {
   return format(new Date(), "yyyy-MM-dd");
@@ -51,6 +58,7 @@ function buildTempEvent(
   eventType: EventType,
   eventDate: string,
   notes: string,
+  deadlineDate: string | null,
 ): ApplicationEvent {
   return {
     id: `temp-${crypto.randomUUID()}`,
@@ -59,6 +67,8 @@ function buildTempEvent(
     event_date: eventDate,
     notes: notes.trim() || null,
     round_number: eventType === "interview" ? getNextInterviewRound(application.events) : null,
+    deadline_date: eventType === "oa" ? deadlineDate : null,
+    deadline_completed_at: null,
     created_at: new Date().toISOString(),
   };
 }
@@ -68,6 +78,7 @@ export function ApplicationDetail({ application, onClose }: Props) {
   // different application so values from the previous detail don't leak in.
   const [eventType, setEventType] = useState<EventType>("oa");
   const [eventDate, setEventDate] = useState<string>(todayISO);
+  const [deadlineDate, setDeadlineDate] = useState("");
   const [notes, setNotes] = useState("");
   const [addingEvent, setAddingEvent] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +105,7 @@ export function ApplicationDetail({ application, onClose }: Props) {
     setOptimisticApplication(normalizeApplicationState(application));
     setEventType("oa");
     setEventDate(todayISO());
+    setDeadlineDate("");
     setNotes("");
     setError(null);
     setSyncState({ status: "idle", label: null });
@@ -181,10 +193,11 @@ export function ApplicationDetail({ application, onClose }: Props) {
     startSync("Adding event");
 
     const previous = optimisticApplication;
-    const tempEvent = buildTempEvent(previous, eventType, eventDate, notes);
+    const cleanedDeadlineDate = eventType === "oa" && deadlineDate ? deadlineDate : null;
+    const tempEvent = buildTempEvent(previous, eventType, eventDate, notes, cleanedDeadlineDate);
     setOptimisticApplication(addEvent(previous, tempEvent));
 
-    const result = await createEvent(previous.id, eventType, eventDate, notes);
+    const result = await createEvent(previous.id, eventType, eventDate, notes, cleanedDeadlineDate);
     if ("error" in result) {
       const message = result.error ?? "Unable to add event.";
       setOptimisticApplication(previous);
@@ -200,6 +213,7 @@ export function ApplicationDetail({ application, onClose }: Props) {
       });
       setNotes("");
       setEventDate(todayISO());
+      setDeadlineDate("");
       finishSync();
     }
     setAddingEvent(false);
@@ -277,6 +291,59 @@ export function ApplicationDetail({ application, onClose }: Props) {
     return null;
   }
 
+  async function handleUpdateEventDeadline(event: ApplicationEvent, nextDeadlineDate: string | null): Promise<string | null> {
+    if (!optimisticApplication) return "Application not loaded";
+
+    const previous = optimisticApplication;
+    startSync(nextDeadlineDate ? "Saving deadline" : "Removing deadline");
+    setOptimisticApplication(applyEventPatch(previous, event.id, {
+      deadline_date: nextDeadlineDate,
+      deadline_completed_at: nextDeadlineDate ? event.deadline_completed_at : null,
+    }));
+
+    const result = await updateEventDeadline(event.id, previous.id, nextDeadlineDate);
+    if ("error" in result) {
+      const message = result.error ?? "Unable to save deadline.";
+      setOptimisticApplication(previous);
+      finishSync(message);
+      return message;
+    }
+
+    const updatedEvent = result.event;
+    setOptimisticApplication((current) => {
+      if (!current || !updatedEvent) return current;
+      return replaceEvent(current, event.id, updatedEvent);
+    });
+    finishSync();
+    return null;
+  }
+
+  async function handleUpdateEventDeadlineCompletion(event: ApplicationEvent, completed: boolean): Promise<string | null> {
+    if (!optimisticApplication) return "Application not loaded";
+
+    const previous = optimisticApplication;
+    startSync(completed ? "Completing deadline" : "Reopening deadline");
+    setOptimisticApplication(applyEventPatch(previous, event.id, {
+      deadline_completed_at: completed ? new Date().toISOString() : null,
+    }));
+
+    const result = await updateEventDeadlineCompletion(event.id, previous.id, completed);
+    if ("error" in result) {
+      const message = result.error ?? "Unable to update deadline.";
+      setOptimisticApplication(previous);
+      finishSync(message);
+      return message;
+    }
+
+    const updatedEvent = result.event;
+    setOptimisticApplication((current) => {
+      if (!current || !updatedEvent) return current;
+      return replaceEvent(current, event.id, updatedEvent);
+    });
+    finishSync();
+    return null;
+  }
+
   if (!mounted || !optimisticApplication) return null;
 
   return createPortal(
@@ -335,6 +402,8 @@ export function ApplicationDetail({ application, onClose }: Props) {
                   onDeleteEvent={handleDeleteEvent}
                   onUpdateEventDate={handleUpdateEventDate}
                   onUpdateEventNotes={handleUpdateEventNotes}
+                  onUpdateEventDeadline={handleUpdateEventDeadline}
+                  onUpdateEventDeadlineCompletion={handleUpdateEventDeadlineCompletion}
                 />
                 <FloatingSyncToast
                   state={syncState}
@@ -346,11 +415,13 @@ export function ApplicationDetail({ application, onClose }: Props) {
                 application={optimisticApplication}
                 eventType={eventType}
                 eventDate={eventDate}
+                deadlineDate={deadlineDate}
                 notes={notes}
                 addingEvent={addingEvent}
                 error={error}
                 onEventTypeChange={setEventType}
                 onEventDateChange={setEventDate}
+                onDeadlineDateChange={setDeadlineDate}
                 onNotesChange={setNotes}
                 onSubmitEvent={handleAddEvent}
                 onClearError={() => setError(null)}
@@ -425,11 +496,13 @@ function DetailSidebar({
   application,
   eventType,
   eventDate,
+  deadlineDate,
   notes,
   addingEvent,
   error,
   onEventTypeChange,
   onEventDateChange,
+  onDeadlineDateChange,
   onNotesChange,
   onSubmitEvent,
   onClearError,
@@ -438,11 +511,13 @@ function DetailSidebar({
   application: Application;
   eventType: EventType;
   eventDate: string;
+  deadlineDate: string;
   notes: string;
   addingEvent: boolean;
   error: string | null;
   onEventTypeChange: (type: EventType) => void;
   onEventDateChange: (date: string) => void;
+  onDeadlineDateChange: (date: string) => void;
   onNotesChange: (notes: string) => void;
   onSubmitEvent: (event: React.FormEvent) => void;
   onClearError: () => void;
@@ -457,45 +532,49 @@ function DetailSidebar({
       className="w-full shrink-0 overflow-y-auto border-t bg-[color-mix(in_oklab,var(--paper-sunk)_70%,var(--paper)_30%)] md:w-[21rem] md:border-t-0"
       style={{ borderColor: "var(--rule)" }}
     >
-      <div className="space-y-8 px-6 py-7">
-        <section>
-          <div className="mb-4 flex items-baseline gap-3">
-            <span className="label-micro">Details</span>
-            <span className="h-px flex-1" style={{ background: "var(--rule)" }} />
-          </div>
-          <div className="divide-y" style={{ borderColor: "var(--rule)" }}>
-            <DetailRow label="Posting">
+      <div className="space-y-6 px-5 py-5 sm:px-6">
+        <section className="space-y-3">
+          <SectionHeading>Details</SectionHeading>
+          <div className="space-y-2">
+            <DetailItem label="Posting" icon={<LinkIcon className="size-3.5" />}>
               <PostingUrlField
                 value={application.posting_url}
                 onSave={(url) => onSaveField({ posting_url: url })}
               />
-            </DetailRow>
-            <DetailRow label="Location">
+            </DetailItem>
+            <DetailItem label="Location" icon={<MapPin className="size-3.5" />}>
               <LocationField
                 value={application.location}
                 onSave={(loc) => onSaveField({ location: loc })}
               />
-            </DetailRow>
-            <DetailRow label="Season">
+            </DetailItem>
+            <DetailItem label="Season" icon={<CalendarRange className="size-3.5" />}>
               <SeasonField
                 value={application.season}
                 onSave={(season) => onSaveField({ season })}
               />
-            </DetailRow>
+            </DetailItem>
           </div>
         </section>
 
-        <section>
-          <div className="mb-4 flex items-baseline gap-3">
-            <span className="label-micro">Add event</span>
-            <span className="h-px flex-1" style={{ background: "var(--rule)" }} />
-          </div>
+        <section className="space-y-3">
+          <SectionHeading>Add event</SectionHeading>
           <form
             onSubmit={onSubmitEvent}
-            className="space-y-4"
+            className="space-y-3"
           >
             <EventTypePicker value={eventType} onChange={onEventTypeChange} />
-            <EventDateField value={eventDate} onChange={onEventDateChange} />
+            <div className={eventType === "oa" ? "grid grid-cols-2 gap-2" : undefined}>
+              <EventDateField value={eventDate} onChange={onEventDateChange} />
+              {eventType === "oa" && (
+                <EventDateField
+                  label="Deadline"
+                  value={deadlineDate}
+                  onChange={onDeadlineDateChange}
+                  optional
+                />
+              )}
+            </div>
 
             <label className="block space-y-1.5">
               <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -504,9 +583,9 @@ function DetailSidebar({
               <textarea
                 value={notes}
                 onChange={(e) => onNotesChange(e.target.value)}
-                placeholder="Add interview round details, recruiter notes, or next steps..."
-                rows={4}
-                className="min-h-24 w-full resize-none rounded-xl border border-border/70 bg-background/80 px-3 py-2.5 text-sm text-foreground outline-none transition-colors duration-150 placeholder:text-muted-foreground/45 focus:border-foreground/30 focus:bg-background"
+                placeholder="Add notes or next steps..."
+                rows={3}
+                className="min-h-20 w-full resize-none rounded-lg border border-border/70 bg-background/80 px-3 py-2 text-sm text-foreground outline-none transition-colors duration-150 placeholder:text-muted-foreground/45 focus:border-foreground/30 focus:bg-background"
               />
             </label>
 
@@ -529,7 +608,7 @@ function DetailSidebar({
               disabled={!eventDate}
               idleLabel="Add event"
               pendingLabel="Saving event"
-              className="h-10 w-full rounded-xl text-xs font-medium uppercase tracking-wider"
+              className="h-9 w-full rounded-lg text-xs font-medium uppercase tracking-wider"
             />
           </form>
         </section>
@@ -538,17 +617,39 @@ function DetailSidebar({
   );
 }
 
-function DetailRow({
-  label,
+function SectionHeading({
   children,
 }: {
-  label: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="grid grid-cols-[72px_minmax(0,1fr)] items-center gap-3 py-3 first:pt-0 last:pb-0">
-      <span className="label-micro">{label}</span>
-      <div className="min-w-0">{children}</div>
+    <h3 className="font-sans text-sm font-medium tracking-normal text-foreground">
+      {children}
+    </h3>
+  );
+}
+
+function DetailItem({
+  label,
+  icon,
+  children,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex min-h-9 items-center gap-3 rounded-md px-2 py-1.5">
+      <span
+        className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground/65"
+        aria-hidden
+      >
+        {icon}
+      </span>
+      <div className="min-w-0 flex-1">
+        <span className="sr-only">{label}</span>
+        {children}
+      </div>
     </div>
   );
 }
@@ -853,7 +954,7 @@ function EventTypePicker({
   return (
     <div className="space-y-1.5">
       <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">Type</Label>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-1.5">
         {ADDABLE_EVENT_TYPES.map((type) => {
           const active = value === type;
           return (
@@ -861,7 +962,7 @@ function EventTypePicker({
               key={type}
               type="button"
               onClick={() => onChange(type)}
-              className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-md border px-2.5 font-mono text-[10px] uppercase tracking-[0.14em] transition-colors duration-150 ${
+              className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-md border px-2 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors duration-150 ${
                 active
                   ? "border-foreground bg-foreground text-background"
                   : "bg-background text-muted-foreground hover:text-foreground"
@@ -883,28 +984,35 @@ function EventTypePicker({
 }
 
 function EventDateField({
+  label = "Date",
   value,
   onChange,
+  optional = false,
 }: {
+  label?: string;
   value: string;
   onChange: (next: string) => void;
+  optional?: boolean;
 }) {
   const selected = value ? parseISO(value) : undefined;
 
   return (
     <label className="block space-y-1.5">
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Date</span>
-        <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
+          {label}
+          {optional && <span className="sr-only"> optional</span>}
+        </span>
+        <span className="inline-flex items-center gap-1 text-muted-foreground/55" aria-hidden>
           <CalendarDays className="size-3" />
-          {selected ? format(selected, "MMM d, yyyy") : "—"}
         </span>
       </div>
       <input
         type="date"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-10 w-full rounded-xl border border-border/70 bg-background/80 px-2.5 text-sm text-foreground outline-none transition-colors duration-150 focus:border-foreground/30 focus:bg-background"
+        title={selected ? format(selected, "MMM d, yyyy") : undefined}
+        className="h-9 w-full min-w-0 rounded-lg border border-border/70 bg-background/80 px-2.5 text-xs text-foreground outline-none transition-colors duration-150 focus:border-foreground/30 focus:bg-background"
       />
     </label>
   );

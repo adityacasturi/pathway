@@ -10,13 +10,14 @@ import {
   useTransition,
 } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { CheckCheck, RefreshCw } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { CheckCheck, RefreshCw, SlidersHorizontal } from "lucide-react";
 import { ApplicationDialog } from "@/components/application-dialog";
 import { PostingRow } from "@/components/posting-row";
 import { InlineError } from "@/components/ui/inline-error";
 import { FilterChip, FilterOption } from "@/components/ui/filter-chip";
 import { motionVariants } from "@/lib/ui/motion";
+import { preserveScrollPositionIfScrollable } from "@/lib/ui/scroll";
 import { SearchInput } from "@/components/search-input";
 import { normalizeUrl } from "@/lib/url";
 import {
@@ -80,8 +81,6 @@ export function DiscoverFeed({
   savedIds,
   trackedUrls,
   cutoffDate,
-  oldestAllowedCutoffDate,
-  latestAllowedCutoffDate,
   initialQuery = "",
   initialSavedOnly = false,
 }: Props) {
@@ -94,11 +93,14 @@ export function DiscoverFeed({
   const [showDismissed, setShowDismissed] = useState(false);
   const [showSavedOnly, setShowSavedOnly] = useState(initialSavedOnly);
   const [hideApplied, setHideApplied] = useState(false);
+  const [preferencesReady, setPreferencesReady] = useState(false);
   const [dialogPrefill, setDialogPrefill] = useState<Prefill | null>(null);
   const [trackedUrlOverrides, setTrackedUrlOverrides] = useState<Set<string>>(() => new Set());
   const [isRefreshing, startRefresh] = useTransition();
   const [actionError, setActionError] = useState<string | null>(null);
   const [searchFocused, setSearchFocused] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filtersRef = useRef<HTMLDivElement | null>(null);
 
   const onRefresh = useCallback(() => {
     startRefresh(async () => {
@@ -133,6 +135,7 @@ export function DiscoverFeed({
     if (hideAppliedPref === "1") {
       setHideApplied(true);
     }
+    setPreferencesReady(true);
 
     return () => {
       localStorage.setItem(LAST_SEEN_STORAGE_KEY, String(Math.floor(Date.now() / 1000)));
@@ -140,12 +143,14 @@ export function DiscoverFeed({
   }, []);
 
   useEffect(() => {
+    if (!preferencesReady) return;
     localStorage.setItem(SHOW_DISMISSED_STORAGE_KEY, showDismissed ? "1" : "0");
-  }, [showDismissed]);
+  }, [preferencesReady, showDismissed]);
 
   useEffect(() => {
+    if (!preferencesReady) return;
     localStorage.setItem(HIDE_APPLIED_STORAGE_KEY, hideApplied ? "1" : "0");
-  }, [hideApplied]);
+  }, [preferencesReady, hideApplied]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -156,6 +161,18 @@ export function DiscoverFeed({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setShowSavedOnly(initialSavedOnly);
   }, [initialSavedOnly]);
+
+  useEffect(() => {
+    function onPointerDown(event: PointerEvent) {
+      if (!filtersRef.current?.contains(event.target as Node)) {
+        setFiltersOpen(false);
+      }
+    }
+
+    if (!filtersOpen) return;
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [filtersOpen]);
 
   // Dismissed state lives here (not on each row) so we can update
   // optimistically without round-tripping through the server. Re-syncs if
@@ -188,6 +205,7 @@ export function DiscoverFeed({
   const onToggleDismiss = useCallback(
     (posting: FeedPosting, next: boolean) => {
       const id = posting.id;
+      if (next) preserveScrollPositionIfScrollable();
       setActionError(null);
       setDismissedSet((prev) => {
         const out = new Set(prev);
@@ -386,6 +404,10 @@ export function DiscoverFeed({
     () => filtered.slice(0, visibleCount),
     [filtered, visibleCount],
   );
+  const activeFilterCount =
+    Number(showSavedOnly) +
+    Number(hideApplied) +
+    Number(showDismissed);
 
   const openTrack = useCallback((posting: FeedPosting) => {
     setDialogPrefill({
@@ -496,53 +518,52 @@ export function DiscoverFeed({
                 defaultValue="all"
                 options={SEASON_FILTER_OPTIONS}
               />
-              <label className="inline-flex cursor-pointer select-none items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] text-muted-foreground transition-colors duration-150 hover:text-foreground"
-                style={{ borderColor: showSavedOnly ? "var(--rule-strong)" : "var(--rule)" }}
-              >
-                <input
-                  type="checkbox"
-                  checked={showSavedOnly}
-                  onChange={(e) => setShowSavedOnly(e.target.checked)}
-                  className="size-3 rounded-[2px] accent-foreground cursor-pointer"
-                />
-                Saved only
-              </label>
-              <label className="inline-flex cursor-pointer select-none items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] text-muted-foreground transition-colors duration-150 hover:text-foreground"
-                style={{ borderColor: hideApplied ? "var(--rule-strong)" : "var(--rule)" }}
-              >
-                <input
-                  type="checkbox"
-                  checked={hideApplied}
-                  onChange={(e) => setHideApplied(e.target.checked)}
-                  className="size-3 rounded-[2px] accent-foreground cursor-pointer"
-                />
-                Hide applied
-              </label>
-              <label className="inline-flex cursor-pointer select-none items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] text-muted-foreground transition-colors duration-150 hover:text-foreground"
-                style={{ borderColor: showDismissed ? "var(--rule-strong)" : "var(--rule)" }}
-              >
-                <input
-                  type="checkbox"
-                  checked={showDismissed}
-                  onChange={(e) => setShowDismissed(e.target.checked)}
-                  className="size-3 rounded-[2px] accent-foreground cursor-pointer"
-                />
-                Show dismissed
-              </label>
+              <div ref={filtersRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setFiltersOpen((open) => !open)}
+                  aria-expanded={filtersOpen}
+                  className="inline-flex h-9 items-center gap-2 rounded-full border px-3 text-[12px] text-muted-foreground transition-colors duration-150 hover:text-foreground aria-expanded:text-foreground"
+                  style={{ borderColor: activeFilterCount > 0 || filtersOpen ? "var(--rule-strong)" : "var(--rule)" }}
+                >
+                  <SlidersHorizontal size={13} strokeWidth={1.75} />
+                  Filters
+                  {activeFilterCount > 0 && (
+                    <span className="inline-flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </button>
+                <AnimatePresence>
+                  {filtersOpen && (
+                  <motion.div
+                    variants={motionVariants.menu}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    className="absolute right-0 top-[calc(100%+8px)] z-[90] w-56 rounded-md border bg-popover p-2 shadow-[0_18px_40px_-28px_color-mix(in_oklab,var(--ink)_45%,transparent)]"
+                    style={{ borderColor: "var(--rule-strong)" }}
+                  >
+                    <FilterToggle
+                      label="Saved only"
+                      checked={showSavedOnly}
+                      onChange={setShowSavedOnly}
+                    />
+                    <FilterToggle
+                      label="Hide applied"
+                      checked={hideApplied}
+                      onChange={setHideApplied}
+                    />
+                    <FilterToggle
+                      label="Show dismissed"
+                      checked={showDismissed}
+                      onChange={setShowDismissed}
+                    />
+                  </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
-          </div>
-          <div className="mt-4 flex flex-wrap items-baseline gap-x-5 gap-y-2 label-meta">
-            <span><span className="text-foreground tabular">{filtered.length}</span> matching</span>
-            <span className="opacity-50">·</span>
-            <span><span className="text-foreground tabular">{savedSet.size}</span> saved</span>
-            <span className="opacity-50">·</span>
-            <span><span className="text-foreground tabular">{trackedIdSet.size}</span> tracked</span>
-            <span className="opacity-50">·</span>
-            <span><span className="text-foreground tabular">{newCount}</span> new</span>
-            <span className="opacity-50">·</span>
-            <span title={`Allowed range: ${oldestAllowedCutoffDate} to ${latestAllowedCutoffDate}`}>
-              since <span className="text-foreground tabular">{formatCompactDate(cutoffDate)}</span>
-            </span>
           </div>
           {actionError && (
             <div className="mt-4">
@@ -556,7 +577,14 @@ export function DiscoverFeed({
 
         <span className="rule" />
 
-        {filtered.length === 0 ? (
+        {!preferencesReady ? (
+          <motion.div
+            variants={motionVariants.fadeIn}
+            initial="hidden"
+            animate="visible"
+            className="py-24"
+          />
+        ) : filtered.length === 0 ? (
           <motion.div
             variants={motionVariants.fadeIn}
             initial="hidden"
@@ -569,23 +597,31 @@ export function DiscoverFeed({
           </motion.div>
         ) : (
           <>
-            <ul className="divide-y" style={{ borderColor: "var(--rule)" }}>
-              {visible.map((posting) => (
-                <PostingRow
-                  key={posting.id}
-                  posting={posting}
-                  dismissed={dismissedSet.has(posting.id)}
-                  saved={savedSet.has(posting.id)}
-                  tracked={trackedIdSet.has(posting.id)}
-                  isNew={isPostingNew(posting)}
-                  pending={pendingIds.has(posting.id)}
-                  savePending={pendingSavedIds.has(posting.id)}
-                  onTrack={openTrack}
-                  onToggleSaved={onToggleSaved}
-                  onToggleDismiss={onToggleDismiss}
-                />
-              ))}
-            </ul>
+            <motion.ul
+              variants={motionVariants.list}
+              initial="hidden"
+              animate="visible"
+              className="divide-y"
+              style={{ borderColor: "var(--rule)" }}
+            >
+              <AnimatePresence initial={false}>
+                {visible.map((posting) => (
+                  <PostingRow
+                    key={posting.id}
+                    posting={posting}
+                    dismissed={dismissedSet.has(posting.id)}
+                    saved={savedSet.has(posting.id)}
+                    tracked={trackedIdSet.has(posting.id)}
+                    isNew={isPostingNew(posting)}
+                    pending={pendingIds.has(posting.id)}
+                    savePending={pendingSavedIds.has(posting.id)}
+                    onTrack={openTrack}
+                    onToggleSaved={onToggleSaved}
+                    onToggleDismiss={onToggleDismiss}
+                  />
+                ))}
+              </AnimatePresence>
+            </motion.ul>
             {visibleCount < filtered.length && (
               <div ref={sentinelRef} className="h-10" aria-hidden="true" />
             )}
@@ -611,4 +647,26 @@ function formatCompactDate(isoDate: string): string {
     day: "numeric",
     timeZone: "UTC",
   }).format(parsed);
+}
+
+function FilterToggle({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="flex cursor-pointer select-none items-center justify-between gap-4 rounded-sm px-2 py-2 text-[12px] text-foreground transition-colors hover:bg-[color-mix(in_oklab,var(--ink)_5%,transparent)]">
+      <span>{label}</span>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="size-3 rounded-[2px] accent-foreground cursor-pointer"
+      />
+    </label>
+  );
 }

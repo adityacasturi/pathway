@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Pencil, Trash2, X } from "lucide-react";
+import { CalendarClock, Check, Pencil, Trash2, X } from "lucide-react";
 import { ApplicationEvent } from "@/types/application";
+import { deadlineStatusLabel, getOaDeadlineState, OaDeadlineState } from "@/lib/config/deadlines";
 import { EVENT_CONFIG, eventLabel } from "@/lib/config/events";
 import { OfferDot } from "@/components/status-badge";
 import { InlineError } from "@/components/ui/inline-error";
@@ -15,6 +16,8 @@ interface Props {
   onDeleteEvent: (event: ApplicationEvent) => Promise<string | null>;
   onUpdateEventDate: (event: ApplicationEvent, newDate: string) => Promise<string | null>;
   onUpdateEventNotes: (event: ApplicationEvent, notes: string) => Promise<string | null>;
+  onUpdateEventDeadline: (event: ApplicationEvent, deadlineDate: string | null) => Promise<string | null>;
+  onUpdateEventDeadlineCompletion: (event: ApplicationEvent, completed: boolean) => Promise<string | null>;
 }
 
 type EditingState = {
@@ -28,8 +31,11 @@ export function EventTimeline({
   onDeleteEvent,
   onUpdateEventDate,
   onUpdateEventNotes,
+  onUpdateEventDeadline,
+  onUpdateEventDeadlineCompletion,
 }: Props) {
   const [editing, setEditing] = useState<EditingState>(null);
+  const [editingDeadline, setEditingDeadline] = useState<{ id: string; deadlineDate: string } | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null);
@@ -49,6 +55,7 @@ export function EventTimeline({
     if (event.id.startsWith("temp-")) return;
     setConfirmDeleteId(null);
     setRowError(null);
+    setEditingDeadline(null);
     setEditing({
       id: event.id,
       date: event.event_date,
@@ -58,7 +65,19 @@ export function EventTimeline({
 
   function cancelEditing() {
     setEditing(null);
+    setEditingDeadline(null);
     setRowError(null);
+  }
+
+  function startDeadlineEditing(event: ApplicationEvent) {
+    if (event.id.startsWith("temp-")) return;
+    setEditing(null);
+    setConfirmDeleteId(null);
+    setRowError(null);
+    setEditingDeadline({
+      id: event.id,
+      deadlineDate: event.deadline_date ?? "",
+    });
   }
 
   async function saveEditing(event: ApplicationEvent) {
@@ -96,7 +115,40 @@ export function EventTimeline({
     } else {
       setConfirmDeleteId(null);
       if (editing?.id === event.id) setEditing(null);
+      if (editingDeadline?.id === event.id) setEditingDeadline(null);
     }
+    setPendingId(null);
+  }
+
+  async function saveDeadline(event: ApplicationEvent) {
+    if (!editingDeadline || editingDeadline.id !== event.id || pendingId) return;
+    setPendingId(event.id);
+    setRowError(null);
+    const error = await onUpdateEventDeadline(event, editingDeadline.deadlineDate || null);
+    if (error) {
+      setRowError({ id: event.id, message: error });
+    } else {
+      setEditingDeadline(null);
+    }
+    setPendingId(null);
+  }
+
+  async function removeDeadline(event: ApplicationEvent) {
+    if (pendingId) return;
+    setPendingId(event.id);
+    setRowError(null);
+    const error = await onUpdateEventDeadline(event, null);
+    if (error) setRowError({ id: event.id, message: error });
+    else setEditingDeadline(null);
+    setPendingId(null);
+  }
+
+  async function toggleDeadlineCompletion(event: ApplicationEvent, completed: boolean) {
+    if (pendingId) return;
+    setPendingId(event.id);
+    setRowError(null);
+    const error = await onUpdateEventDeadlineCompletion(event, completed);
+    if (error) setRowError({ id: event.id, message: error });
     setPendingId(null);
   }
 
@@ -108,6 +160,8 @@ export function EventTimeline({
         const isEditing = editing?.id === event.id;
         const isPending = pendingId === event.id || event.id.startsWith("temp-");
         const canDelete = event.event_type !== "applied" && !event.id.startsWith("temp-");
+        const deadlineState = getOaDeadlineState({ events }, event);
+        const isDeadlineEditing = editingDeadline?.id === event.id;
 
         return (
           <motion.li
@@ -288,6 +342,24 @@ export function EventTimeline({
                           className="mt-3"
                         />
                       )}
+                      {event.event_type === "oa" && (
+                        <DeadlinePanel
+                          event={event}
+                          state={deadlineState}
+                          editing={isDeadlineEditing ? editingDeadline : null}
+                          pending={isPending}
+                          onStartEdit={() => startDeadlineEditing(event)}
+                          onDraftChange={(deadlineDate) =>
+                            setEditingDeadline((current) =>
+                              current?.id === event.id ? { ...current, deadlineDate } : current,
+                            )
+                          }
+                          onSave={() => void saveDeadline(event)}
+                          onCancel={() => setEditingDeadline(null)}
+                          onRemove={() => void removeDeadline(event)}
+                          onToggleComplete={(completed) => void toggleDeadlineCompletion(event, completed)}
+                        />
+                      )}
                       {confirmDeleteId === event.id && (
                         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2">
                           <p className="text-xs text-destructive">Delete this event?</p>
@@ -321,6 +393,171 @@ export function EventTimeline({
         );
       })}
     </ol>
+  );
+}
+
+function DeadlinePanel({
+  event,
+  state,
+  editing,
+  pending,
+  onStartEdit,
+  onDraftChange,
+  onSave,
+  onCancel,
+  onRemove,
+  onToggleComplete,
+}: {
+  event: ApplicationEvent;
+  state: OaDeadlineState | null;
+  editing: { id: string; deadlineDate: string } | null;
+  pending: boolean;
+  onStartEdit: () => void;
+  onDraftChange: (deadlineDate: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  onRemove: () => void;
+  onToggleComplete: (completed: boolean) => void;
+}) {
+  const toneClass =
+    state?.status === "overdue"
+      ? "border-destructive/25 bg-destructive/10 text-destructive"
+      : state?.status === "urgent"
+        ? "border-[color-mix(in_oklab,var(--primary)_28%,transparent)] bg-[color-mix(in_oklab,var(--primary)_9%,transparent)] text-foreground"
+        : "border-border/70 bg-background/70 text-muted-foreground";
+
+  if (editing) {
+    return (
+      <div className="mt-3 rounded-lg border border-border/70 bg-background/70 p-3">
+        <label className="block space-y-1.5">
+          <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Deadline</span>
+          <input
+            type="date"
+            value={editing.deadlineDate}
+            disabled={pending}
+            onChange={(event) => onDraftChange(event.target.value)}
+            className="h-9 w-full rounded-lg border border-border/70 bg-background/80 px-2.5 text-xs text-foreground outline-none transition-colors duration-150 focus:border-foreground/30 disabled:opacity-60"
+          />
+        </label>
+        <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={pending}
+            className="h-8 rounded-lg px-2.5 text-[10px] uppercase tracking-wider text-muted-foreground hover:text-foreground disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={pending}
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-[10px] font-medium uppercase tracking-wider text-primary-foreground transition-colors duration-150 hover:bg-primary/80 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {pending ? <InlineSpinner /> : <Check size={13} />}
+            Save
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!state) {
+    return (
+      <button
+        type="button"
+        onClick={onStartEdit}
+        disabled={pending || event.id.startsWith("temp-")}
+        className="mt-3 inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[10px] uppercase tracking-wider text-muted-foreground transition-colors duration-150 hover:text-foreground disabled:opacity-50"
+        style={{ borderColor: "var(--rule)" }}
+      >
+        <CalendarClock size={13} />
+        Add deadline
+      </button>
+    );
+  }
+
+  const completionNote =
+    state.completionReason === "progressed"
+      ? "Progressed"
+      : state.completionReason === "manual"
+        ? "Completed"
+        : null;
+
+  return (
+    <div className={`mt-2 rounded-md border px-2.5 py-2 ${toneClass}`}>
+      <div className="flex items-center gap-2">
+        <CalendarClock size={14} className="shrink-0 opacity-80" />
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
+          <span className="font-mono text-[10px] font-medium uppercase tracking-[0.12em]">
+            {deadlineStatusLabel(state)}
+          </span>
+          <span className="truncate text-xs opacity-75">
+            {formatDate(state.deadlineDate)}
+          </span>
+          {completionNote && (
+            <span className="text-[10px] uppercase tracking-wider opacity-60">
+              {completionNote}
+            </span>
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-0.5">
+          <DeadlineActionButton
+            label={state.completionReason === "manual" ? "Reopen deadline" : "Mark deadline done"}
+            onClick={() => onToggleComplete(state.completionReason !== "manual")}
+            disabled={pending}
+          >
+            {state.completionReason === "manual" ? <X size={13} /> : <Check size={13} />}
+          </DeadlineActionButton>
+          <DeadlineActionButton
+            label="Edit deadline"
+            onClick={onStartEdit}
+            disabled={pending}
+          >
+            <Pencil size={13} />
+          </DeadlineActionButton>
+          <DeadlineActionButton
+            label="Remove deadline"
+            tone="danger"
+            onClick={onRemove}
+            disabled={pending}
+          >
+            <Trash2 size={13} />
+          </DeadlineActionButton>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DeadlineActionButton({
+  children,
+  label,
+  onClick,
+  disabled,
+  tone = "neutral",
+}: {
+  children: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  tone?: "neutral" | "danger";
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      title={label}
+      className={`inline-flex size-7 items-center justify-center rounded-md transition-colors duration-150 disabled:opacity-50 ${
+        tone === "danger"
+          ? "text-destructive hover:bg-destructive/10"
+          : "hover:bg-foreground/5"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 

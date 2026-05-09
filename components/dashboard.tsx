@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { motion } from "framer-motion";
-import { Archive, Plus } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Plus } from "lucide-react";
 import { Application, ApplicationSeason } from "@/types/application";
 import { STATUSES, STATUS_LABELS } from "@/lib/config/events";
+import { deadlineStatusLabel, getNextActiveOaDeadline } from "@/lib/config/deadlines";
 import { ApplicationsTable } from "@/components/applications-table";
 import { ApplicationDialog, type CreatedApplicationSummary } from "@/components/application-dialog";
 import { ApplicationDetail } from "@/components/application-detail";
@@ -19,7 +20,7 @@ import { normalizeApplicationState } from "@/lib/config/application-state";
 
 type StatusFilter = "all" | (typeof STATUSES)[number];
 type SeasonFilter = "all" | ApplicationSeason;
-type SortKey = "company" | "role" | "status" | "last_activity";
+type SortKey = "company" | "role" | "status" | "last_activity" | "deadline";
 type SortDirection = "asc" | "desc";
 
 const HIDE_REJECTED_STORAGE_KEY = "launchpad:hide-rejected";
@@ -207,6 +208,16 @@ export function Dashboard({ applications: initialApplications }: Props) {
           case "last_activity":
             comparison = a.last_activity_date.localeCompare(b.last_activity_date);
             break;
+          case "deadline": {
+            const aDeadline = getNextActiveOaDeadline(a);
+            const bDeadline = getNextActiveOaDeadline(b);
+            if (aDeadline && !bDeadline) comparison = -1;
+            else if (!aDeadline && bDeadline) comparison = 1;
+            else if (aDeadline && bDeadline) {
+              comparison = aDeadline.deadlineDate.localeCompare(bDeadline.deadlineDate);
+            }
+            break;
+          }
         }
         return activeSortDirection === "asc" ? comparison : -comparison;
       });
@@ -245,6 +256,11 @@ export function Dashboard({ applications: initialApplications }: Props) {
   }, [applications]);
 
   function handleSortChange(nextKey: SortKey) {
+    if (nextKey === "deadline") {
+      setSortKey((current) => (current === "deadline" ? null : "deadline"));
+      setSortDirection("asc");
+      return;
+    }
     if (sortKey !== nextKey) {
       setSortKey(nextKey);
       setSortDirection("asc");
@@ -303,18 +319,27 @@ export function Dashboard({ applications: initialApplications }: Props) {
         </motion.header>
 
         <motion.div
-          className={`relative mb-10 ${searchFocused ? "z-[200]" : "z-20"}`}
+          className={`relative mb-6 ${searchFocused ? "z-[200]" : "z-20"}`}
           variants={motionVariants.fadeIn}
           initial="hidden"
           animate="visible"
         >
           <span className="rule mb-0" />
-          <div className="grid grid-cols-2 md:grid-cols-5 divide-x" style={{ borderColor: "var(--rule)" }}>
+          <motion.div
+            variants={motionVariants.list}
+            initial="hidden"
+            animate="visible"
+            className="grid grid-cols-2 md:grid-cols-5 divide-x"
+            style={{ borderColor: "var(--rule)" }}
+          >
             {kpiCards.map(({ status, label, count, active }) => (
-              <button
+              <motion.button
                 key={status}
                 type="button"
                 onClick={() => setStatusFilter((prev) => (prev === status ? "all" : status))}
+                variants={motionVariants.row}
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.99 }}
                 className={`group relative p-6 text-left transition-colors duration-200 ${
                   active
                     ? "bg-[color-mix(in_oklab,var(--primary)_8%,transparent)]"
@@ -326,24 +351,30 @@ export function Dashboard({ applications: initialApplications }: Props) {
                   <StatusDot status={status} size={6} />
                   <span className="figure-label">{label}</span>
                 </div>
-                <motion.div
-                  key={`${status}-${count}`}
-                  initial={{ opacity: 0.5, y: 3 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.22 }}
-                  className="figure-number"
-                >
-                  {count}
-                </motion.div>
+                <div className="figure-number relative overflow-hidden">
+                  <AnimatePresence mode="popLayout" initial={false}>
+                    <motion.span
+                      key={`${status}-${count}`}
+                      variants={motionVariants.step}
+                      initial="hidden"
+                      animate="visible"
+                      exit="exit"
+                      className="inline-block"
+                    >
+                      {count}
+                    </motion.span>
+                  </AnimatePresence>
+                </div>
                 {active && (
-                  <span
+                  <motion.span
+                    layoutId="status-filter-underline"
                     className="absolute left-0 bottom-0 h-[2px] w-full"
                     style={{ background: "var(--primary)" }}
                   />
                 )}
-              </button>
+              </motion.button>
             ))}
-          </div>
+          </motion.div>
           <span className="rule" />
 
           <div className="mt-6 flex flex-col gap-3 md:flex-row md:items-center">
@@ -366,30 +397,23 @@ export function Dashboard({ applications: initialApplications }: Props) {
             </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-baseline gap-x-5 gap-y-2 label-meta">
-            <span>
-              <span className="text-foreground tabular">{filtered.length}</span> matching
-            </span>
-            <span className="opacity-50">·</span>
-            <span>
-              <span className="text-foreground tabular">{applications.length - archivedIds.size}</span> active
-            </span>
-            <span className="opacity-50">·</span>
-            <span className="inline-flex items-center gap-1.5">
-              <Archive size={11} strokeWidth={1.75} />
-              <span className="text-foreground tabular">{archivedIds.size}</span> archived
-            </span>
-          </div>
         </motion.div>
 
         <ApplicationsTable
           applications={sorted}
+          matchingCount={filtered.length}
+          activeCount={applications.length - archivedIds.size}
+          archivedCount={archivedIds.size}
           hasActiveFilters={Boolean(query || statusFilter !== "all" || seasonFilter !== "all")}
           searchQuery={query}
           onOpen={setDetail}
           sortKey={sortKey}
           sortDirection={sortDirection}
           onSortChange={handleSortChange}
+          getDeadlineLabel={(application) => {
+            const deadline = getNextActiveOaDeadline(application);
+            return deadline ? deadlineStatusLabel(deadline) : null;
+          }}
           hideRejected={hideRejected}
           onHideRejectedChange={setHideRejected}
           hideArchived={hideArchived}

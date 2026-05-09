@@ -110,6 +110,7 @@ export async function createEvent(
   eventType: EventType,
   eventDate: string,
   notes?: string,
+  deadlineDate?: string | null,
 ) {
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
@@ -119,8 +120,15 @@ export async function createEvent(
   }
   if (!isEventType(eventType)) return { error: "Invalid event type." };
   if (!isIsoDate(eventDate)) return { error: "Invalid event date." };
+  if (deadlineDate != null && deadlineDate !== "" && !isIsoDate(deadlineDate)) {
+    return { error: "Invalid deadline date." };
+  }
+  if (eventType !== "oa" && deadlineDate) {
+    return { error: "Deadlines can only be added to OA events." };
+  }
   if (notes !== undefined && typeof notes !== "string") return { error: "Invalid notes." };
   const cleanedNotes = notes?.trim() ?? "";
+  const cleanedDeadlineDate = eventType === "oa" && deadlineDate ? deadlineDate : null;
   if (cleanedNotes.length > MAX_NOTES_LENGTH) return { error: "Notes are too long." };
   if (!(await ensureOwnsApplication(supabase, user.id, applicationId))) {
     return { error: "Application not found" };
@@ -147,6 +155,7 @@ export async function createEvent(
       event_date: eventDate,
       notes: cleanedNotes || null,
       round_number: roundNumber,
+      deadline_date: cleanedDeadlineDate,
     })
     .select("*")
     .single();
@@ -171,6 +180,68 @@ export async function createEvent(
 
   revalidateApplicationSurfaces();
   return { event: insertedEvent as ApplicationEvent, status: newStatus as Status };
+}
+
+export async function updateEventDeadline(
+  eventId: string,
+  applicationId: string,
+  deadlineDate: string | null,
+) {
+  const { supabase, user } = await getAuthenticatedUser();
+  if (!user) return { error: "Not authenticated" };
+  if (!isUuid(applicationId)) return { error: "Invalid application id." };
+  if (deadlineDate !== null && !isIsoDate(deadlineDate)) {
+    return { error: "Invalid deadline date." };
+  }
+
+  const event = await resolveOwnedEvent(supabase, user.id, eventId, applicationId);
+  if (event && "error" in event) return event;
+  if (!event) return { error: "Event not found" };
+  if (event.event_type !== "oa") return { error: "Deadlines can only be added to OA events." };
+
+  const patch = deadlineDate === null
+    ? { deadline_date: null, deadline_completed_at: null }
+    : { deadline_date: deadlineDate };
+
+  const { data: updatedEvent, error } = await supabase
+    .from("application_events")
+    .update(patch)
+    .eq("id", event.id)
+    .eq("user_id", user.id)
+    .select("*")
+    .single();
+
+  if (error) return { error: error.message };
+  revalidateApplicationSurfaces();
+  return { event: updatedEvent as ApplicationEvent };
+}
+
+export async function updateEventDeadlineCompletion(
+  eventId: string,
+  applicationId: string,
+  completed: boolean,
+) {
+  const { supabase, user } = await getAuthenticatedUser();
+  if (!user) return { error: "Not authenticated" };
+  if (!isUuid(applicationId)) return { error: "Invalid application id." };
+  if (typeof completed !== "boolean") return { error: "Invalid deadline state." };
+
+  const event = await resolveOwnedEvent(supabase, user.id, eventId, applicationId);
+  if (event && "error" in event) return event;
+  if (!event) return { error: "Event not found" };
+  if (event.event_type !== "oa") return { error: "Deadlines can only be completed for OA events." };
+
+  const { data: updatedEvent, error } = await supabase
+    .from("application_events")
+    .update({ deadline_completed_at: completed ? new Date().toISOString() : null })
+    .eq("id", event.id)
+    .eq("user_id", user.id)
+    .select("*")
+    .single();
+
+  if (error) return { error: error.message };
+  revalidateApplicationSurfaces();
+  return { event: updatedEvent as ApplicationEvent };
 }
 
 export async function updateEventDate(eventId: string, applicationId: string, newDate: string) {

@@ -1,6 +1,10 @@
+"use client";
+
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { ArrowRight, ChartNoAxesCombined, Clock3, Percent, TimerReset, Trophy } from "lucide-react";
 import { STATUS_LABELS } from "@/lib/config/events";
+import { motionVariants } from "@/lib/ui/motion";
 import type { Application, EventType, Status } from "@/types/application";
 
 type FlowNode = {
@@ -825,7 +829,12 @@ export function StatsPage({ applications }: Props) {
   return (
     <div className="page-shell min-h-screen bg-background">
       <main className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 pt-24 sm:pt-28 lg:pt-32 pb-24">
-        <header className="masthead mb-12">
+        <motion.header
+          className="masthead mb-12"
+          variants={motionVariants.riseIn}
+          initial="hidden"
+          animate="visible"
+        >
           <div className="flex items-baseline justify-between pb-4">
             <span className="label-micro">Launchpad / Stats</span>
             <span className="label-meta hidden sm:inline">{active.length} active / {archivedCount} archived</span>
@@ -846,52 +855,58 @@ export function StatsPage({ applications }: Props) {
               <ArrowRight size={14} strokeWidth={1.75} className="transition-transform group-hover:translate-x-0.5" />
             </Link>
           </div>
-        </header>
+        </motion.header>
 
-        <KpiGrid
-          total={active.length}
-          archivedCount={archivedCount}
-          stageCounts={stageCounts}
-          positiveSignals={positiveSignals}
-          avgDaysToOa={avgDaysToOa}
-          avgDaysToInterview={avgDaysToInterview}
-          oaSampleSize={oaSampleSize}
-          interviewSampleSize={interviewSampleSize}
-        />
-
-        <section className="mb-12">
-          <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <span className="label-micro">01 / Flow</span>
-              <h2 className="mt-3 display-serif text-[30px] text-foreground">Search Sankey</h2>
-            </div>
-            <span className="label-meta">{active.length} active applications</span>
-          </div>
-          <SankeyDiagram nodes={sankey.nodes} links={sankey.links} total={active.length} />
-        </section>
-
-        <div className="grid gap-5 lg:grid-cols-[1.12fr_0.88fr]">
-          <MonthlyApplicationsChart months={monthlyCounts} />
-          <StageConversion stageCounts={stageCounts} total={active.length} />
-        </div>
-
-        <div className="mt-5">
-          <SearchSnapshot
+        <motion.div
+          variants={motionVariants.fadeIn}
+          initial="hidden"
+          animate="visible"
+        >
+          <KpiGrid
             total={active.length}
-            noResponseCount={noResponseCount}
-            inProcessCount={inProcessCount}
-            avgDaysToFirstProgress={avgDaysToFirstProgress}
-            avgDaysToOffer={avgDaysToOffer}
-            avgDaysToRejection={avgDaysToRejection}
-            avgInterviewRounds={avgInterviewRounds}
-            maxInterviewRounds={maxInterviewRounds}
-            avgApplicationsPerMonth={avgApplicationsPerMonth}
-            peakMonth={peakMonth}
-            firstProgressSampleSize={firstProgressSampleSize}
-            offerSampleSize={offerSampleSize}
-            rejectionSampleSize={rejectionSampleSize}
+            archivedCount={archivedCount}
+            stageCounts={stageCounts}
+            positiveSignals={positiveSignals}
+            avgDaysToOa={avgDaysToOa}
+            avgDaysToInterview={avgDaysToInterview}
+            oaSampleSize={oaSampleSize}
+            interviewSampleSize={interviewSampleSize}
           />
-        </div>
+
+          <section className="mb-12">
+            <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <span className="label-micro">01 / Flow</span>
+                <h2 className="mt-3 display-serif text-[30px] text-foreground">Search Sankey</h2>
+              </div>
+              <span className="label-meta">{active.length} active applications</span>
+            </div>
+            <SankeyDiagram nodes={sankey.nodes} links={sankey.links} total={active.length} />
+          </section>
+
+          <div className="grid gap-5 lg:grid-cols-[1.12fr_0.88fr]">
+            <MonthlyApplicationsChart months={monthlyCounts} />
+            <StageConversion stageCounts={stageCounts} total={active.length} />
+          </div>
+
+          <div className="mt-5">
+            <SearchSnapshot
+              total={active.length}
+              noResponseCount={noResponseCount}
+              inProcessCount={inProcessCount}
+              avgDaysToFirstProgress={avgDaysToFirstProgress}
+              avgDaysToOffer={avgDaysToOffer}
+              avgDaysToRejection={avgDaysToRejection}
+              avgInterviewRounds={avgInterviewRounds}
+              maxInterviewRounds={maxInterviewRounds}
+              avgApplicationsPerMonth={avgApplicationsPerMonth}
+              peakMonth={peakMonth}
+              firstProgressSampleSize={firstProgressSampleSize}
+              offerSampleSize={offerSampleSize}
+              rejectionSampleSize={rejectionSampleSize}
+            />
+          </div>
+        </motion.div>
       </main>
     </div>
   );

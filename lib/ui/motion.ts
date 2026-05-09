@@ -43,4 +43,23 @@ export const motionVariants = {
     visible: { opacity: 1, y: 0, scale: 1, transition: motionTransitions.lift },
     exit: { opacity: 0, y: 6, scale: 0.99, transition: { duration: motionDurations.fast } },
   },
+  list: {
+    hidden: {},
+    visible: {},
+  },
+  row: {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { duration: motionDurations.fast, ease: motionEasing.standard } },
+    exit: { opacity: 0, transition: { duration: motionDurations.instant, ease: motionEasing.standard } },
+  },
+  menu: {
+    hidden: { opacity: 0, y: -4, scale: 0.98 },
+    visible: { opacity: 1, y: 0, scale: 1, transition: { duration: motionDurations.fast, ease: motionEasing.smooth } },
+    exit: { opacity: 0, y: -4, scale: 0.98, transition: { duration: motionDurations.instant, ease: motionEasing.standard } },
+  },
+  step: {
+    hidden: { opacity: 0, y: 5 },
+    visible: { opacity: 1, y: 0, transition: { duration: motionDurations.fast, ease: motionEasing.smooth } },
+    exit: { opacity: 0, y: -5, transition: { duration: motionDurations.instant, ease: motionEasing.standard } },
+  },
 } as const;

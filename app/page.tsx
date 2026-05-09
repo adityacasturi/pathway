@@ -4,8 +4,9 @@ import { fetchFeed } from "@/lib/feed/source";
 import { normalizeUrl } from "@/lib/url";
 import { Home } from "@/components/home";
 import { STATUSES } from "@/lib/config/events";
+import { normalizeApplicationState } from "@/lib/config/application-state";
 import { assertSupabaseOk } from "@/lib/supabase/errors";
-import type { Status, ApplicationEvent } from "@/types/application";
+import type { Application, Status } from "@/types/application";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,7 @@ export default async function HomePage() {
     fetchFeed(),
     supabase
       .from("applications")
-      .select("id, posting_url, archived_at, application_events(event_type)"),
+      .select("*, application_events(*)"),
     supabase.from("feed_interactions").select("posting_id, kind, created_at"),
   ]);
 
@@ -37,12 +38,19 @@ export default async function HomePage() {
     STATUSES.map((s) => [s, 0]),
   ) as Record<Status, number>;
 
-  const activeApplications = (appsRes.data ?? []).filter((app) => !app.archived_at);
+  const activeApplications: Application[] = (appsRes.data ?? [])
+    .filter((app) => !app.archived_at)
+    .map((row) =>
+      normalizeApplicationState({
+        ...row,
+        events: row.application_events ?? [],
+        last_activity_date: row.created_at.slice(0, 10),
+      }),
+    );
 
   for (const app of activeApplications) {
     const seen = new Set<Status>();
-    const events = (app.application_events ?? []) as Pick<ApplicationEvent, "event_type">[];
-    for (const ev of events) {
+    for (const ev of app.events) {
       if ((STATUSES as readonly string[]).includes(ev.event_type)) {
         seen.add(ev.event_type as Status);
       }
@@ -87,6 +95,7 @@ export default async function HomePage() {
     <Home
       statusCounts={statusCounts}
       totalApplications={totalApplications}
+      applications={activeApplications}
       newPostings={newPostings}
       dismissedIds={dismissedIds}
       savedIds={Array.from(savedAtById.keys())}

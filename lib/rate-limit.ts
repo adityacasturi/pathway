@@ -1,6 +1,15 @@
 import { headers } from "next/headers";
 
-const buckets = new Map<string, { count: number; resetAt: number }>();
+type Bucket = { count: number; resetAt: number };
+
+const RATE_LIMIT_BUCKETS_KEY = Symbol.for("internship-tracker.rate-limit-buckets");
+const globalBuckets = globalThis as typeof globalThis & {
+  [RATE_LIMIT_BUCKETS_KEY]?: Map<string, Bucket>;
+};
+
+const buckets = globalBuckets[RATE_LIMIT_BUCKETS_KEY] ?? new Map<string, Bucket>();
+globalBuckets[RATE_LIMIT_BUCKETS_KEY] = buckets;
+const MAX_BUCKETS = 5_000;
 
 type RateLimitResult = {
   ok: boolean;
@@ -10,6 +19,16 @@ type RateLimitResult = {
 function consumeBucket(key: string, limit: number, windowMs: number): RateLimitResult {
   const now = Date.now();
   const current = buckets.get(key);
+
+  if (buckets.size > MAX_BUCKETS) {
+    for (const [bucketKey, bucket] of buckets) {
+      if (bucket.resetAt <= now) buckets.delete(bucketKey);
+    }
+    if (buckets.size > MAX_BUCKETS) {
+      const oldestKey = buckets.keys().next().value as string | undefined;
+      if (oldestKey) buckets.delete(oldestKey);
+    }
+  }
 
   if (!current || current.resetAt <= now) {
     buckets.set(key, { count: 1, resetAt: now + windowMs });

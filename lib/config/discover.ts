@@ -1,6 +1,6 @@
 const MS_PER_SECOND = 1000;
 
-export const MAX_DISCOVER_HISTORY_MONTHS = 2;
+const MAX_DISCOVER_HISTORY_MONTHS = 2;
 
 export interface DiscoverCutoff {
   cutoffDate: string;
@@ -36,7 +36,7 @@ function parseIsoDate(raw: string): Date | null {
   return toIsoDate(parsed) === raw ? parsed : null;
 }
 
-export function getDiscoverCutoffBounds(now = new Date()) {
+function getDiscoverCutoffBounds(now = new Date()) {
   const todayDate = startOfUtcDay(now);
   const oldestDate = subtractUtcMonths(todayDate, MAX_DISCOVER_HISTORY_MONTHS);
 

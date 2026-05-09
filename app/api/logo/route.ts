@@ -9,6 +9,8 @@ const FETCH_TIMEOUT_MS = 2500;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_REQUESTS = 120;
 
+export const dynamic = "force-dynamic";
+
 function cleanCompany(raw: string | null): string | null {
   const value = (raw ?? "").trim().toLowerCase();
   if (!value || value.length > 120) return null;
@@ -51,7 +53,7 @@ export async function GET(request: NextRequest) {
       status: 404,
       headers: {
         "Cache-Control": LOGO_DEV_TOKEN
-          ? `public, max-age=${NEGATIVE_CACHE_SECONDS}, stale-while-revalidate=${CACHE_SECONDS}`
+          ? `private, max-age=${NEGATIVE_CACHE_SECONDS}`
           : "no-store",
       },
     });
@@ -68,7 +70,7 @@ export async function GET(request: NextRequest) {
       return new Response(null, {
         status: 404,
         headers: {
-          "Cache-Control": `public, max-age=${NEGATIVE_CACHE_SECONDS}, stale-while-revalidate=${CACHE_SECONDS}`,
+          "Cache-Control": `private, max-age=${NEGATIVE_CACHE_SECONDS}`,
         },
       });
     }
@@ -77,14 +79,14 @@ export async function GET(request: NextRequest) {
       status: 200,
       headers: {
         "Content-Type": "image/png",
-        "Cache-Control": `public, max-age=${CACHE_SECONDS}, immutable`,
+        "Cache-Control": `private, max-age=${CACHE_SECONDS}, immutable`,
       },
     });
   } catch {
     return new Response(null, {
       status: 404,
       headers: {
-        "Cache-Control": `public, max-age=${NEGATIVE_CACHE_SECONDS}, stale-while-revalidate=${CACHE_SECONDS}`,
+        "Cache-Control": `private, max-age=${NEGATIVE_CACHE_SECONDS}`,
       },
     });
   }
