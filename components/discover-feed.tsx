@@ -381,6 +381,7 @@ export function DiscoverFeed({
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
+    if (!preferencesReady) return;
     if (visibleCount >= filtered.length) return;
     const el = sentinelRef.current;
     if (!el) return;
@@ -396,7 +397,7 @@ export function DiscoverFeed({
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [visibleCount, filtered.length]);
+  }, [preferencesReady, visibleCount, filtered.length]);
 
   const visible = useMemo(
     () => filtered.slice(0, visibleCount),
