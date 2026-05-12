@@ -11,8 +11,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InlineError } from "@/components/ui/inline-error";
 import { Label } from "@/components/ui/label";
-import { motionVariants } from "@/lib/ui/motion";
+import { motionVariants, transitions } from "@/lib/ui/motion";
 import { APPLICATION_SEASONS, ApplicationEvent, ApplicationSeason } from "@/types/application";
+import { validateExternalHttpUrl } from "@/lib/url";
 
 interface InitialValues {
   company?: string;
@@ -45,7 +46,7 @@ export function ApplicationDialog({ open, onClose, initialValues, onCreated }: P
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent
-        className="max-w-md gap-0 rounded-md border bg-popover p-8"
+        className="max-w-md gap-0 overflow-hidden rounded-lg border bg-popover p-8"
         style={{ borderColor: "var(--rule-strong)" }}
       >
         <DialogHeader className="mb-7">
@@ -89,6 +90,16 @@ function ApplicationDialogForm({
   // alongside the rest of the form as component state and is submitted via a
   // hidden input. Empty string = no season set.
   const [season, setSeason] = useState<"" | ApplicationSeason>(initialValues?.season ?? "");
+  const canSubmit =
+    state !== "pending" &&
+    company.trim().length > 0 &&
+    role.trim().length > 0 &&
+    dateApplied.length > 0;
+
+  function clearErrorOnEdit() {
+    if (state === "error") setState("idle");
+    if (error) setError(null);
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -106,11 +117,17 @@ function ApplicationDialogForm({
       setState("error");
       return;
     }
+    const validatedPostingUrl = validateExternalHttpUrl(postingUrl);
+    if (validatedPostingUrl.error) {
+      setError(validatedPostingUrl.error);
+      setState("error");
+      return;
+    }
 
     const formData = new FormData();
     formData.set("company", company);
     formData.set("role", role);
-    formData.set("posting_url", postingUrl);
+    formData.set("posting_url", validatedPostingUrl.url ?? "");
     formData.set("location", location);
     formData.set("season", season);
     formData.set("date_applied", dateApplied);
@@ -128,7 +145,7 @@ function ApplicationDialogForm({
           id: result.id,
           company: trimmedCompany,
           role: trimmedRole,
-          postingUrl: postingUrl.trim() || null,
+          postingUrl: validatedPostingUrl.url,
           location: location.trim() || null,
           season: season || null,
           dateApplied,
@@ -142,68 +159,99 @@ function ApplicationDialogForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="space-y-2">
-            <Label className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium">Company</Label>
+    <motion.form
+      layout
+      onSubmit={handleSubmit}
+      className="space-y-5"
+      transition={transitions.layout}
+    >
+          <motion.div layout className="space-y-2" transition={transitions.layout}>
+            <Label htmlFor="application-company" className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium">
+              Company
+            </Label>
             <Input
-                name="company"
+              id="application-company"
+              name="company"
               required
               placeholder="Acme Corp"
               value={company}
-              onChange={(event) => setCompany(event.target.value)}
-              className="h-11 rounded-xl text-sm bg-background/80 border-border/70 placeholder:text-muted-foreground/40"
+              onChange={(event) => {
+                clearErrorOnEdit();
+                setCompany(event.target.value);
+              }}
+              className="h-11 rounded-lg text-sm bg-background/80 border-border/70 placeholder:text-muted-foreground/40"
             />
-          </div>
+          </motion.div>
 
-          <div className="space-y-2">
-            <Label className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium">Role</Label>
+          <motion.div layout className="space-y-2" transition={transitions.layout}>
+            <Label htmlFor="application-role" className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium">
+              Role
+            </Label>
             <Input
+              id="application-role"
               name="role"
               required
               placeholder="Rocket Skate Engineer Intern"
               value={role}
-              onChange={(event) => setRole(event.target.value)}
-              className="h-11 rounded-xl text-sm bg-background/80 border-border/70 placeholder:text-muted-foreground/40"
+              onChange={(event) => {
+                clearErrorOnEdit();
+                setRole(event.target.value);
+              }}
+              className="h-11 rounded-lg text-sm bg-background/80 border-border/70 placeholder:text-muted-foreground/40"
             />
-          </div>
+          </motion.div>
 
-          <div className="space-y-2">
-            <Label className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium">Applied date</Label>
+          <motion.div layout className="space-y-2" transition={transitions.layout}>
+            <Label htmlFor="application-date-applied" className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium">
+              Applied date
+            </Label>
             <Input
+              id="application-date-applied"
               name="date_applied"
               type="date"
               required
               value={dateApplied}
-              onChange={(event) => setDateApplied(event.target.value)}
-              className="h-11 rounded-xl text-sm bg-background/80 border-border/70"
+              onChange={(event) => {
+                clearErrorOnEdit();
+                setDateApplied(event.target.value);
+              }}
+              className="h-11 rounded-lg text-sm bg-background/80 border-border/70"
             />
-          </div>
+          </motion.div>
 
-          <div className="space-y-2">
-            <Label className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium">
+          <motion.div layout className="space-y-2" transition={transitions.layout}>
+            <Label htmlFor="application-posting-url" className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium">
               Posting URL <span className="normal-case tracking-normal text-muted-foreground/40">(optional)</span>
             </Label>
             <Input
+              id="application-posting-url"
               name="posting_url"
               type="url"
               placeholder="https://acme.com/careers/rocket-skate-intern"
               value={postingUrl}
-              onChange={(event) => setPostingUrl(event.target.value)}
-              className="h-11 rounded-xl text-sm bg-background/80 border-border/70 placeholder:text-muted-foreground/40"
+              onChange={(event) => {
+                clearErrorOnEdit();
+                setPostingUrl(event.target.value);
+              }}
+              className="h-11 rounded-lg text-sm bg-background/80 border-border/70 placeholder:text-muted-foreground/40"
             />
-          </div>
+          </motion.div>
 
-          <div className="grid grid-cols-[1fr_auto] gap-4">
+          <motion.div layout className="grid grid-cols-[1fr_auto] gap-4" transition={transitions.layout}>
             <div className="space-y-2 min-w-0">
-              <Label className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium">
+              <Label htmlFor="application-location" className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium">
                 Location <span className="normal-case tracking-normal text-muted-foreground/40">(optional)</span>
               </Label>
               <Input
+                id="application-location"
                 name="location"
                 placeholder="New York · Seattle"
                 value={location}
-                onChange={(event) => setLocation(event.target.value)}
-                className="h-11 rounded-xl text-sm bg-background/80 border-border/70 placeholder:text-muted-foreground/40"
+                onChange={(event) => {
+                  clearErrorOnEdit();
+                  setLocation(event.target.value);
+                }}
+                className="h-11 rounded-lg text-sm bg-background/80 border-border/70 placeholder:text-muted-foreground/40"
               />
             </div>
             <div className="space-y-2">
@@ -214,38 +262,50 @@ function ApplicationDialogForm({
                   the active choice clears it so there's no "reset" button. */}
               <input type="hidden" name="season" value={season} />
               <div
-                className="inline-flex h-11 rounded-md border bg-background"
+                className="inline-flex h-11 rounded-md border bg-background p-1"
                 style={{ borderColor: "var(--rule)" }}
               >
-                {(["", ...APPLICATION_SEASONS] as const).map((option, idx) => {
+                {(["", ...APPLICATION_SEASONS] as const).map((option) => {
                   const active = season === option;
                   const label = option === "" ? "—" : option;
                   return (
                     <button
                       key={option || "none"}
                       type="button"
-                      onClick={() => setSeason(option)}
+                      onClick={() => {
+                        clearErrorOnEdit();
+                        setSeason(option);
+                      }}
                       aria-pressed={active}
-                      className={`px-3.5 font-mono text-[10px] uppercase tracking-[0.14em] transition-colors duration-150 ${
-                        idx > 0 ? "border-l" : ""
-                      } ${
-                        active
-                          ? "bg-[color-mix(in_oklab,var(--ink)_7%,transparent)] text-foreground"
-                          : "text-muted-foreground hover:text-foreground"
+                      className={`relative rounded-sm px-3 font-mono text-[10px] uppercase tracking-[0.14em] transition-colors duration-200 ${
+                        active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
                       }`}
-                      style={idx > 0 ? { borderColor: "var(--rule)" } : undefined}
                     >
-                      {label}
+                      {active && (
+                        <motion.span
+                          layoutId="application-season-active"
+                          className="absolute inset-0 rounded-sm bg-[color-mix(in_oklab,var(--ink)_7%,transparent)]"
+                          transition={transitions.layout}
+                        />
+                      )}
+                      <span className="relative">{label}</span>
                     </button>
                   );
                 })}
               </div>
             </div>
-          </div>
+          </motion.div>
 
           <AnimatePresence mode="wait">
             {error && (
-              <motion.div variants={motionVariants.fadeIn} initial="hidden" animate="visible" exit="hidden">
+              <motion.div
+                layout
+                variants={motionVariants.gentleScale}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                transition={transitions.layout}
+              >
                 <InlineError message={error} />
               </motion.div>
             )}
@@ -256,6 +316,7 @@ function ApplicationDialogForm({
               type="button"
               variant="ghost"
               onClick={onClose}
+              disabled={state === "pending"}
               className="h-9 px-4 text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors duration-200"
             >
               Cancel
@@ -267,9 +328,10 @@ function ApplicationDialogForm({
               pendingLabel="Saving"
               successLabel="Saved"
               errorLabel="Try again"
+              disabled={!canSubmit}
               className="h-9 px-5 text-xs uppercase tracking-wider font-medium bg-primary text-primary-foreground hover:bg-primary/80 transition-colors duration-200"
             />
           </div>
-    </form>
+    </motion.form>
   );
 }

@@ -5,11 +5,25 @@ import { normalizeUrl } from "@/lib/url";
 import { Home } from "@/components/home";
 import { normalizeApplicationState } from "@/lib/config/application-state";
 import { assertSupabaseOk } from "@/lib/supabase/errors";
+import type { FeedPosting } from "@/lib/feed/source";
 import type { Application } from "@/types/application";
 
 export const dynamic = "force-dynamic";
 
 const NEW_WINDOW_SECONDS = 24 * 60 * 60;
+
+function hasInteraction(ids: Set<string>, posting: FeedPosting): boolean {
+  return posting.interactionIds.some((id) => ids.has(id));
+}
+
+function interactionDate(savedAtById: Map<string, string>, posting: FeedPosting): string {
+  let latest = "";
+  for (const id of posting.interactionIds) {
+    const savedAt = savedAtById.get(id);
+    if (savedAt && savedAt > latest) latest = savedAt;
+  }
+  return latest;
+}
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -48,6 +62,7 @@ export default async function HomePage() {
   }
   const dismissedSet = new Set(dismissedIds);
   const savedAtById = new Map(savedRows.map((row) => [row.posting_id, row.created_at]));
+  const savedIdSet = new Set(savedAtById.keys());
 
   const trackedUrls = new Set<string>();
   for (const row of activeApplications) {
@@ -61,13 +76,13 @@ export default async function HomePage() {
   // eslint-disable-next-line react-hooks/purity
   const cutoff = Math.floor(Date.now() / 1000) - NEW_WINDOW_SECONDS;
   const newPostings = postings
-    .filter((p) => p.datePosted >= cutoff && !dismissedSet.has(p.id))
+    .filter((p) => p.datePosted >= cutoff && !hasInteraction(dismissedSet, p))
     .sort((a, b) => b.datePosted - a.datePosted);
   const savedPostings = postings
-    .filter((p) => savedAtById.has(p.id) && !dismissedSet.has(p.id))
+    .filter((p) => hasInteraction(savedIdSet, p) && !hasInteraction(dismissedSet, p))
     .sort((a, b) => {
-      const aSavedAt = savedAtById.get(a.id) ?? "";
-      const bSavedAt = savedAtById.get(b.id) ?? "";
+      const aSavedAt = interactionDate(savedAtById, a);
+      const bSavedAt = interactionDate(savedAtById, b);
       return bSavedAt.localeCompare(aSavedAt);
     });
 

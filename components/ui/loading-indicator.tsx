@@ -15,5 +15,5 @@ export function InlineSpinner({ className }: { className?: string }) {
 }
 
 export function SkeletonBlock({ className }: { className?: string }) {
-  return <div className={cn("rounded-md bg-muted/80 animate-pulse", className)} aria-hidden />;
+  return <div className={cn("skeleton-sheen rounded-md", className)} aria-hidden />;
 }

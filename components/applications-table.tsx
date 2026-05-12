@@ -14,7 +14,7 @@ import { AsyncButton } from "@/components/ui/async-button";
 import { Button } from "@/components/ui/button";
 import { InlineError } from "@/components/ui/inline-error";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { motionVariants } from "@/lib/ui/motion";
+import { motionVariants, transitions } from "@/lib/ui/motion";
 
 type SortKey = "company" | "role" | "status" | "last_activity" | "deadline";
 type SortDirection = "asc" | "desc";
@@ -87,7 +87,12 @@ function SortToolbar({
   }, [filtersOpen]);
 
   return (
-    <div className="flex flex-col gap-3 border-y py-3 md:flex-row md:items-center md:justify-between" style={{ borderColor: "var(--rule)" }}>
+    <motion.div
+      layout
+      className="flex flex-col gap-3 border-y py-3 md:flex-row md:items-center md:justify-between"
+      style={{ borderColor: "var(--rule)" }}
+      transition={transitions.layout}
+    >
       <div className="flex flex-wrap items-center gap-2" aria-label="Application counts">
         <SummaryPill value={matchingCount} label="Matching" />
         <SummaryPill value={activeCount} label="Active" />
@@ -103,15 +108,20 @@ function SortToolbar({
                 key={opt.key}
                 type="button"
                 onClick={() => onSortChange(opt.key)}
-                className={`inline-flex h-7 items-center gap-1 rounded-sm px-2.5 text-[12px] transition-colors duration-150 ${
-                  active
-                    ? "bg-[color-mix(in_oklab,var(--ink)_7%,transparent)] text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
+                className={`relative inline-flex h-7 items-center gap-1 rounded-sm px-2.5 text-[12px] transition-colors duration-200 ${
+                  active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {opt.label}
                 {active && (
-                  <span className="font-mono text-[10px] leading-none opacity-70">
+                  <motion.span
+                    layoutId="application-sort-active"
+                    className="absolute inset-0 rounded-sm bg-[color-mix(in_oklab,var(--ink)_7%,transparent)]"
+                    transition={transitions.layout}
+                  />
+                )}
+                <span className="relative">{opt.label}</span>
+                {active && (
+                  <span className="relative font-mono text-[10px] leading-none opacity-70">
                     {sortDirection === "asc" ? "↑" : "↓"}
                   </span>
                 )}
@@ -137,30 +147,30 @@ function SortToolbar({
           </button>
           <AnimatePresence>
             {filtersOpen && (
-            <motion.div
-              variants={motionVariants.menu}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              className="absolute right-0 top-[calc(100%+8px)] z-[90] w-56 rounded-md border bg-popover p-2 shadow-[0_18px_40px_-28px_color-mix(in_oklab,var(--ink)_45%,transparent)]"
-              style={{ borderColor: "var(--rule-strong)" }}
-            >
-              <FilterMenuToggle
-                label="Hide rejected"
-                checked={hideRejected}
-                onChange={onHideRejectedChange}
-              />
-              <FilterMenuToggle
-                label="Hide archived"
-                checked={hideArchived}
-                onChange={onHideArchivedChange}
-              />
-            </motion.div>
+              <motion.div
+                variants={motionVariants.menu}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="absolute right-0 top-[calc(100%+8px)] z-[90] w-56 origin-top-right rounded-md border bg-popover p-2 shadow-[0_18px_40px_-28px_color-mix(in_oklab,var(--ink)_45%,transparent)]"
+                style={{ borderColor: "var(--rule-strong)" }}
+              >
+                <FilterMenuToggle
+                  label="Hide rejected"
+                  checked={hideRejected}
+                  onChange={onHideRejectedChange}
+                />
+                <FilterMenuToggle
+                  label="Hide archived"
+                  checked={hideArchived}
+                  onChange={onHideArchivedChange}
+                />
+              </motion.div>
             )}
           </AnimatePresence>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -174,7 +184,12 @@ function SummaryPill({
   icon?: ReactNode;
 }) {
   return (
-    <motion.span layout className="inline-flex h-8 items-center gap-2 rounded-full border px-3 text-[12px] text-muted-foreground" style={{ borderColor: "var(--rule)" }}>
+    <motion.span
+      layout
+      className="inline-flex h-8 items-center gap-2 rounded-full border px-3 text-[12px] text-muted-foreground"
+      style={{ borderColor: "var(--rule)" }}
+      transition={transitions.layout}
+    >
       {icon}
       <span className="relative inline-flex min-w-[1.25rem] justify-end overflow-hidden font-mono text-[12px] text-foreground tabular">
         <AnimatePresence mode="popLayout" initial={false}>
@@ -270,7 +285,7 @@ export function ApplicationsTable({
   }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}>
+    <motion.div layout initial={false} animate={{ opacity: 1 }} transition={transitions.layout}>
       <SortToolbar
         matchingCount={matchingCount}
         activeCount={activeCount}
@@ -304,39 +319,29 @@ export function ApplicationsTable({
         </AnimatePresence>
       )}
 
-      <motion.ul
-        variants={motionVariants.list}
-        initial="hidden"
-        animate="visible"
+      <ul
         className="divide-y"
         style={{ borderColor: "var(--rule)" }}
       >
-        <AnimatePresence initial={false}>
-          {applications.map((app) => {
-            const postingHref = safeExternalHref(app.posting_url);
-            const archived = archivedIds.has(app.id);
-            const deadlineLabel = getDeadlineLabel(app);
-            return (
-              <motion.li
-                key={app.id}
-                layout
-                variants={motionVariants.row}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                whileHover={{ x: 2 }}
-                whileTap={{ scale: 0.997 }}
-                transition={{ layout: { type: "spring", stiffness: 420, damping: 34, mass: 0.7 } }}
-                onClick={() => onOpen(app)}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  setContextMenu({ x: e.clientX, y: e.clientY, app });
-                }}
-                className={`group cursor-pointer select-none transition-colors duration-150 hover:bg-[color-mix(in_oklab,var(--ink)_3%,transparent)] ${
-                  archived ? "opacity-60" : ""
-                }`}
-              >
-                <div className="grid grid-cols-[2.125rem_minmax(0,1fr)_5.75rem] items-center gap-x-4 px-2 py-4 md:grid-cols-[2.125rem_minmax(12rem,22rem)_minmax(0,14rem)_minmax(1rem,1fr)_5.75rem_6.75rem] lg:grid-cols-[2.125rem_minmax(14rem,24rem)_minmax(0,16rem)_minmax(1rem,1fr)_5.75rem_6.75rem]">
+        {applications.map((app) => {
+          const postingHref = safeExternalHref(app.posting_url);
+          const archived = archivedIds.has(app.id);
+          const deadlineLabel = getDeadlineLabel(app);
+          return (
+            <li
+              key={app.id}
+              data-testid="application-row"
+              data-company={app.company}
+              onClick={() => onOpen(app)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setContextMenu({ x: e.clientX, y: e.clientY, app });
+              }}
+              className={`group cursor-pointer select-none smooth-surface hover:bg-[color-mix(in_oklab,var(--ink)_3%,transparent)] ${
+                archived ? "opacity-60" : ""
+              }`}
+            >
+              <div className="grid min-h-[76px] grid-cols-[2.125rem_minmax(0,1fr)_5.75rem] items-center gap-x-4 px-2 py-4 md:grid-cols-[2.125rem_minmax(12rem,22rem)_minmax(0,14rem)_minmax(1rem,1fr)_5.75rem_6.75rem] lg:grid-cols-[2.125rem_minmax(14rem,24rem)_minmax(0,16rem)_minmax(1rem,1fr)_5.75rem_6.75rem]">
                   <CompanyLogo company={app.company} size={34} />
 
                   <div className="min-w-0">
@@ -351,7 +356,7 @@ export function ApplicationsTable({
                       )}
                     </div>
                     <div className="mt-1 flex items-center gap-2 min-w-0">
-                      <span className="truncate text-[15px] font-medium text-foreground tracking-tight">{app.role}</span>
+                      <span className="truncate text-[15px] font-medium text-foreground">{app.role}</span>
                       {deadlineLabel && (
                         <span
                           title={`OA deadline: ${deadlineLabel}`}
@@ -390,11 +395,10 @@ export function ApplicationsTable({
                     {formatDate(app.last_activity_date)}
                   </div>
                 </div>
-              </motion.li>
-            );
-          })}
-        </AnimatePresence>
-      </motion.ul>
+            </li>
+          );
+        })}
+      </ul>
 
       <AnimatePresence>
         {contextMenu && (
@@ -402,13 +406,14 @@ export function ApplicationsTable({
             initial={{ opacity: 0, scale: 0.96, y: 4 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 4 }}
-            transition={{ duration: 0.12 }}
-            className="fixed z-70 min-w-44 rounded-lg border bg-popover p-1 shadow-[0_12px_32px_-16px_rgb(0_0_0/0.2)]"
+            transition={{ duration: 0.14, ease: [0.23, 1, 0.32, 1] }}
+            className="fixed z-70 min-w-44 origin-top-left rounded-lg border bg-popover p-1 shadow-[0_18px_45px_-28px_color-mix(in_oklab,var(--ink)_55%,transparent)]"
             style={{ left: contextMenu.x, top: contextMenu.y, borderColor: "var(--rule-strong)" }}
             onClick={(e) => e.stopPropagation()}
           >
             <button
               type="button"
+              data-testid="application-context-delete"
               onClick={() => {
                 onArchiveChange(contextMenu.app.id, !archivedIds.has(contextMenu.app.id));
                 setContextMenu(null);
@@ -468,6 +473,7 @@ export function ApplicationsTable({
             </Button>
             <AsyncButton
               type="button"
+              data-testid="confirm-delete-application"
               state={deleteState}
               idleLabel="Delete"
               pendingLabel="Deleting"

@@ -16,8 +16,8 @@ import { ApplicationDialog } from "@/components/application-dialog";
 import { PostingRow } from "@/components/posting-row";
 import { InlineError } from "@/components/ui/inline-error";
 import { FilterChip, FilterOption } from "@/components/ui/filter-chip";
+import { SkeletonBlock } from "@/components/ui/loading-indicator";
 import { motionVariants } from "@/lib/ui/motion";
-import { preserveScrollPositionIfScrollable } from "@/lib/ui/scroll";
 import { SearchInput } from "@/components/search-input";
 import { normalizeUrl } from "@/lib/url";
 import {
@@ -72,6 +72,23 @@ function getSearchTerms(value: string) {
   return (value.match(SEARCH_TOKEN_PATTERN) ?? [])
     .map((term) => term.replace(/^["']|["']$/g, "").trim().toLowerCase())
     .filter(Boolean);
+}
+
+function hasAnyInteraction(interactions: Set<string>, posting: FeedPosting): boolean {
+  return posting.interactionIds.some((id) => interactions.has(id));
+}
+
+function applyInteractionIds(
+  current: Set<string>,
+  posting: FeedPosting,
+  next: boolean,
+): Set<string> {
+  const out = new Set(current);
+  for (const id of posting.interactionIds) {
+    if (next) out.add(id);
+    else out.delete(id);
+  }
+  return out;
 }
 
 export function DiscoverFeed({
@@ -203,14 +220,8 @@ export function DiscoverFeed({
   const onToggleDismiss = useCallback(
     (posting: FeedPosting, next: boolean) => {
       const id = posting.id;
-      if (next) preserveScrollPositionIfScrollable();
       setActionError(null);
-      setDismissedSet((prev) => {
-        const out = new Set(prev);
-        if (next) out.add(id);
-        else out.delete(id);
-        return out;
-      });
+      setDismissedSet((prev) => applyInteractionIds(prev, posting, next));
       setPendingIds((prev) => {
         const out = new Set(prev);
         out.add(id);
@@ -219,15 +230,12 @@ export function DiscoverFeed({
       // Fire-and-forget; we already updated local state optimistically, and
       // the server action has no revalidatePath so the payload is tiny.
       (async () => {
-        const result = next ? await dismissPosting(id) : await undismissPosting(id);
+        const result = next
+          ? await dismissPosting(posting.interactionIds)
+          : await undismissPosting(posting.interactionIds);
         if (result?.error) {
           setActionError(result.error);
-          setDismissedSet((prev) => {
-            const out = new Set(prev);
-            if (next) out.delete(id);
-            else out.add(id);
-            return out;
-          });
+          setDismissedSet((prev) => applyInteractionIds(prev, posting, !next));
         }
         setPendingIds((prev) => {
           if (!prev.has(id)) return prev;
@@ -244,27 +252,19 @@ export function DiscoverFeed({
     (posting: FeedPosting, next: boolean) => {
       const id = posting.id;
       setActionError(null);
-      setSavedSet((prev) => {
-        const out = new Set(prev);
-        if (next) out.add(id);
-        else out.delete(id);
-        return out;
-      });
+      setSavedSet((prev) => applyInteractionIds(prev, posting, next));
       setPendingSavedIds((prev) => {
         const out = new Set(prev);
         out.add(id);
         return out;
       });
       (async () => {
-        const result = next ? await savePosting(id) : await unsavePosting(id);
+        const result = next
+          ? await savePosting(posting.interactionIds)
+          : await unsavePosting(posting.interactionIds);
         if (result?.error) {
           setActionError(result.error);
-          setSavedSet((prev) => {
-            const out = new Set(prev);
-            if (next) out.delete(id);
-            else out.add(id);
-            return out;
-          });
+          setSavedSet((prev) => applyInteractionIds(prev, posting, !next));
         }
         setPendingSavedIds((prev) => {
           if (!prev.has(id)) return prev;
@@ -332,9 +332,9 @@ export function DiscoverFeed({
     const out: FeedPosting[] = [];
     for (const p of postings) {
       if (seasonFilter !== "all" && p.season !== seasonFilter) continue;
-      const isDismissed = dismissedSet.has(p.id);
+      const isDismissed = hasAnyInteraction(dismissedSet, p);
       if (!showDismissed && isDismissed) continue;
-      if (showSavedOnly && !savedSet.has(p.id)) continue;
+      if (showSavedOnly && !hasAnyInteraction(savedSet, p)) continue;
       if (hideApplied && trackedIdSet.has(p.id)) continue;
 
       const hay = haystacks.get(p.id) ?? "";
@@ -365,7 +365,7 @@ export function DiscoverFeed({
     if (lastSeen == null) return 0;
     let count = 0;
     for (const p of postings) {
-      if (p.datePosted > lastSeen && !dismissedSet.has(p.id)) count++;
+      if (p.datePosted > lastSeen && !hasAnyInteraction(dismissedSet, p)) count++;
     }
     return count;
   }, [postings, lastSeen, dismissedSet]);
@@ -443,7 +443,7 @@ export function DiscoverFeed({
         <motion.header
           className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
           variants={motionVariants.riseIn}
-          initial="hidden"
+          initial={false}
           animate="visible"
         >
           <h1 className="display-serif text-[2.75rem] text-foreground sm:text-[3.25rem]">
@@ -481,7 +481,7 @@ export function DiscoverFeed({
         <motion.div
           className={`relative mb-8 ${searchFocused ? "z-[200]" : "z-20"}`}
           variants={motionVariants.fadeIn}
-          initial="hidden"
+          initial={false}
           animate="visible"
         >
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
@@ -560,40 +560,34 @@ export function DiscoverFeed({
 
         <span className="rule" />
 
-        {!preferencesReady ? (
-          <motion.div
-            variants={motionVariants.fadeIn}
-            initial="hidden"
-            animate="visible"
-            className="py-24"
-          />
-        ) : filtered.length === 0 ? (
-          <motion.div
-            variants={motionVariants.fadeIn}
-            initial="hidden"
-            animate="visible"
-            className="py-24 text-center"
-          >
-            <p className="text-[16px] text-muted-foreground">
-              Nothing matches the filters.
-            </p>
-          </motion.div>
-        ) : (
-          <>
-            <motion.ul
-              variants={motionVariants.list}
-              initial="hidden"
-              animate="visible"
-              className="divide-y"
-              style={{ borderColor: "var(--rule)" }}
+        <section className="min-h-[560px]">
+          {!preferencesReady ? (
+            <div
+              className="space-y-2 py-4"
+              aria-label="Loading feed preferences"
             >
-              <AnimatePresence initial={false}>
+              {Array.from({ length: 8 }).map((_, index) => (
+                <SkeletonBlock key={index} className="h-[68px] w-full rounded-md" />
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="py-24 text-center">
+              <p className="text-[16px] text-muted-foreground">
+                Nothing matches the filters.
+              </p>
+            </div>
+          ) : (
+            <>
+              <ul
+                className="divide-y"
+                style={{ borderColor: "var(--rule)" }}
+              >
                 {visible.map((posting) => (
                   <PostingRow
                     key={posting.id}
                     posting={posting}
-                    dismissed={dismissedSet.has(posting.id)}
-                    saved={savedSet.has(posting.id)}
+                    dismissed={hasAnyInteraction(dismissedSet, posting)}
+                    saved={hasAnyInteraction(savedSet, posting)}
                     tracked={trackedIdSet.has(posting.id)}
                     isNew={isPostingNew(posting)}
                     pending={pendingIds.has(posting.id)}
@@ -603,13 +597,13 @@ export function DiscoverFeed({
                     onToggleDismiss={onToggleDismiss}
                   />
                 ))}
-              </AnimatePresence>
-            </motion.ul>
-            {visibleCount < filtered.length && (
-              <div ref={sentinelRef} className="h-10" aria-hidden="true" />
-            )}
-          </>
-        )}
+              </ul>
+              {visibleCount < filtered.length && (
+                <div ref={sentinelRef} className="h-10" aria-hidden="true" />
+              )}
+            </>
+          )}
+        </section>
       </main>
 
       <ApplicationDialog

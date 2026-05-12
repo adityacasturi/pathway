@@ -1,12 +1,9 @@
 import { SkeletonBlock } from "@/components/ui/loading-indicator";
 
 /**
- * Skeletons that match each top-level route's shell. Used in two places:
- *   1. app/<route>/loading.tsx — shown by Next during RSC streaming once
- *      navigation has committed.
- *   2. <NavLink> — portalled over the current page the instant the user
- *      clicks a nav link, so the old page doesn't linger while the RSC
- *      payload is still in flight (see useLinkStatus).
+ * Skeletons that match each top-level route's shell. They are shared by
+ * app/<route>/loading.tsx and the fixed nav pending layer so route changes feel
+ * intentional even when the destination payload is still streaming.
  */
 
 export function HomeSkeleton() {

@@ -31,6 +31,16 @@ Built with Next.js 16 (App Router + Server Actions), Supabase (Auth + Postgres w
 | `npm run dev`   | Start the dev server               |
 | `npm run build` | Production build                   |
 | `npm run lint`  | Run ESLint                         |
+| `npm run typecheck` | Run TypeScript without emitting files |
+| `npm run test:e2e` | Run Playwright smoke tests |
+| `npm run verify` | Lint, typecheck, audit, and build |
+
+## Production checklist
+
+- Apply every migration in `supabase/migrations/`, including the production invariant/rate-limit migrations.
+- In Supabase Auth settings, enforce a minimum password length of at least 8 characters, require mixed character classes, and enable leaked password protection when the project plan supports it. The app validates signup passwords too, but Auth settings protect direct Supabase Auth API calls.
+- Keep email confirmation enabled and configure custom SMTP before launch; Supabase's default email service is only intended for development/testing.
+- Run `npm audit --audit-level=moderate`, `npm run lint`, `npx tsc --noEmit`, and `npm run build` before deploy.
 
 ## Project layout
 
@@ -48,3 +58,4 @@ types/              TypeScript types (`Application`, `ApplicationEvent`, …)
 ```
 
 See [`CLAUDE.md`](./CLAUDE.md) for a deeper architectural walkthrough.
+See [`docs/production-runbook.md`](./docs/production-runbook.md) for launch checks, E2E env vars, Supabase dashboard settings, and incident checks.

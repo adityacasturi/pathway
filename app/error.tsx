@@ -12,7 +12,7 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error(error);
+    console.error("Route error", { message: error.message, digest: error.digest });
   }, [error]);
 
   return (

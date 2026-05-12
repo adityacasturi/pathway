@@ -90,17 +90,18 @@
   }
   html {
     font-feature-settings: "ss01", "ss02", "cv11";
+    scroll-behavior: smooth;
   }
   body {
     @apply bg-background text-foreground font-sans;
     text-rendering: optimizeLegibility;
     font-feature-settings: "ss01", "ss02", "cv11", "liga";
-    letter-spacing: -0.005em;
+    letter-spacing: 0;
   }
   h1, h2, h3, h4 {
     @apply font-heading text-foreground;
     font-feature-settings: "ss01", "lnum";
-    letter-spacing: -0.022em;
+    letter-spacing: 0;
   }
   ::selection {
     background: color-mix(in oklab, var(--primary) 28%, transparent);
@@ -141,7 +142,7 @@
   .display-serif {
     font-family: var(--font-sans);
     font-feature-settings: "ss01", "ss02", "cv11", "lnum";
-    letter-spacing: -0.035em;
+    letter-spacing: 0;
     line-height: 0.98;
     font-weight: 500;
   }
@@ -149,14 +150,14 @@
     font-family: var(--font-sans);
     font-style: italic;
     font-feature-settings: "ss01", "ss02";
-    letter-spacing: -0.015em;
+    letter-spacing: 0;
     font-weight: 400;
   }
   .numeral-display {
     font-family: var(--font-sans);
     font-variant-numeric: lining-nums tabular-nums;
     font-feature-settings: "lnum", "tnum", "ss01";
-    letter-spacing: -0.045em;
+    letter-spacing: 0;
     font-weight: 500;
   }
   /* Small caps style micro-label. Use sparingly — meta only. */
@@ -283,7 +284,7 @@
     font-feature-settings: "lnum", "tnum", "ss01";
     font-size: 3rem;
     line-height: 0.92;
-    letter-spacing: -0.05em;
+    letter-spacing: 0;
     font-weight: 500;
     color: var(--ink);
   }
@@ -291,7 +292,7 @@
     font-family: var(--font-sans);
     font-size: 13px;
     color: var(--muted-foreground);
-    letter-spacing: -0.005em;
+    letter-spacing: 0;
   }
 
   .animate-fade-in {
@@ -302,6 +303,50 @@
   }
   .animate-modal-in {
     animation: modal-in var(--motion-duration-base) var(--motion-ease-smooth) both;
+  }
+  .skeleton-sheen {
+    position: relative;
+    overflow: hidden;
+    background: color-mix(in oklab, var(--ink) 6%, transparent);
+  }
+  .skeleton-sheen::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-110%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklab, var(--card) 58%, transparent),
+      transparent
+    );
+    animation: skeleton-sheen 1.6s var(--motion-ease-smooth) infinite;
+  }
+  .smooth-surface {
+    transition: background-color 200ms var(--motion-ease-smooth),
+                border-color 200ms var(--motion-ease-smooth),
+                box-shadow 200ms var(--motion-ease-smooth),
+                transform 200ms var(--motion-ease-smooth),
+                opacity 200ms var(--motion-ease-smooth);
+  }
+  .school-logo-track {
+    animation: school-logo-marquee 28s linear infinite;
+  }
+  .school-logo-fade {
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent,
+      black 12%,
+      black 88%,
+      transparent
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      black 12%,
+      black 88%,
+      transparent
+    );
   }
 
   /* Underline that grows from the left on hover — used on inline "read more"
@@ -344,6 +389,13 @@
   from { opacity: 0; transform: scale(0.98) translateY(6px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
+@keyframes skeleton-sheen {
+  to { transform: translateX(110%); }
+}
+@keyframes school-logo-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -351,5 +403,11 @@
     animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
     scroll-behavior: auto !important;
+  }
+  .school-logo-track {
+    animation: none !important;
+  }
+  .skeleton-sheen::after {
+    animation: none !important;
   }
 }

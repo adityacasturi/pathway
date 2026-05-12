@@ -1,7 +1,7 @@
 "use server";
 
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
-import { deriveStatus } from "@/lib/config/events";
+import { formatSupabaseMutationError } from "@/lib/supabase/errors";
 import { revalidatePath } from "next/cache";
 import { ApplicationEvent, EventType, Status } from "@/types/application";
 
@@ -9,6 +9,11 @@ const EVENT_TYPES: readonly EventType[] = ["applied", "oa", "interview", "offer"
 const MAX_NOTES_LENGTH = 2000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const LOCAL_APPLIED_EVENT_RE = /^local-([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})-applied$/i;
+
+type CreateEventRpcResult = {
+  event?: unknown;
+  status?: unknown;
+};
 
 function revalidateApplicationSurfaces() {
   revalidatePath("/");
@@ -33,20 +38,6 @@ function isIsoDate(raw: unknown): raw is string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return false;
   const parsed = new Date(`${raw}T00:00:00.000Z`);
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === raw;
-}
-
-async function ensureOwnsApplication(
-  supabase: Awaited<ReturnType<typeof getAuthenticatedUser>>["supabase"],
-  userId: string,
-  applicationId: string,
-): Promise<boolean> {
-  const { data } = await supabase
-    .from("applications")
-    .select("id")
-    .eq("id", applicationId)
-    .eq("user_id", userId)
-    .maybeSingle();
-  return Boolean(data);
 }
 
 async function getOwnedEvent(
@@ -119,6 +110,7 @@ export async function createEvent(
     return { error: "Invalid event." };
   }
   if (!isEventType(eventType)) return { error: "Invalid event type." };
+  if (eventType === "applied") return { error: "The applied event is created with the application." };
   if (!isIsoDate(eventDate)) return { error: "Invalid event date." };
   if (deadlineDate != null && deadlineDate !== "" && !isIsoDate(deadlineDate)) {
     return { error: "Invalid deadline date." };
@@ -130,56 +122,23 @@ export async function createEvent(
   const cleanedNotes = notes?.trim() ?? "";
   const cleanedDeadlineDate = eventType === "oa" && deadlineDate ? deadlineDate : null;
   if (cleanedNotes.length > MAX_NOTES_LENGTH) return { error: "Notes are too long." };
-  if (!(await ensureOwnsApplication(supabase, user.id, applicationId))) {
-    return { error: "Application not found" };
+  const { data, error } = await supabase.rpc("create_application_event", {
+    p_application_id: applicationId,
+    p_event_type: eventType,
+    p_event_date: eventDate,
+    p_notes: cleanedNotes || null,
+    p_deadline_date: cleanedDeadlineDate,
+  });
+
+  if (error) return { error: formatSupabaseMutationError(error, "Unable to add event.") };
+
+  const payload = data as CreateEventRpcResult | null;
+  if (!payload?.event || typeof payload.status !== "string") {
+    return { error: "Unable to add event." };
   }
-
-  // Auto-compute round_number for interview events
-  let roundNumber: number | null = null;
-  if (eventType === "interview") {
-    const { data: existing } = await supabase
-      .from("application_events")
-      .select("round_number")
-      .eq("application_id", applicationId)
-      .eq("user_id", user.id)
-      .eq("event_type", "interview");
-    roundNumber = (existing?.length ?? 0) + 1;
-  }
-
-  const { data: insertedEvent, error: insertError } = await supabase
-    .from("application_events")
-    .insert({
-      application_id: applicationId,
-      user_id: user.id,
-      event_type: eventType,
-      event_date: eventDate,
-      notes: cleanedNotes || null,
-      round_number: roundNumber,
-      deadline_date: cleanedDeadlineDate,
-    })
-    .select("*")
-    .single();
-
-  if (insertError) return { error: insertError.message };
-
-  // Re-derive status from all events for this application
-  const { data: allEvents } = await supabase
-    .from("application_events")
-    .select("event_type")
-    .eq("application_id", applicationId)
-    .eq("user_id", user.id);
-
-  const newStatus = deriveStatus(allEvents ?? []);
-  const { error: statusError } = await supabase
-    .from("applications")
-    .update({ status: newStatus })
-    .eq("id", applicationId)
-    .eq("user_id", user.id);
-
-  if (statusError) return { error: statusError.message };
 
   revalidateApplicationSurfaces();
-  return { event: insertedEvent as ApplicationEvent, status: newStatus as Status };
+  return { event: payload.event as ApplicationEvent, status: payload.status as Status };
 }
 
 export async function updateEventDeadline(
@@ -211,7 +170,7 @@ export async function updateEventDeadline(
     .select("*")
     .single();
 
-  if (error) return { error: error.message };
+  if (error) return { error: formatSupabaseMutationError(error, "Unable to save deadline.") };
   revalidateApplicationSurfaces();
   return { event: updatedEvent as ApplicationEvent };
 }
@@ -239,7 +198,7 @@ export async function updateEventDeadlineCompletion(
     .select("*")
     .single();
 
-  if (error) return { error: error.message };
+  if (error) return { error: formatSupabaseMutationError(error, "Unable to update deadline.") };
   revalidateApplicationSurfaces();
   return { event: updatedEvent as ApplicationEvent };
 }
@@ -247,7 +206,7 @@ export async function updateEventDeadlineCompletion(
 export async function updateEventDate(eventId: string, applicationId: string, newDate: string) {
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
-  if (!isUuid(applicationId)) return { error: "Invalid event id." };
+  if (!isUuid(applicationId)) return { error: "Invalid application id." };
   if (!isIsoDate(newDate)) return { error: "Invalid event date." };
 
   const thisEvent = await resolveOwnedEvent(supabase, user.id, eventId, applicationId);
@@ -276,7 +235,7 @@ export async function updateEventDate(eventId: string, applicationId: string, ne
     .select("*")
     .single();
 
-  if (error) return { error: error.message };
+  if (error) return { error: formatSupabaseMutationError(error, "Unable to save event date.") };
   revalidateApplicationSurfaces();
   return { event: updatedEvent as ApplicationEvent };
 }
@@ -299,7 +258,7 @@ export async function updateEventNotes(eventId: string, notes: string) {
     .select("*")
     .single();
 
-  if (error) return { error: error.message };
+  if (error) return { error: formatSupabaseMutationError(error, "Unable to save event notes.") };
   revalidateApplicationSurfaces();
   return { event: updatedEvent as ApplicationEvent };
 }
@@ -310,6 +269,9 @@ export async function deleteEvent(eventId: string, applicationId: string) {
   if (!isUuid(eventId) || !isUuid(applicationId)) return { error: "Invalid event id." };
   const event = await getOwnedEvent(supabase, user.id, eventId, applicationId);
   if (!event) return { error: "Event not found" };
+  if (event.event_type === "applied") {
+    return { error: "The applied event is required and cannot be deleted." };
+  }
 
   const { error } = await supabase
     .from("application_events")
@@ -317,24 +279,17 @@ export async function deleteEvent(eventId: string, applicationId: string) {
     .eq("id", eventId)
     .eq("user_id", user.id);
 
-  if (error) return { error: error.message };
+  if (error) return { error: formatSupabaseMutationError(error, "Unable to delete event.") };
 
-  // Re-derive status after deletion
-  const { data: remaining } = await supabase
-    .from("application_events")
-    .select("event_type")
-    .eq("application_id", applicationId)
-    .eq("user_id", user.id);
-
-  const newStatus = deriveStatus(remaining ?? []);
-  const { error: statusError } = await supabase
+  const { data: application, error: statusError } = await supabase
     .from("applications")
-    .update({ status: newStatus })
+    .select("status")
     .eq("id", applicationId)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .single();
 
-  if (statusError) return { error: statusError.message };
+  if (statusError) return { error: formatSupabaseMutationError(statusError, "Unable to load application status.") };
 
   revalidateApplicationSurfaces();
-  return { status: newStatus as Status };
+  return { status: application.status as Status };
 }

@@ -1,14 +1,20 @@
 "use client";
 
+import { useEffect } from "react";
 import { InlineError } from "@/components/ui/inline-error";
 import { Button } from "@/components/ui/button";
 
 export default function GlobalError({
+  error,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    console.error("Global route error", { message: error.message, digest: error.digest });
+  }, [error]);
+
   return (
     <html lang="en">
       <body className="min-h-screen bg-background text-foreground flex items-center justify-center px-6">

@@ -1,6 +1,7 @@
 "use server";
 
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
+import { formatSupabaseMutationError } from "@/lib/supabase/errors";
 import { validateExternalHttpUrl } from "@/lib/url";
 import { APPLICATION_SEASONS, ApplicationEvent, ApplicationSeason } from "@/types/application";
 import { revalidatePath } from "next/cache";
@@ -16,6 +17,11 @@ type ApplicationPatch = {
   posting_url?: string | null;
   location?: string | null;
   season?: ApplicationSeason | null;
+};
+
+type CreateApplicationRpcResult = {
+  id?: unknown;
+  appliedEvent?: unknown;
 };
 
 function isUuid(value: string): boolean {
@@ -149,13 +155,6 @@ export async function createApplication(
 
   const fields = parseFormData(formData);
   if ("error" in fields) return { error: fields.error };
-  const { data: app, error } = await supabase
-    .from("applications")
-    .insert({ ...fields, user_id: user.id, status: "applied" })
-    .select("id")
-    .single();
-
-  if (error) return { error: error.message };
 
   // Use the client-supplied date so we get the user's local date, not the server's UTC date
   const rawDateApplied = formData.get("date_applied") as string | null;
@@ -163,30 +162,26 @@ export async function createApplication(
     ? rawDateApplied
     : new Date().toISOString().slice(0, 10);
 
-  const { data: appliedEvent, error: eventError } = await supabase
-    .from("application_events")
-    .insert({
-      application_id: app.id,
-      user_id:        user.id,
-      event_type:     "applied",
-      event_date:     dateApplied,
-    })
-    .select("*")
-    .single();
+  const { data, error } = await supabase.rpc("create_application_with_event", {
+    p_company: fields.company,
+    p_role: fields.role,
+    p_posting_url: fields.posting_url,
+    p_location: fields.location,
+    p_season: fields.season,
+    p_date_applied: dateApplied,
+  });
 
-  if (eventError) {
-    await supabase
-      .from("applications")
-      .delete()
-      .eq("id", app.id)
-      .eq("user_id", user.id);
-    return { error: eventError.message };
+  if (error) return { error: formatSupabaseMutationError(error, "Unable to add application.") };
+
+  const payload = data as CreateApplicationRpcResult | null;
+  if (typeof payload?.id !== "string" || !payload.appliedEvent) {
+    return { error: "Unable to add application." };
   }
 
   if (options.revalidate !== false) {
     revalidateApplicationSurfaces();
   }
-  return { ok: true, id: app.id, appliedEvent: appliedEvent as ApplicationEvent };
+  return { ok: true, id: payload.id, appliedEvent: payload.appliedEvent as ApplicationEvent };
 }
 
 export async function updateApplicationFields(
@@ -208,7 +203,7 @@ export async function updateApplicationFields(
     .eq("id", id)
     .eq("user_id", user.id);
 
-  if (error) return { error: error.message };
+  if (error) return { error: formatSupabaseMutationError(error, "Unable to update application.") };
   revalidateApplicationSurfaces();
   return { ok: true };
 }
@@ -225,7 +220,7 @@ export async function updateApplicationArchive(id: string, archived: boolean) {
     .eq("id", id)
     .eq("user_id", user.id);
 
-  if (error) return { error: error.message };
+  if (error) return { error: formatSupabaseMutationError(error, "Unable to update archive state.") };
   revalidateApplicationSurfaces();
   return { ok: true };
 }
@@ -241,7 +236,7 @@ export async function deleteApplication(id: string) {
     .eq("id", id)
     .eq("user_id", user.id);
 
-  if (error) return { error: error.message };
+  if (error) return { error: formatSupabaseMutationError(error, "Unable to delete application.") };
   revalidateApplicationSurfaces();
   return { ok: true };
 }

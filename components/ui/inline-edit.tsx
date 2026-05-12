@@ -17,6 +17,7 @@ interface InlineEditProps {
   className?: string;
   placeholder?: string;
   allowEmpty?: boolean;
+  ariaLabel?: string;
 }
 
 export function InlineEdit({
@@ -25,6 +26,7 @@ export function InlineEdit({
   className,
   placeholder,
   allowEmpty = false,
+  ariaLabel,
 }: InlineEditProps) {
   const [draft, setDraft] = useState(value);
 
@@ -56,12 +58,13 @@ export function InlineEdit({
           e.currentTarget.blur();
         }
       }}
+      aria-label={ariaLabel}
       placeholder={placeholder}
       className={cn(
-        "w-full bg-transparent rounded-sm px-1.5 -mx-1.5 outline-none border border-transparent",
+        "w-full rounded-md border border-transparent bg-transparent px-1.5 outline-none",
         "hover:border-foreground/15 hover:bg-muted",
-        "focus:border-foreground/30 focus:bg-muted",
-        "transition-colors duration-150",
+        "focus:border-ring/40 focus:bg-muted focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--ring)_14%,transparent)]",
+        "transition-[background-color,border-color,box-shadow] duration-150",
         className,
       )}
     />

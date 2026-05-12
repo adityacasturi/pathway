@@ -19,6 +19,7 @@ export function SearchInput({ value, onChange, placeholder, onFocusChange }: Pro
       />
       <input
         type="search"
+        aria-label={placeholder}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         onFocus={() => onFocusChange?.(true)}

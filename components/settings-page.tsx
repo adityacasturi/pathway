@@ -62,7 +62,7 @@ export function SettingsPage({
         <motion.header
           className="mb-10"
           variants={motionVariants.riseIn}
-          initial="hidden"
+          initial={false}
           animate="visible"
         >
           <h1 className="display-serif text-[2.75rem] text-foreground sm:text-[3.25rem]">
@@ -72,7 +72,7 @@ export function SettingsPage({
 
         <motion.div
           variants={motionVariants.fadeIn}
-          initial="hidden"
+          initial={false}
           animate="visible"
         >
           <Section label="01" title="Account">

@@ -2,10 +2,13 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { limitServerActionByIp } from "@/lib/rate-limit";
+import {
+  MAX_PASSWORD_LENGTH,
+  getEmailValidationError,
+  getSignupPasswordError,
+  normalizeEmail,
+} from "@/lib/auth/validation";
 import { redirect } from "next/navigation";
-
-const MAX_EMAIL_LENGTH = 320;
-const MAX_PASSWORD_LENGTH = 1024;
 
 type AuthActionResult =
   | { status: "authenticated" }
@@ -29,13 +32,24 @@ function formatAuthError(error: AuthErrorLike) {
     return "Confirm your email before signing in.";
   }
   if (message.toLowerCase().includes("email rate limit")) {
-    return "Supabase is rate limiting confirmation emails. Wait a bit, or manually confirm this test user in Supabase.";
+    return "Confirmation emails are temporarily rate limited. Please wait a bit and try again.";
+  }
+  if (normalized.includes("user already registered") || normalized.includes("already registered")) {
+    return "An account already exists for this email.";
+  }
+  if (normalized.includes("password") && normalized.includes("weak")) {
+    return "Password must be at least 8 characters and include lowercase, uppercase, number, and symbol.";
   }
 
-  return message;
+  return error.status && error.status >= 500
+    ? "Authentication is temporarily unavailable. Please try again."
+    : "Unable to authenticate. Please check your details and try again.";
 }
 
-function readCredentials(formData: FormData): { email: string; password: string } | { error: string } {
+function readCredentials(
+  formData: FormData,
+  options: { enforcePasswordPolicy?: boolean } = {},
+): { email: string; password: string } | { error: string } {
   const email = formData.get("email");
   const password = formData.get("password");
 
@@ -43,12 +57,16 @@ function readCredentials(formData: FormData): { email: string; password: string 
     return { error: "Email and password are required." };
   }
 
-  const cleanEmail = email.trim().toLowerCase();
-  if (!cleanEmail || cleanEmail.length > MAX_EMAIL_LENGTH) {
-    return { error: "Enter a valid email address." };
-  }
+  const cleanEmail = normalizeEmail(email);
+  const emailError = getEmailValidationError(email);
+  if (emailError) return { error: emailError };
+
   if (!password || password.length > MAX_PASSWORD_LENGTH) {
     return { error: "Enter a valid password." };
+  }
+  if (options.enforcePasswordPolicy) {
+    const passwordError = getSignupPasswordError(password, cleanEmail);
+    if (passwordError) return { error: passwordError };
   }
 
   return { email: cleanEmail, password };
@@ -74,7 +92,7 @@ export async function signup(formData: FormData): Promise<AuthActionResult> {
   const rateLimit = await limitServerActionByIp("auth:signup", 4, 60_000);
   if (!rateLimit.ok) return { error: rateLimit.error ?? "Too many attempts. Please try again shortly." };
 
-  const credentials = readCredentials(formData);
+  const credentials = readCredentials(formData, { enforcePasswordPolicy: true });
   if ("error" in credentials) return { error: credentials.error };
 
   const supabase = await createClient();

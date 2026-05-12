@@ -1,12 +1,10 @@
 "use client";
 
 import { memo, useCallback, useMemo } from "react";
-import { motion } from "framer-motion";
 import { Bookmark, Check, Plus, RotateCcw, X } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
 import { CompanyLogo } from "@/components/company-logo";
 import { SeasonPill } from "@/components/season-pill";
-import { motionVariants } from "@/lib/ui/motion";
 import { safeExternalHref } from "@/lib/url";
 import type { FeedPosting } from "@/lib/feed/source";
 
@@ -59,19 +57,14 @@ export const PostingRow = memo(function PostingRow({
   );
 
   return (
-    <motion.li
-      layout
-      variants={motionVariants.row}
-      initial="hidden"
-      animate="visible"
-      exit="exit"
-      whileHover={{ x: 2 }}
-      transition={{ layout: { type: "spring", stiffness: 420, damping: 34, mass: 0.7 } }}
-      className={`group transition-colors duration-150 hover:bg-[color-mix(in_oklab,var(--ink)_3%,transparent)] ${
-        dismissed ? "saturate-50" : ""
+    <li
+      data-testid="posting-row"
+      data-posting-id={posting.id}
+      className={`group smooth-surface hover:bg-[color-mix(in_oklab,var(--ink)_3%,transparent)] ${
+        dismissed ? "opacity-55 saturate-50" : ""
       }`}
     >
-      <div style={dismissed ? { opacity: 0.5 } : undefined} className="flex items-center gap-5 px-2 py-4">
+      <div className="grid min-h-[72px] grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-2 py-4 md:grid-cols-[2rem_minmax(0,1fr)_12rem_6rem_auto]">
         <CompanyLogo company={posting.company} size={30} />
 
         <div className="min-w-0 flex-1">
@@ -93,27 +86,27 @@ export const PostingRow = memo(function PostingRow({
                 href={postingHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="truncate text-[14px] font-medium text-foreground tracking-tight hover:underline underline-offset-4 decoration-muted-foreground/40"
+                className="truncate text-[14px] font-medium text-foreground decoration-muted-foreground/40 underline-offset-4 transition-colors duration-150 hover:text-primary"
               >
                 {posting.title}
               </a>
             ) : (
-              <span className="truncate text-[14px] font-medium text-foreground tracking-tight">
+              <span className="truncate text-[14px] font-medium text-foreground">
                 {posting.title}
               </span>
             )}
           </div>
         </div>
 
-        <div className="hidden md:block min-w-0 w-48 shrink-0 text-[12px] text-muted-foreground truncate">
+        <div className="hidden min-w-0 text-[12px] text-muted-foreground md:block truncate">
           {locationLabel}
         </div>
 
-        <div className="w-24 shrink-0 text-right label-meta tabular whitespace-nowrap">
+        <div className="hidden text-right label-meta tabular whitespace-nowrap md:block">
           {posted}
         </div>
 
-        <div className="flex items-center gap-0.5 shrink-0">
+        <div className="flex shrink-0 items-center justify-end gap-0.5">
           {tracked ? (
             <span
               aria-label="Tracked"
@@ -153,7 +146,7 @@ export const PostingRow = memo(function PostingRow({
           </IconButton>
         </div>
       </div>
-    </motion.li>
+    </li>
   );
 });
 
@@ -184,18 +177,16 @@ function IconButton({
   tone: IconButtonTone;
 }) {
   return (
-    <motion.button
+    <button
       type="button"
       onClick={onClick}
       aria-label={label}
       title={label}
       disabled={disabled}
-      whileTap={{ scale: 0.9 }}
-      whileHover={{ scale: 1.08 }}
-      className={`inline-flex size-7 items-center justify-center rounded-full leading-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50 [&>svg]:block [&>svg]:shrink-0 ${TONE_CLASSES[tone]}`}
+      className={`inline-flex size-8 items-center justify-center rounded-full leading-none smooth-surface disabled:cursor-not-allowed disabled:opacity-50 [&>svg]:block [&>svg]:shrink-0 ${TONE_CLASSES[tone]}`}
     >
       {children}
-    </motion.button>
+    </button>
   );
 }
 

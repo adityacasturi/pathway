@@ -9,11 +9,13 @@
  *      shape inside that function (JSON, markdown, whatever).
  *   2. Append an entry to FEED_SOURCES.
  *   3. Deduplication across sources is handled automatically below
- *      (canonical-URL key, first source in FEED_SOURCES wins).
+ *      (canonical URL plus same-company/title fingerprints; first source in
+ *      FEED_SOURCES wins).
  */
 
 import { unstable_noStore } from "next/cache";
 import { resolveDiscoverCutoffDate } from "@/lib/config/discover";
+import { errorMessage, logServerEvent } from "@/lib/observability";
 
 /** How long (in seconds) to cache a fetched source before re-pulling. */
 const FEED_REVALIDATE_SECONDS = 60 * 60; // 1h
@@ -29,6 +31,7 @@ const MIN_TERM_YEAR = 2026;
 /** Slim shape handed down to client components. */
 export interface FeedPosting {
   id: string;
+  interactionIds: string[];
   sourceId: string;
   company: string;
   title: string;
@@ -98,8 +101,11 @@ function baseValid(row: RawListing): boolean {
 }
 
 function buildPosting(row: RawListing, sourceId: string, season: FeedSeason): FeedPosting {
+  const id = stablePostingId(row.url as string);
+  const upstreamId = row.id as string;
   return {
-    id: row.id as string,
+    id,
+    interactionIds: Array.from(new Set([id, upstreamId, `${sourceId}:${upstreamId}`])),
     sourceId,
     company: row.company_name as string,
     title: row.title as string,
@@ -207,14 +213,24 @@ async function fetchJsonSource(
   try {
     res = await fetchWithTimeout(rawUrl, init);
   } catch (error) {
-    console.error(`[feed] ${sourceId} fetch failed:`, error);
+    logServerEvent({
+      level: "warn",
+      event: "feed.fetch_failed",
+      message: errorMessage(error),
+      meta: { sourceId },
+    });
     const hit = parsedMemo.get(sourceId);
     if (hit) return hit.value;
     return [];
   }
 
   if (!res.ok) {
-    console.error(`[feed] ${sourceId} fetch failed: ${res.status}`);
+    logServerEvent({
+      level: "warn",
+      event: "feed.bad_status",
+      message: `Feed source returned ${res.status}`,
+      meta: { sourceId, status: res.status },
+    });
     const hit = parsedMemo.get(sourceId);
     if (hit) return hit.value;
     return [];
@@ -224,14 +240,24 @@ async function fetchJsonSource(
   try {
     raw = await res.json();
   } catch (error) {
-    console.error(`[feed] ${sourceId} JSON parse failed:`, error);
+    logServerEvent({
+      level: "warn",
+      event: "feed.parse_failed",
+      message: errorMessage(error),
+      meta: { sourceId },
+    });
     const hit = parsedMemo.get(sourceId);
     if (hit) return hit.value;
     return [];
   }
 
   if (!Array.isArray(raw)) {
-    console.error(`[feed] ${sourceId} returned a non-array payload`);
+    logServerEvent({
+      level: "warn",
+      event: "feed.invalid_payload",
+      message: "Feed source returned a non-array payload",
+      meta: { sourceId },
+    });
     const hit = parsedMemo.get(sourceId);
     if (hit) return hit.value;
     return [];
@@ -257,8 +283,8 @@ async function fetchJsonSource(
 
 /**
  * Sources are tried in declaration order. When two sources surface the same
- * posting (matched by canonical URL), the *first* one wins. Keep the higher-
- * quality / more-timely source at the top of the list.
+ * posting, the *first* one wins. Keep the higher-quality / more-timely source
+ * at the top of the list.
  */
 const FEED_SOURCES: readonly FeedSource[] = [
   {
@@ -305,6 +331,76 @@ function urlDedupeKey(url: string): string {
   }
 }
 
+function stableHash(input: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function stablePostingId(url: string): string {
+  return `job_${stableHash(urlDedupeKey(url))}`;
+}
+
+function normalizeDedupeText(value: string): string {
+  return value
+    .normalize("NFKD")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function normalizeDedupeTitle(title: string): string {
+  return normalizeDedupeText(title)
+    .replace(/\bswe\b/g, "software engineer")
+    .replace(/\bsoftware engineering internship\b/g, "software engineer intern")
+    .replace(/\bsoftware engineering intern\b/g, "software engineer intern")
+    .replace(/\binternship\b/g, "intern")
+    .replace(/\b(20\d{2})\b/g, "")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+/**
+ * Cross-source title fingerprint. This deliberately avoids locations and URL
+ * hosts because upstream trackers often disagree on both for the same role,
+ * but it is only used to merge postings from different source IDs so distinct
+ * same-source openings are preserved.
+ */
+function roleDedupeKey(posting: FeedPosting): string {
+  return [
+    normalizeDedupeText(posting.company),
+    normalizeDedupeTitle(posting.title),
+    posting.season,
+  ].join("|");
+}
+
+function mergePosting(existing: FeedPosting, posting: FeedPosting): FeedPosting {
+  const locations = Array.from(new Set([...existing.locations, ...posting.locations]));
+  const interactionIds = Array.from(new Set([...existing.interactionIds, ...posting.interactionIds]));
+  return {
+    ...existing,
+    interactionIds,
+    locations,
+    datePosted: Math.max(existing.datePosted, posting.datePosted),
+    dateUpdated: Math.max(existing.dateUpdated, posting.dateUpdated),
+  };
+}
+
+function replacePostingAliases(
+  seen: Map<string, FeedPosting>,
+  existing: FeedPosting,
+  merged: FeedPosting,
+): void {
+  for (const [aliasKey, aliasPosting] of seen) {
+    if (aliasPosting === existing) seen.set(aliasKey, merged);
+  }
+}
+
 /**
  * Pulls every enabled source in parallel, dedupes across sources, and returns
  * the merged newest-first list.
@@ -327,28 +423,48 @@ export async function fetchFeed(): Promise<FeedPosting[]> {
     if (result.status === "fulfilled") {
       batches.push(result.value.postings);
     } else {
-      console.error("[feed] source failed:", result.reason);
+      logServerEvent({
+        level: "warn",
+        event: "feed.source_failed",
+        message: errorMessage(result.reason),
+      });
     }
   }
 
-  // Dedupe by canonical URL. Iteration is source-order: the first source to
-  // surface a URL wins. When a duplicate is found we still roll up the most
-  // recent `dateUpdated` so age indicators don't go stale if the earlier
-  // source falls behind.
+  // Dedupe by canonical URL and by a conservative company/title/season
+  // fingerprint across sources. Iteration is source-order: the first source to
+  // surface a posting wins. When a duplicate is found we still roll up dates
+  // and locations so age indicators don't go stale if the earlier source falls
+  // behind.
   const seen = new Map<string, FeedPosting>();
+  const seenByRole = new Map<string, string>();
   for (const batch of batches) {
     for (const posting of batch) {
       const key = urlDedupeKey(posting.url);
-      const existing = seen.get(key);
-      if (!existing) {
+      const roleKey = roleDedupeKey(posting);
+      const roleUrlKey = seenByRole.get(roleKey);
+      const urlExisting = seen.get(key);
+      const roleExisting = roleUrlKey ? seen.get(roleUrlKey) : undefined;
+
+      if (urlExisting) {
+        const merged = mergePosting(urlExisting, posting);
+        replacePostingAliases(seen, urlExisting, merged);
+        seen.set(key, merged);
+        if (!seenByRole.has(roleKey)) seenByRole.set(roleKey, key);
+      } else if (roleExisting && roleExisting.sourceId !== posting.sourceId && roleUrlKey) {
+        const merged = mergePosting(roleExisting, posting);
+        replacePostingAliases(seen, roleExisting, merged);
+        seen.set(roleUrlKey, merged);
+        seen.set(key, merged);
+        seenByRole.set(roleKey, roleUrlKey);
+      } else {
         seen.set(key, posting);
-      } else if (posting.dateUpdated > existing.dateUpdated) {
-        seen.set(key, { ...existing, dateUpdated: posting.dateUpdated });
+        if (!seenByRole.has(roleKey)) seenByRole.set(roleKey, key);
       }
     }
   }
 
-  const merged = Array.from(seen.values());
+  const merged = Array.from(new Set(seen.values()));
   merged.sort((a, b) => b.datePosted - a.datePosted);
   return merged;
 }

@@ -11,7 +11,6 @@ import { CompanyLogo } from "@/components/company-logo";
 import { PostingRow } from "@/components/posting-row";
 import { InlineError } from "@/components/ui/inline-error";
 import { motionVariants } from "@/lib/ui/motion";
-import { preserveScrollPositionIfScrollable } from "@/lib/ui/scroll";
 import { normalizeUrl } from "@/lib/url";
 import {
   compareOaDeadlineStates,
@@ -68,6 +67,23 @@ interface Prefill {
   season: FeedSeason;
 }
 
+function hasAnyInteraction(interactions: Set<string>, posting: FeedPosting): boolean {
+  return posting.interactionIds.some((id) => interactions.has(id));
+}
+
+function applyInteractionIds(
+  current: Set<string>,
+  posting: FeedPosting,
+  next: boolean,
+): Set<string> {
+  const out = new Set(current);
+  for (const id of posting.interactionIds) {
+    if (next) out.add(id);
+    else out.delete(id);
+  }
+  return out;
+}
+
 export function Home({
   applications,
   newPostings,
@@ -114,29 +130,20 @@ export function Home({
   const onToggleDismiss = useCallback(
     (posting: FeedPosting, next: boolean) => {
       const id = posting.id;
-      if (next) preserveScrollPositionIfScrollable();
       setActionError(null);
-      setDismissedSet((prev) => {
-        const out = new Set(prev);
-        if (next) out.add(id);
-        else out.delete(id);
-        return out;
-      });
+      setDismissedSet((prev) => applyInteractionIds(prev, posting, next));
       setPendingIds((prev) => {
         const out = new Set(prev);
         out.add(id);
         return out;
       });
       (async () => {
-        const result = next ? await dismissPosting(id) : await undismissPosting(id);
+        const result = next
+          ? await dismissPosting(posting.interactionIds)
+          : await undismissPosting(posting.interactionIds);
         if (result?.error) {
           setActionError(result.error);
-          setDismissedSet((prev) => {
-            const out = new Set(prev);
-            if (next) out.delete(id);
-            else out.add(id);
-            return out;
-          });
+          setDismissedSet((prev) => applyInteractionIds(prev, posting, !next));
         }
         setPendingIds((prev) => {
           if (!prev.has(id)) return prev;
@@ -153,12 +160,7 @@ export function Home({
     (posting: FeedPosting, next: boolean) => {
       const id = posting.id;
       setActionError(null);
-      setSavedSet((prev) => {
-        const out = new Set(prev);
-        if (next) out.add(id);
-        else out.delete(id);
-        return out;
-      });
+      setSavedSet((prev) => applyInteractionIds(prev, posting, next));
       if (next) {
         setSavedOverrides((prev) => {
           const out = new Map(prev);
@@ -172,15 +174,12 @@ export function Home({
         return out;
       });
       (async () => {
-        const result = next ? await savePosting(id) : await unsavePosting(id);
+        const result = next
+          ? await savePosting(posting.interactionIds)
+          : await unsavePosting(posting.interactionIds);
         if (result?.error) {
           setActionError(result.error);
-          setSavedSet((prev) => {
-            const out = new Set(prev);
-            if (next) out.delete(id);
-            else out.add(id);
-            return out;
-          });
+          setSavedSet((prev) => applyInteractionIds(prev, posting, !next));
         }
         setPendingSavedIds((prev) => {
           if (!prev.has(id)) return prev;
@@ -210,7 +209,7 @@ export function Home({
   const visibleNew = useMemo(
     () =>
       newPostings
-        .filter((posting) => !dismissedSet.has(posting.id) && !trackedIdSet.has(posting.id))
+        .filter((posting) => !hasAnyInteraction(dismissedSet, posting) && !trackedIdSet.has(posting.id))
         .slice(0, MAX_NEW_ROWS),
     [dismissedSet, newPostings, trackedIdSet],
   );
@@ -221,7 +220,7 @@ export function Home({
 
     const rows: FeedPosting[] = [];
     for (const posting of byId.values()) {
-      if (savedSet.has(posting.id) && !dismissedSet.has(posting.id)) {
+      if (hasAnyInteraction(savedSet, posting) && !hasAnyInteraction(dismissedSet, posting)) {
         rows.push(posting);
       }
     }
@@ -265,7 +264,7 @@ export function Home({
         <motion.header
           className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
           variants={motionVariants.riseIn}
-          initial="hidden"
+          initial={false}
           animate="visible"
         >
           <h1 className="display-serif text-[2.75rem] text-foreground sm:text-[3.25rem]">
@@ -293,7 +292,7 @@ export function Home({
         <motion.section
           className="mb-20"
           variants={motionVariants.fadeIn}
-          initial="hidden"
+          initial={false}
           animate="visible"
         >
           <div className="mb-6 flex items-baseline justify-between">
@@ -331,7 +330,7 @@ export function Home({
           ) : (
             <motion.ul
               variants={motionVariants.list}
-              initial="hidden"
+              initial={false}
               animate="visible"
               className="divide-y"
               style={{ borderColor: "var(--rule)" }}
@@ -341,8 +340,8 @@ export function Home({
                   <PostingRow
                     key={posting.id}
                     posting={posting}
-                    dismissed={dismissedSet.has(posting.id)}
-                    saved={savedSet.has(posting.id)}
+                    dismissed={hasAnyInteraction(dismissedSet, posting)}
+                    saved={hasAnyInteraction(savedSet, posting)}
                     tracked={trackedIdSet.has(posting.id)}
                     isNew
                     pending={pendingIds.has(posting.id)}
@@ -360,7 +359,7 @@ export function Home({
         <motion.section
           className="mb-20"
           variants={motionVariants.fadeIn}
-          initial="hidden"
+          initial={false}
           animate="visible"
         >
           <div className="mb-6 flex items-baseline justify-between">
@@ -439,7 +438,7 @@ export function Home({
         <motion.section
           className="mb-20"
           variants={motionVariants.fadeIn}
-          initial="hidden"
+          initial={false}
           animate="visible"
         >
           <div className="mb-6 flex items-baseline justify-between">
@@ -477,7 +476,7 @@ export function Home({
           ) : (
             <motion.ul
               variants={motionVariants.list}
-              initial="hidden"
+              initial={false}
               animate="visible"
               className="divide-y"
               style={{ borderColor: "var(--rule)" }}
@@ -487,8 +486,8 @@ export function Home({
                   <PostingRow
                     key={posting.id}
                     posting={posting}
-                    dismissed={dismissedSet.has(posting.id)}
-                    saved={savedSet.has(posting.id)}
+                    dismissed={hasAnyInteraction(dismissedSet, posting)}
+                    saved={hasAnyInteraction(savedSet, posting)}
                     tracked={trackedIdSet.has(posting.id)}
                     isNew={false}
                     pending={pendingIds.has(posting.id)}

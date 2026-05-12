@@ -1,10 +1,12 @@
 "use client";
 
 import { Check } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { InlineSpinner } from "@/components/ui/loading-indicator";
 import { cn } from "@/lib/utils";
+import { motionVariants } from "@/lib/ui/motion";
 
 type AsyncState = "idle" | "pending" | "success" | "error";
 
@@ -37,9 +39,46 @@ export function AsyncButton({
       className={cn("inline-flex items-center justify-center", className)}
       disabled={disabled || state === "pending"}
     >
-      {state === "pending" && <InlineSpinner className="shrink-0" />}
-      {state === "success" && <Check className="size-3.5 shrink-0" strokeWidth={2} aria-hidden />}
-      <span className="shrink-0 text-center leading-none whitespace-nowrap">{label}</span>
+      <AnimatePresence mode="popLayout" initial={false}>
+        {state === "pending" && (
+          <motion.span
+            key="pending-icon"
+            variants={motionVariants.step}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="inline-flex"
+          >
+            <InlineSpinner className="shrink-0" />
+          </motion.span>
+        )}
+        {state === "success" && (
+          <motion.span
+            key="success-icon"
+            variants={motionVariants.step}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="inline-flex"
+          >
+            <Check className="size-3.5 shrink-0" strokeWidth={2} aria-hidden />
+          </motion.span>
+        )}
+      </AnimatePresence>
+      <span className="relative inline-flex min-w-0 overflow-hidden">
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.span
+            key={label}
+            variants={motionVariants.step}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="shrink-0 text-center leading-none whitespace-nowrap"
+          >
+            {label}
+          </motion.span>
+        </AnimatePresence>
+      </span>
     </Button>
   );
 }

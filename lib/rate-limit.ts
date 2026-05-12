@@ -70,35 +70,3 @@ export function limitRequestByIp(
 ): RateLimitResult {
   return consumeBucket(`${bucket}:${clientKeyFromHeaders(request.headers)}`, limit, windowMs);
 }
-
-export async function consumeAuthenticatedRateLimit(
-  supabase: {
-    rpc: (
-      fn: string,
-      args: Record<string, unknown>,
-    ) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
-  },
-  bucket: string,
-  limit: number,
-  windowSeconds: number,
-): Promise<RateLimitResult> {
-  const { data, error } = await supabase.rpc("consume_rate_limit", {
-    p_bucket: bucket,
-    p_limit: limit,
-    p_window_seconds: windowSeconds,
-  });
-
-  if (error) {
-    return { ok: false, error: error.message };
-  }
-
-  const allowed =
-    typeof data === "object" &&
-    data !== null &&
-    "allowed" in data &&
-    (data as { allowed: unknown }).allowed === true;
-
-  return allowed
-    ? { ok: true }
-    : { ok: false, error: "Too many attempts. Please wait a moment and try again." };
-}

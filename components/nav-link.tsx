@@ -1,19 +1,14 @@
 "use client";
 
 import Link, { useLinkStatus } from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
 import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
 
 /**
- * Wraps next/link so that the moment a nav link is clicked we portal a
- * full-screen skeleton over the current page. Without this, the router
- * keeps the old UI visible until the RSC payload starts streaming (a
- * ~200–600ms gap in dev where prefetch hasn't kicked in), which reads as
- * an unresponsive click. See Next.js docs on useLinkStatus:
- * https://nextjs.org/docs/app/api-reference/functions/use-link-status
- *
- * The actual loading.tsx files still cover direct URL loads; this only
- * handles the in-app click path.
+ * Thin wrapper around next/link so the nav can centralize prefetch, intent,
+ * accessibility props, and a polished full-page pending layer for routes that
+ * are not ready by the time the user clicks.
  */
 
 interface Props {
@@ -23,12 +18,32 @@ interface Props {
   pendingSkeleton: React.ReactNode;
   prefetch?: boolean;
   onClick?: React.MouseEventHandler<HTMLAnchorElement>;
+  onPointerEnter?: React.PointerEventHandler<HTMLAnchorElement>;
+  onFocus?: React.FocusEventHandler<HTMLAnchorElement>;
   ariaLabel?: string;
 }
 
-export function NavLink({ href, children, className, pendingSkeleton, prefetch, onClick, ariaLabel }: Props) {
+export function NavLink({
+  href,
+  children,
+  className,
+  pendingSkeleton,
+  prefetch = true,
+  onClick,
+  onPointerEnter,
+  onFocus,
+  ariaLabel,
+}: Props) {
   return (
-    <Link href={href} className={className} prefetch={prefetch} onClick={onClick} aria-label={ariaLabel}>
+    <Link
+      href={href}
+      className={className}
+      prefetch={prefetch}
+      onClick={onClick}
+      onPointerEnter={onPointerEnter}
+      onFocus={onFocus}
+      aria-label={ariaLabel}
+    >
       {children}
       <PendingOverlay skeleton={pendingSkeleton} />
     </Link>
@@ -44,16 +59,31 @@ function PendingOverlay({ skeleton }: { skeleton: React.ReactNode }) {
     setMounted(true);
   }, []);
 
-  if (!mounted || !pending) return null;
+  if (!mounted) return null;
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-30 bg-background"
-      aria-hidden="true"
-      aria-busy="true"
-    >
-      {skeleton}
-    </div>,
+    <AnimatePresence>
+      {pending && (
+        <motion.div
+          className="pointer-events-none fixed inset-0 z-30 bg-background"
+          aria-hidden="true"
+          aria-busy="true"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0, transition: { duration: 0.12, delay: 0 } }}
+          transition={{ duration: 0.18, delay: 0.08, ease: [0.2, 0.8, 0.2, 1] }}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -2, transition: { duration: 0.12, delay: 0 } }}
+            transition={{ duration: 0.22, delay: 0.08, ease: [0.2, 0.8, 0.2, 1] }}
+          >
+            {skeleton}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>,
     document.body,
   );
 }

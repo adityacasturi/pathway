@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   ChartNoAxesCombined,
@@ -45,6 +45,7 @@ function getNavToneClass(active: boolean, pillReady: boolean) {
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [intendedHref, setIntendedHref] = useState<string | null>(null);
   const activeHref = intendedHref ?? pathname;
   const activeNavHref = getActiveNavHref(activeHref);
@@ -60,6 +61,22 @@ export function Sidebar() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIntendedHref(null);
   }, [pathname]);
+
+  useEffect(() => {
+    const prefetchAll = () => {
+      for (const item of NAV_ITEMS) {
+        if (item.href !== pathname) router.prefetch(item.href);
+      }
+    };
+
+    if ("requestIdleCallback" in window) {
+      const id = window.requestIdleCallback(prefetchAll, { timeout: 1500 });
+      return () => window.cancelIdleCallback(id);
+    }
+
+    const timeout = globalThis.setTimeout(prefetchAll, 250);
+    return () => globalThis.clearTimeout(timeout);
+  }, [pathname, router]);
 
   useLayoutEffect(() => {
     function updatePillPosition() {
@@ -143,7 +160,12 @@ export function Sidebar() {
             <NavLink
               href={href}
               pendingSkeleton={skeleton}
-              onClick={() => setIntendedHref(href)}
+              onClick={() => {
+                setIntendedHref(href);
+                router.prefetch(href);
+              }}
+              onPointerEnter={() => router.prefetch(href)}
+              onFocus={() => router.prefetch(href)}
               ariaLabel={label}
               className={`relative inline-flex h-8 items-center justify-center gap-1.5 rounded-full px-2.5 text-[12px] font-medium transition-colors duration-200 sm:px-3 sm:text-[13px] ${toneClass}`}
             >

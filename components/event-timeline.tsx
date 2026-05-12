@@ -9,6 +9,7 @@ import { EVENT_CONFIG, eventLabel } from "@/lib/config/events";
 import { OfferDot } from "@/components/status-badge";
 import { InlineError } from "@/components/ui/inline-error";
 import { InlineSpinner } from "@/components/ui/loading-indicator";
+import { motionVariants, transitions } from "@/lib/ui/motion";
 import { formatDate } from "@/lib/utils";
 
 interface Props {
@@ -153,7 +154,7 @@ export function EventTimeline({
   }
 
   return (
-    <ol className="relative space-y-0">
+    <motion.ol layout className="relative space-y-0" transition={transitions.layout}>
       {events.map((event, index) => {
         const { color } = EVENT_CONFIG[event.event_type];
         const isLast = index === events.length - 1;
@@ -166,9 +167,11 @@ export function EventTimeline({
         return (
           <motion.li
             key={event.id}
+            layout
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.18 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={transitions.layout}
             className="grid grid-cols-[20px_1fr] gap-4"
           >
             <div className="flex flex-col items-center" aria-hidden>
@@ -191,9 +194,11 @@ export function EventTimeline({
             </div>
 
             <div className={isLast ? "pb-0" : "pb-5"}>
-              <div
+              <motion.div
+                layout
                 className="rounded-md border bg-card px-3.5 py-3"
                 style={{ borderColor: "var(--rule)" }}
+                transition={transitions.layout}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -236,14 +241,16 @@ export function EventTimeline({
                   </div>
                 </div>
 
-                <AnimatePresence mode="wait">
+                <AnimatePresence mode="wait" initial={false}>
                   {isEditing ? (
                     <motion.div
                       key="editor"
-                      initial={{ opacity: 0, y: -2 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -2 }}
-                      transition={{ duration: 0.12 }}
+                      layout
+                      variants={motionVariants.gentleScale}
+                      initial="hidden"
+                      animate="visible"
+                      exit="exit"
+                      transition={transitions.layout}
                       className="mt-3 space-y-3"
                     >
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-[150px_1fr]">
@@ -262,7 +269,7 @@ export function EventTimeline({
                                   : current,
                               )
                             }
-                            className="h-9 w-full rounded-lg border border-border/70 bg-background/80 px-2.5 text-xs text-foreground outline-none transition-colors duration-150 focus:border-foreground/30 disabled:opacity-60"
+                            className="h-9 w-full rounded-lg border border-border/70 bg-background/80 px-2.5 text-xs text-foreground outline-none transition-[border-color,background-color,box-shadow,opacity] duration-200 focus:border-foreground/30 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--ring)_12%,transparent)] disabled:opacity-60"
                           />
                         </label>
                         <label className="space-y-1.5">
@@ -287,7 +294,7 @@ export function EventTimeline({
                             }}
                             placeholder="Add a note..."
                             rows={3}
-                            className="min-h-20 w-full resize-none rounded-lg border border-border/70 bg-background/80 px-2.5 py-2 text-xs text-foreground outline-none transition-colors duration-150 placeholder:text-muted-foreground/45 focus:border-foreground/30 disabled:opacity-60"
+                            className="min-h-20 w-full resize-none rounded-lg border border-border/70 bg-background/80 px-2.5 py-2 text-xs text-foreground outline-none transition-[border-color,background-color,box-shadow,opacity] duration-200 placeholder:text-muted-foreground/45 focus:border-foreground/30 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--ring)_12%,transparent)] disabled:opacity-60"
                           />
                         </label>
                       </div>
@@ -321,10 +328,11 @@ export function EventTimeline({
                   ) : (
                     <motion.div
                       key="read"
+                      layout
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      transition={{ duration: 0.12 }}
+                      transition={{ duration: 0.16 }}
                     >
                       {event.notes ? (
                         <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">
@@ -361,7 +369,14 @@ export function EventTimeline({
                         />
                       )}
                       {confirmDeleteId === event.id && (
-                        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2">
+                        <motion.div
+                          layout
+                          variants={motionVariants.gentleScale}
+                          initial="hidden"
+                          animate="visible"
+                          exit="exit"
+                          className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2"
+                        >
                           <p className="text-xs text-destructive">Delete this event?</p>
                           <div className="flex items-center gap-2">
                             <button
@@ -382,17 +397,17 @@ export function EventTimeline({
                               Delete
                             </button>
                           </div>
-                        </div>
+                        </motion.div>
                       )}
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </div>
+              </motion.div>
             </div>
           </motion.li>
         );
       })}
-    </ol>
+    </motion.ol>
   );
 }
 

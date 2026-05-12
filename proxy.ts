@@ -6,7 +6,7 @@ import { NextResponse, type NextRequest } from "next/server";
  *
  * Behavior:
  * - Refreshes the Supabase session via cookies on each request.
- * - Redirects unauthenticated users to /login (except when they're already there).
+ * - Redirects unauthenticated users to /login (except public routes).
  * - Redirects already-signed-in users away from /login back to the dashboard.
  */
 export async function proxy(request: NextRequest) {
@@ -38,8 +38,12 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
+  const isPublicRoute =
+    pathname === "/login" ||
+    pathname.startsWith("/school-logos/") ||
+    pathname === "/favicon.ico";
 
-  if (!user && pathname !== "/login") {
+  if (!user && !isPublicRoute) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
@@ -53,5 +57,5 @@ export async function proxy(request: NextRequest) {
 export const config = {
   // Skip Next.js internals and static assets so we don't run auth checks for
   // every request for /favicon.ico, hashed JS chunks, etc.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)"],
 };

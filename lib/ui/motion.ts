@@ -23,9 +23,15 @@ const motionTransitions = {
   } satisfies Transition,
   spring: {
     type: "spring",
-    stiffness: 260,
-    damping: 30,
+    stiffness: 300,
+    damping: 32,
     mass: 0.7,
+  } satisfies Transition,
+  layout: {
+    type: "spring",
+    stiffness: 420,
+    damping: 38,
+    mass: 0.72,
   } satisfies Transition,
 } as const;
 
@@ -50,7 +56,11 @@ export const motionVariants = {
   row: {
     hidden: { opacity: 0 },
     visible: { opacity: 1, transition: { duration: motionDurations.fast, ease: motionEasing.standard } },
-    exit: { opacity: 0, transition: { duration: motionDurations.instant, ease: motionEasing.standard } },
+    exit: {
+      opacity: 0,
+      y: -3,
+      transition: { duration: motionDurations.instant, ease: motionEasing.standard },
+    },
   },
   menu: {
     hidden: { opacity: 0, y: -4, scale: 0.98 },
@@ -63,3 +73,5 @@ export const motionVariants = {
     exit: { opacity: 0, y: -5, transition: { duration: motionDurations.instant, ease: motionEasing.standard } },
   },
 } as const;
+
+export const transitions = motionTransitions;

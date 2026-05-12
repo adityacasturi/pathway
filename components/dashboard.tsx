@@ -296,7 +296,7 @@ export function Dashboard({ applications: initialApplications }: Props) {
   return (
     <div className="page-shell min-h-screen bg-background">
       <main className="max-w-6xl mx-auto px-6 sm:px-10 lg:px-16 pt-18 sm:pt-20 lg:pt-24 pb-24">
-        <motion.header className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between" variants={motionVariants.riseIn} initial="hidden" animate="visible">
+        <motion.header className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between" variants={motionVariants.riseIn} initial={false} animate="visible">
           <h1 className="display-serif text-[2.75rem] text-foreground sm:text-[3.25rem]">
             Applications
           </h1>
@@ -312,13 +312,13 @@ export function Dashboard({ applications: initialApplications }: Props) {
         <motion.div
           className={`relative mb-6 ${searchFocused ? "z-[200]" : "z-20"}`}
           variants={motionVariants.fadeIn}
-          initial="hidden"
+          initial={false}
           animate="visible"
         >
           <span className="rule mb-0" />
           <motion.div
             variants={motionVariants.list}
-            initial="hidden"
+            initial={false}
             animate="visible"
             className="grid grid-cols-2 md:grid-cols-5 divide-x"
             style={{ borderColor: "var(--rule)" }}

@@ -31,7 +31,7 @@ import { InlineEdit } from "@/components/ui/inline-edit";
 import { InlineError } from "@/components/ui/inline-error";
 import { InlineSpinner } from "@/components/ui/loading-indicator";
 import { Label } from "@/components/ui/label";
-import { motionVariants } from "@/lib/ui/motion";
+import { motionVariants, transitions } from "@/lib/ui/motion";
 import { displayUrl, normalizeUrl, safeExternalHref } from "@/lib/url";
 import { CalendarDays, CalendarRange, Check, Link as LinkIcon, MapPin, X } from "lucide-react";
 
@@ -355,7 +355,11 @@ export function ApplicationDetail({ application, onClose }: Props) {
       }}
     >
       {open && (
-        <div
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
           className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
           role="dialog"
           aria-modal="true"
@@ -367,7 +371,7 @@ export function ApplicationDetail({ application, onClose }: Props) {
             initial="hidden"
             animate="visible"
             exit="hidden"
-            className="absolute inset-0 bg-[color-mix(in_oklab,var(--ink)_55%,transparent)]"
+            className="absolute inset-0 bg-[color-mix(in_oklab,var(--ink)_52%,transparent)] backdrop-blur-[3px]"
             onClick={onClose}
           />
 
@@ -377,7 +381,8 @@ export function ApplicationDetail({ application, onClose }: Props) {
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="relative z-10 flex h-[min(85vh,840px)] min-h-[480px] w-full max-w-3xl flex-col overflow-hidden rounded-md border bg-card"
+            transition={transitions.spring}
+            className="relative z-10 flex h-[min(85vh,840px)] min-h-[480px] w-full max-w-3xl flex-col overflow-hidden rounded-lg border bg-card shadow-[0_35px_110px_-65px_color-mix(in_oklab,var(--ink)_85%,transparent)]"
             style={{ borderColor: "var(--rule-strong)" }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -429,7 +434,7 @@ export function ApplicationDetail({ application, onClose }: Props) {
               />
             </div>
           </motion.div>
-        </div>
+        </motion.div>
       )}
     </AnimatePresence>,
     document.body,
@@ -467,11 +472,13 @@ function DetailHeader({
               <InlineEdit
                 value={application.company}
                 onSave={(v) => onSaveField({ company: v })}
-                className="display-serif text-[30px] font-normal tracking-tight text-foreground"
+                ariaLabel="Company"
+                className="display-serif text-[30px] font-normal text-foreground"
               />
               <InlineEdit
                 value={application.role}
                 onSave={(v) => onSaveField({ role: v })}
+                ariaLabel="Role"
                 className="mt-1 text-[14px] text-muted-foreground"
                 placeholder="Add role..."
               />
@@ -669,7 +676,7 @@ function FloatingSyncToast({
           initial={{ opacity: 0, y: 12, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 12, scale: 0.98 }}
-          transition={{ duration: 0.18, ease: "easeOut" }}
+          transition={transitions.spring}
           className="pointer-events-none absolute inset-x-0 bottom-6 z-10 flex justify-center px-6 sm:px-8"
           aria-live="polite"
         >

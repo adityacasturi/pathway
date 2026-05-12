@@ -6,6 +6,7 @@ import {
   resolveDiscoverCutoffDate,
 } from "@/lib/config/discover";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
+import { formatSupabaseMutationError } from "@/lib/supabase/errors";
 
 export async function updateDiscoverCutoffDate(cutoffDate: string) {
   const { supabase, user } = await getAuthenticatedUser();
@@ -24,7 +25,7 @@ export async function updateDiscoverCutoffDate(cutoffDate: string) {
       { onConflict: "user_id" },
     );
 
-  if (error) return { error: error.message };
+  if (error) return { error: formatSupabaseMutationError(error, "Unable to save settings.") };
   revalidatePath("/discover");
   revalidatePath("/settings");
 
