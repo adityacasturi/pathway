@@ -234,6 +234,41 @@ export async function resendEmailOtp(formData: FormData): Promise<{ ok: true } |
   return { ok: true };
 }
 
+export async function setPassword(formData: FormData): Promise<AuthActionResult> {
+  const rateLimit = await limitServerActionByIp("auth:set-password", 8, 60_000);
+  if (!rateLimit.ok) {
+    return { error: rateLimit.error ?? "Too many attempts. Please try again shortly." };
+  }
+
+  const password = formData.get("password");
+  const passwordConfirmation = formData.get("password_confirmation");
+  if (typeof password !== "string" || typeof passwordConfirmation !== "string") {
+    return { error: "Password is required." };
+  }
+  if (!password || password.length > MAX_PASSWORD_LENGTH) {
+    return { error: "Enter a valid password." };
+  }
+  if (password !== passwordConfirmation) {
+    return { error: "Passwords do not match." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "Your invite link has expired. Please request a new one." };
+  }
+
+  const passwordError = getSignupPasswordError(password, user.email ?? "");
+  if (passwordError) return { error: passwordError };
+
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { error: formatAuthError(error) };
+
+  return { status: "authenticated" as const };
+}
+
 export async function logout() {
   const supabase = await createClient();
   await supabase.auth.signOut();
