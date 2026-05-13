@@ -1,55 +1,37 @@
 import { expect, test } from "@playwright/test";
 
-test("login renders and signup password policy is visible", async ({ page }) => {
+test("login renders with public signup paused", async ({ page }) => {
   await page.goto("/login");
 
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
   await expect(page.getByLabel("Email")).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Password", exact: true })).toBeVisible();
   await expect(page.getByLabel("Universities using Pathway")).toHaveCount(0);
-
-  await page.getByRole("button", { name: "Create an account" }).click();
-
-  await expect(page.getByRole("heading", { name: "Create account" })).toBeVisible();
-  await expect(page.getByText("Use your @uw.edu email for now.")).toBeVisible();
-  await expect(page.getByText("Needs work")).toBeVisible();
-  await expect(page.getByText("8+ chars with A/a/1/!")).toBeVisible();
-  await expect(page.locator('input[name="password"]')).toHaveAttribute("minlength", "8");
-  await expect(page.locator('input[name="password"]')).toHaveAttribute("pattern", /\?=.*\[A-Z\]/);
+  await expect(page.getByRole("button", { name: "Create an account" })).toHaveCount(0);
+  await expect(page.getByText(/Signups are paused/i)).toHaveCount(0);
 });
 
-test("signup blocks invalid email and weak password before submit", async ({ page }) => {
-  await page.goto("/login");
-  await page.getByRole("button", { name: "Create an account" }).click();
-  await expect(page.getByRole("heading", { name: "Create account" })).toBeVisible();
+test("waitlist blocks non-UW emails before submit", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: /Join the waitlist/i }).click();
 
-  const submit = page.getByRole("button", { name: "Create account" });
-  await expect(submit).toBeEnabled();
-
+  await expect(page.getByRole("heading", { name: "Join the waitlist." })).toBeVisible();
   await page.getByLabel("Email").fill("person@example.com");
-  await page.getByRole("textbox", { name: "Password", exact: true }).fill("password1");
+  await page.getByRole("button", { name: "Join waitlist" }).click();
 
   await expect(page.getByText("Use your @uw.edu email for now.")).toBeVisible();
-  await expect(page.getByText("Getting stronger")).toBeVisible();
-
-  await page.getByLabel("Email").fill("PERSON@example.com");
-  await page.getByRole("textbox", { name: "Password", exact: true }).fill("Stronger1!");
-
-  await expect(page.getByText("Use your @uw.edu email for now.")).toBeVisible();
-  await expect(page.getByText("Use your @uw.edu email for now.")).toBeVisible();
-
   await page.getByLabel("Email").fill("student@uw.edu");
-
-  await expect(submit).toBeEnabled();
+  await expect(page.getByText("Use your @uw.edu email for now.")).toHaveCount(0);
 });
 
 test("landing page renders for anonymous users", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: /Find roles faster/i })).toBeVisible();
-  await expect(page.getByText(/Exclusive beta access for/i)).toBeVisible();
+  await expect(page.getByText(/Now taking waitlist signups for/i)).toBeVisible();
   await expect(page.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/login");
   await expect(page.getByRole("link", { name: "Pathway home" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Join the waitlist/i })).toBeVisible();
   await expect(page.getByLabel("Universities using Pathway")).toBeVisible();
   await expect(page.getByRole("link", { name: "View product" })).toHaveCount(0);
   await expect(page.getByText("Built for internship recruiting")).toHaveCount(0);

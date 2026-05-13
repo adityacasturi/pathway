@@ -107,7 +107,7 @@ export function DiscoverFeed({
   const [seasonFilter, setSeasonFilter] = useState<SeasonFilter>("all");
   const [showDismissed, setShowDismissed] = useState(false);
   const [showSavedOnly, setShowSavedOnly] = useState(initialSavedOnly);
-  const [hideApplied, setHideApplied] = useState(false);
+  const [hideApplied, setHideApplied] = useState(true);
   const [preferencesReady, setPreferencesReady] = useState(false);
   const [dialogPrefill, setDialogPrefill] = useState<Prefill | null>(null);
   const [trackedUrlOverrides, setTrackedUrlOverrides] = useState<Set<string>>(() => new Set());
@@ -147,9 +147,7 @@ export function DiscoverFeed({
     }
 
     const hideAppliedPref = localStorage.getItem(HIDE_APPLIED_STORAGE_KEY);
-    if (hideAppliedPref === "1") {
-      setHideApplied(true);
-    }
+    if (hideAppliedPref !== null) setHideApplied(hideAppliedPref === "1");
     setPreferencesReady(true);
 
     return () => {

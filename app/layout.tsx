@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Instrument_Serif, Inter, JetBrains_Mono } from "next/font/google";
 import { AccentThemeProvider } from "@/components/accent-theme-provider";
 import { AppChrome } from "@/components/app-chrome";
+import { DEFAULT_ACCENT_COLOR } from "@/lib/config/accent";
 import "./globals.css";
 
 const instrumentSerif = Instrument_Serif({
@@ -72,6 +73,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
+      data-accent={DEFAULT_ACCENT_COLOR}
       data-scroll-behavior="smooth"
       className={`${instrumentSerif.variable} ${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >

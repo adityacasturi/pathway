@@ -1,62 +1,107 @@
 # Pathway
 
-A minimal internship application tracker. Log in, add applications, and track each one through its lifecycle of events (applied → OA → interview → offer / rejected). Status is always derived from the events on each application.
+Pathway is a focused internship search workspace for UW students. Signups are currently paused while waitlist interest is measured; the public waitlist accepts `@uw.edu` addresses only. Authenticated users can track applications, manage event timelines, review stats, and browse live internship postings in Discover.
 
-Built with Next.js 16 (App Router + Server Actions), Supabase (Auth + Postgres with RLS), Tailwind CSS v4, and shadcn-style components on top of `@base-ui/react`.
+Built with Next.js 16 App Router, React 19, Server Actions, Supabase Auth/Postgres/RLS, Tailwind CSS v4, Playwright, and shadcn-style UI primitives on `@base-ui/react`.
 
-## Getting started
+## Requirements
+
+- Node.js 22.x
+- npm 10.x
+- A Supabase project with the migrations in `supabase/migrations/` formally applied
+
+## Local Setup
 
 1. Install dependencies:
+
    ```bash
    npm install
    ```
-2. Create a Supabase project and copy the credentials into a `.env.local`:
+
+2. Create `.env.local`:
+
    ```bash
    NEXT_PUBLIC_SUPABASE_URL=...
    NEXT_PUBLIC_SUPABASE_ANON_KEY=...
    NEXT_PUBLIC_SITE_URL=http://localhost:3000
-   # Optional: enables cached company logos via https://logo.dev
+
+   # Optional: cached company logos via https://logo.dev.
    LOGO_DEV_TOKEN=...
+
+   # Optional: sync waitlist signups to a Resend Audience.
+   RESEND_API_KEY=...
+   RESEND_AUDIENCE_ID=...
    ```
-3. Apply the SQL migrations in `supabase/migrations/` in order via the Supabase SQL editor.
-4. Run the dev server:
+
+3. Apply database migrations through the Supabase connector/CLI migration flow. Do not paste durable DDL into the SQL editor as an ad hoc change; see [Agent And Migration Rules](#agent-and-migration-rules).
+
+4. Start the app:
+
    ```bash
    npm run dev
    ```
+
    Visit [http://localhost:3000](http://localhost:3000).
 
 ## Scripts
 
-| Command         | What it does                       |
-| --------------- | ---------------------------------- |
-| `npm run dev`   | Start the dev server               |
-| `npm run build` | Production build                   |
-| `npm run lint`  | Run ESLint                         |
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Start the local Next.js dev server |
+| `npm run build` | Create a production build |
+| `npm run start` | Start the production build |
+| `npm run lint` | Run ESLint |
 | `npm run typecheck` | Run TypeScript without emitting files |
-| `npm run test:e2e` | Run Playwright smoke tests |
+| `npm run test:e2e` | Run Playwright e2e tests |
+| `npm run test:e2e:ui` | Run Playwright in UI mode |
 | `npm run verify` | Lint, typecheck, audit, and build |
 
-## Production checklist
+Authenticated e2e tests require a QA account:
 
-- Apply every migration in `supabase/migrations/`, including the production invariant/rate-limit migrations.
-- In Supabase Auth settings, enforce a minimum password length of at least 8 characters, require mixed character classes, and enable leaked password protection when the project plan supports it. The app validates signup passwords too, but Auth settings protect direct Supabase Auth API calls.
-- Keep email confirmation enabled and configure custom SMTP before launch; Supabase's default email service is only intended for development/testing.
-- Run `npm audit --audit-level=moderate`, `npm run lint`, `npx tsc --noEmit`, and `npm run build` before deploy.
-
-## Project layout
-
-```
-app/                Next.js App Router routes (server components + auth pages)
-components/         UI components — dashboard, detail modal, table, badges
-components/ui/      Reusable primitives (buttons, inputs, dialogs, etc.)
-lib/actions/        Next.js server actions (mutations)
-lib/config/         Pure config + state helpers (events, status derivation)
-lib/supabase/       Supabase client factories (server / browser)
-lib/ui/             Shared UI utilities (motion variants)
-proxy.ts            Auth gate — redirects to the landing page when no session
-supabase/migrations Append-only SQL migrations
-types/              TypeScript types (`Application`, `ApplicationEvent`, …)
+```bash
+E2E_USER_EMAIL="pathway.qa.20260513@uw.edu" \
+E2E_USER_PASSWORD="..." \
+npm run test:e2e
 ```
 
-See [`CLAUDE.md`](./CLAUDE.md) for a deeper architectural walkthrough.
-See [`docs/production-runbook.md`](./docs/production-runbook.md) for launch checks, E2E env vars, Supabase dashboard settings, and incident checks.
+Mutation coverage is opt-in and intentionally single-worker because it uses one shared QA account:
+
+```bash
+E2E_USER_EMAIL="pathway.qa.20260513@uw.edu" \
+E2E_USER_PASSWORD="..." \
+E2E_ALLOW_MUTATION=1 \
+npm run test:e2e
+```
+
+## Project Layout
+
+```text
+app/                  Next.js routes, layouts, loading/error states, logo API
+components/           Product UI for landing, app shell, dashboard, discover, stats
+components/ui/        Reusable primitives
+lib/actions/          Server Actions for auth, apps, events, feed, settings, waitlist
+lib/auth/             Signup state and auth validation rules
+lib/config/           Event/status, deadlines, accent theme, application state helpers
+lib/feed/             Upstream internship feed ingestion and normalization
+lib/supabase/         Browser/server Supabase client factories and error helpers
+supabase/migrations/  Append-only database migrations
+tests/e2e/            Playwright public and authenticated smoke tests
+types/                Shared TypeScript domain types
+```
+
+See [docs/architecture.md](./docs/architecture.md) for the system walkthrough and [docs/production-runbook.md](./docs/production-runbook.md) for launch checks.
+
+## Agent And Migration Rules
+
+- Read `AGENTS.md` before making changes. For Next.js work, read the relevant guide in `node_modules/next/dist/docs/` first.
+- Every database schema, RLS, function, trigger, grant, index, or durable data backfill change must be represented as a new append-only file in `supabase/migrations/`.
+- Apply durable database changes with the Supabase connector migration tool (`_apply_migration`) or the Supabase CLI migration flow so the migration appears in the Supabase migration list.
+- Use raw SQL execution only for read-only inspection, one-off QA account setup, and temporary checks. Do not use the SQL editor or `_execute_sql` for production DDL that should be tracked as a migration.
+- After applying migrations, verify `_list_migrations`, run `select * from app_private.production_integrity_check();`, and review Supabase advisors.
+
+## Production Notes
+
+- Keep signups disabled until the waitlist experiment is over. The waitlist RPC enforces `@uw.edu`, stores raw emails only in `public.waitlist`, and stores HMAC-hashed anti-abuse identifiers in `public.waitlist_attempts`.
+- Waitlist hashing uses a database-owned secret in `app_private.waitlist_config`; no app env secret is required for this path.
+- Default UI accent is sage. User preferences are stored in `public.user_preferences`.
+- Supabase dashboard checks that are not fully automatable from this repo still matter: Auth password policy, email confirmation, SMTP, redirect allow-list, leaked password protection, backups/PITR, and advisor review.

@@ -87,11 +87,9 @@ function SortToolbar({
   }, [filtersOpen]);
 
   return (
-    <motion.div
-      layout
+    <div
       className="flex flex-col gap-3 border-y py-3 md:flex-row md:items-center md:justify-between"
       style={{ borderColor: "var(--rule)" }}
-      transition={transitions.layout}
     >
       <div className="flex flex-wrap items-center gap-2" aria-label="Application counts">
         <SummaryPill value={matchingCount} label="Matching" icon={<ListFilter size={12} strokeWidth={1.75} />} />
@@ -170,7 +168,7 @@ function SortToolbar({
           </AnimatePresence>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -184,11 +182,9 @@ function SummaryPill({
   icon?: ReactNode;
 }) {
   return (
-    <motion.span
-      layout
+    <span
       className="inline-flex h-8 items-center justify-center gap-1.5 rounded-full border px-3 text-[12px] text-muted-foreground"
       style={{ borderColor: "var(--rule)" }}
-      transition={transitions.layout}
     >
       {icon ? (
         <span className="inline-flex size-3.5 items-center justify-center" aria-hidden>
@@ -209,7 +205,7 @@ function SummaryPill({
         </AnimatePresence>
       </span>
       {label}
-    </motion.span>
+    </span>
   );
 }
 
@@ -289,7 +285,7 @@ export function ApplicationsTable({
   }
 
   return (
-    <motion.div layout initial={false} animate={{ opacity: 1 }} transition={transitions.layout}>
+    <div>
       <SortToolbar
         matchingCount={matchingCount}
         activeCount={activeCount}
@@ -304,23 +300,17 @@ export function ApplicationsTable({
       />
 
       {applications.length === 0 && (
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={hasActiveFilters ? "filtered-empty" : "base-empty"}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.22 }}
-            className="flex flex-col items-center justify-center py-28 text-center"
-          >
-            <p className="display-serif text-[22px] text-foreground/80">
-              {hasActiveFilters ? "Nothing matches." : "No applications yet."}
-            </p>
-            <p className="mt-3 text-[13px] text-muted-foreground/70">
-              {hasActiveFilters ? `Try clearing "${searchQuery.trim()}" or the filters above.` : "Press N to add your first one."}
-            </p>
-          </motion.div>
-        </AnimatePresence>
+        <div
+          key={hasActiveFilters ? "filtered-empty" : "base-empty"}
+          className="flex flex-col items-center justify-center py-28 text-center"
+        >
+          <p className="display-serif text-[22px] text-foreground/80">
+            {hasActiveFilters ? "Nothing matches." : "No applications yet."}
+          </p>
+          <p className="mt-3 text-[13px] text-muted-foreground/70">
+            {hasActiveFilters ? `Try clearing "${searchQuery.trim()}" or the filters above.` : "Press N to add your first one."}
+          </p>
+        </div>
       )}
 
       <ul
@@ -487,6 +477,6 @@ export function ApplicationsTable({
           </div>
         </DialogContent>
       </Dialog>
-    </motion.div>
+    </div>
   );
 }

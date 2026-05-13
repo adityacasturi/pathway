@@ -9,9 +9,10 @@ test.skip(!email || !password, "Set E2E_USER_EMAIL and E2E_USER_PASSWORD to run 
 async function signIn(page: Page) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(email ?? "");
-  await page.getByLabel("Password").fill(password ?? "");
+  await page.getByRole("textbox", { name: "Password", exact: true }).fill(password ?? "");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByRole("heading", { name: "Home" })).toBeVisible();
+  await expect(page).toHaveURL(/\/home$/);
+  await expect(page.getByRole("link", { name: "Home" })).toBeVisible();
 }
 
 test("authenticated user can navigate core app surfaces", async ({ page }) => {
@@ -55,19 +56,19 @@ test("authenticated user can create, edit, add an event, and delete an applicati
   const company = `E2E Pathway ${Date.now()}`;
   const editedCompany = `${company} Edited`;
   await page.getByRole("button", { name: "Add application" }).click();
-  await page.getByLabel("Company").fill(company);
-  await page.getByLabel("Role").fill("Production Smoke Intern");
+  await page.getByRole("textbox", { name: "Company", exact: true }).fill(company);
+  await page.getByRole("textbox", { name: "Role", exact: true }).fill("Production Smoke Intern");
   await page.getByRole("button", { name: "Add" }).click();
 
   const row = page.getByTestId("application-row").filter({ hasText: company });
   await expect(row).toBeVisible();
 
   await row.click();
-  await page.getByLabel("Company").fill(editedCompany);
-  await page.getByLabel("Company").press("Enter");
+  await page.getByRole("textbox", { name: "Company", exact: true }).fill(editedCompany);
+  await page.getByRole("textbox", { name: "Company", exact: true }).press("Enter");
   await expect(page.getByText("Saved")).toBeVisible();
 
-  await page.getByRole("button", { name: /Interview/i }).click();
+  await page.getByRole("button", { name: "Interview", exact: true }).click();
   await page.getByRole("button", { name: "Add event" }).click();
   await expect(page.getByText(/Interview/i).first()).toBeVisible();
 
@@ -75,8 +76,9 @@ test("authenticated user can create, edit, add an event, and delete an applicati
   const editedRow = page.getByTestId("application-row").filter({ hasText: editedCompany });
   await expect(editedRow).toBeVisible();
 
-  await editedRow.click({ button: "right" });
-  await page.getByTestId("application-context-delete").click();
+  await editedRow.evaluate((element) => element.scrollIntoView({ block: "center", inline: "nearest" }));
+  await editedRow.click({ button: "right", position: { x: 24, y: 24 } });
+  await page.getByRole("button", { name: "Delete application" }).click();
   await page.getByTestId("confirm-delete-application").click();
   await expect(editedRow).toHaveCount(0);
 });
@@ -86,8 +88,10 @@ test("authenticated user can dismiss and restore a discover posting", async ({ p
 
   await signIn(page);
   await page.goto("/discover");
+  await expect(page.getByRole("heading", { name: "Discover" })).toBeVisible();
 
   const firstRow = page.getByTestId("posting-row").first();
+  await expect(firstRow.or(page.getByText("Nothing matches the filters."))).toBeVisible();
   if ((await firstRow.count()) === 0) test.skip(true, "No discover postings available.");
 
   const postingId = await firstRow.getAttribute("data-posting-id");
@@ -101,6 +105,9 @@ test("authenticated user can dismiss and restore a discover posting", async ({ p
   const dismissedRow = page.locator(`[data-posting-id="${postingId}"]`);
   await expect(dismissedRow).toBeVisible();
 
+  await page.getByRole("heading", { name: "Discover" }).click();
+  await dismissedRow.scrollIntoViewIfNeeded();
+  await expect(dismissedRow.getByRole("button", { name: "Restore" })).toBeEnabled();
   await dismissedRow.getByRole("button", { name: "Restore" }).click();
   await expect(dismissedRow).toBeVisible();
 });
