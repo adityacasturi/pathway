@@ -262,7 +262,7 @@ export function Home({
     <div className="page-shell min-h-screen bg-background">
       <main className="max-w-6xl mx-auto px-6 sm:px-10 lg:px-16 pt-18 sm:pt-20 lg:pt-24 pb-24">
         <motion.header
-          className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+          className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
           variants={motionVariants.riseIn}
           initial={false}
           animate="visible"
@@ -290,12 +290,12 @@ export function Home({
         )}
 
         <motion.section
-          className="mb-20"
+          className="mb-8"
           variants={motionVariants.fadeIn}
           initial={false}
           animate="visible"
         >
-          <div className="mb-6 flex items-baseline justify-between">
+          <div className="mb-3 flex items-baseline justify-between">
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <h2 className="display-serif text-[22px] text-foreground">
                 Since yesterday
@@ -316,7 +316,7 @@ export function Home({
           <span className="rule" />
 
           {visibleNew.length === 0 ? (
-            <div className="py-20 text-center">
+            <div className="py-12 text-center">
               <p className="text-[15px] text-muted-foreground">
                 Nothing new since yesterday.
               </p>
@@ -357,12 +357,12 @@ export function Home({
         </motion.section>
 
         <motion.section
-          className="mb-20"
+          className="mb-8"
           variants={motionVariants.fadeIn}
           initial={false}
           animate="visible"
         >
-          <div className="mb-6 flex items-baseline justify-between">
+          <div className="mb-3 flex items-baseline justify-between">
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <h2 className="display-serif text-[22px] text-foreground">
                 Deadlines
@@ -383,7 +383,7 @@ export function Home({
           <span className="rule" />
 
           {upcomingDeadlines.length === 0 ? (
-            <div className="py-12 text-center">
+            <div className="py-8 text-center">
               <p className="text-[15px] text-muted-foreground">
                 No upcoming OA deadlines.
               </p>
@@ -397,7 +397,7 @@ export function Home({
                     <button
                       type="button"
                       onClick={() => setDetail(application)}
-                      className="group grid w-full grid-cols-[2.25rem_minmax(0,1fr)_5.75rem] items-center gap-4 px-2 py-4 text-left transition-colors duration-150 hover:bg-[color-mix(in_oklab,var(--ink)_3%,transparent)] sm:grid-cols-[2.5rem_minmax(0,1fr)_6.5rem]"
+                      className="group grid w-full grid-cols-[2.25rem_minmax(0,1fr)_5.75rem] items-center gap-3 px-2 py-3 text-left transition-colors duration-150 hover:bg-[color-mix(in_oklab,var(--ink)_3%,transparent)] sm:grid-cols-[2.5rem_minmax(0,1fr)_6.5rem]"
                     >
                       <CompanyLogo company={application.company} size={36} />
                       <div className="min-w-0">
@@ -410,7 +410,7 @@ export function Home({
                         </p>
                       </div>
                       <span
-                        className={`flex min-h-14 flex-col items-center justify-center rounded-md border px-2 text-center ${
+                        className={`flex min-h-12 flex-col items-center justify-center rounded-md border px-2 text-center ${
                           deadline.status === "overdue"
                             ? "border-destructive/25 bg-destructive/10 text-destructive"
                             : deadline.status === "urgent"
@@ -436,12 +436,12 @@ export function Home({
         </motion.section>
 
         <motion.section
-          className="mb-20"
+          className="mb-8"
           variants={motionVariants.fadeIn}
           initial={false}
           animate="visible"
         >
-          <div className="mb-6 flex items-baseline justify-between">
+          <div className="mb-3 flex items-baseline justify-between">
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <h2 className="display-serif text-[22px] text-foreground">
                 For later
@@ -462,7 +462,7 @@ export function Home({
           <span className="rule" />
 
           {visibleSaved.length === 0 ? (
-            <div className="py-16 text-center">
+            <div className="py-10 text-center">
               <p className="text-[15px] text-muted-foreground">
                 Saved postings will collect here.
               </p>

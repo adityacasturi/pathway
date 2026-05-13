@@ -30,7 +30,7 @@ export default async function DiscoverPage({ searchParams }: DiscoverPageProps) 
     supabase.from("user_preferences").select("discover_cutoff_date").maybeSingle(),
   ]);
 
-  if (!userResult.data.user) redirect("/login");
+  if (!userResult.data.user) redirect("/");
   assertSupabaseOk(interactionsRes.error, "Load feed interactions");
   assertSupabaseOk(appsRes.error, "Load tracked applications");
   assertSupabaseOk(preferencesRes.error, "Load preferences");

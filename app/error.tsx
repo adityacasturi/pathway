@@ -18,7 +18,7 @@ export default function Error({
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-6">
       <div className="w-full max-w-lg space-y-4">
-        <p className="text-xs tracking-[0.2em] uppercase text-muted-foreground">Launchpad</p>
+        <p className="text-xs tracking-[0.2em] uppercase text-muted-foreground">Pathway</p>
         <h1 className="text-2xl font-semibold tracking-tight">Something went wrong.</h1>
         <InlineError
           message="A temporary issue interrupted this page."

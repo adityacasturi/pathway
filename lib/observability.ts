@@ -29,7 +29,7 @@ export function logServerEvent(payload: ObservabilityPayload): void {
   const clean = cleanPayload(payload);
   const line = JSON.stringify({
     ...clean,
-    app: "launchpad",
+    app: "pathway",
     at: new Date().toISOString(),
   });
 

@@ -20,7 +20,7 @@ export default async function ApplicationsPage() {
       .order("created_at", { ascending: false }),
   ]);
 
-  if (!userResult.data.user) redirect("/login");
+  if (!userResult.data.user) redirect("/");
   assertSupabaseOk(appsResult.error, "Load applications");
 
   const applications: Application[] = (appsResult.data ?? []).map((row) =>

@@ -52,7 +52,7 @@ test("authenticated user can create, edit, add an event, and delete an applicati
   await signIn(page);
   await page.goto("/applications");
 
-  const company = `E2E Launchpad ${Date.now()}`;
+  const company = `E2E Pathway ${Date.now()}`;
   const editedCompany = `${company} Edited`;
   await page.getByRole("button", { name: "Add application" }).click();
   await page.getByLabel("Company").fill(company);

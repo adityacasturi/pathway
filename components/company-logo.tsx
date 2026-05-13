@@ -28,7 +28,7 @@ function initial(company: string): string {
 // us from hammering logo.dev every time a known-bad logo scrolls back into
 // view, or after a navigation re-mounts the component. Seeded from
 // sessionStorage on load so a same-tab refresh doesn't retry every failure.
-const FAILED_STORAGE_KEY = "launchpad:logo-failed:v2";
+const FAILED_STORAGE_KEY = "pathway:logo-failed:v2";
 const failedCompanies = new Set<string>(readFailedFromStorage());
 
 function readFailedFromStorage(): string[] {

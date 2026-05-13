@@ -1,11 +1,17 @@
 "use client";
 
-import { type FormEvent, useState, useTransition } from "react";
+import { type FormEvent, useEffect, useState, useTransition } from "react";
+import { useFormStatus } from "react-dom";
 import { motion } from "framer-motion";
-import { CalendarDays, LogOut } from "lucide-react";
+import { CalendarDays, Loader2, LogOut } from "lucide-react";
 import { logout } from "@/lib/actions/auth";
-import { updateDiscoverCutoffDate } from "@/lib/actions/settings";
+import { updateAccentColor, updateDiscoverCutoffDate } from "@/lib/actions/settings";
+import {
+  ACCENT_OPTIONS,
+  type AccentColor,
+} from "@/lib/config/accent";
 import { motionVariants } from "@/lib/ui/motion";
+import { saveAccentColorPreference } from "@/components/accent-theme-provider";
 import { AsyncButton } from "@/components/ui/async-button";
 import { InlineError } from "@/components/ui/inline-error";
 import { Input } from "@/components/ui/input";
@@ -14,13 +20,36 @@ import { Label } from "@/components/ui/label";
 interface Props {
   userEmail: string | null | undefined;
   discoverCutoffDate: string;
+  accentColor: AccentColor;
   oldestAllowedDiscoverCutoffDate: string;
   latestAllowedDiscoverCutoffDate: string;
+}
+
+function SignOutButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      aria-busy={pending}
+      className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12px] text-muted-foreground transition-colors duration-150 hover:text-foreground active:translate-y-px active:bg-[color-mix(in_oklab,var(--ink)_7%,transparent)] disabled:border-rule-strong disabled:bg-[color-mix(in_oklab,var(--ink)_6%,transparent)] disabled:text-foreground"
+      style={{ borderColor: "var(--rule)" }}
+    >
+      {pending ? (
+        <Loader2 size={12} strokeWidth={1.75} className="animate-spin" />
+      ) : (
+        <LogOut size={12} strokeWidth={1.75} />
+      )}
+      {pending ? "Signing out" : "Sign out"}
+    </button>
+  );
 }
 
 export function SettingsPage({
   userEmail,
   discoverCutoffDate,
+  accentColor,
   oldestAllowedDiscoverCutoffDate,
   latestAllowedDiscoverCutoffDate,
 }: Props) {
@@ -28,9 +57,18 @@ export function SettingsPage({
   const initials = getInitials(safeEmail);
   const [cutoffDate, setCutoffDate] = useState(discoverCutoffDate);
   const [savedCutoffDate, setSavedCutoffDate] = useState(discoverCutoffDate);
-  const [isPending, startTransition] = useTransition();
+  const [isDiscoverPending, startDiscoverTransition] = useTransition();
+  const [isAccentPending, startAccentTransition] = useTransition();
   const [saveState, setSaveState] = useState<"idle" | "success" | "error">("idle");
+  const [selectedAccent, setSelectedAccent] = useState<AccentColor>(accentColor);
+  const [savedAccent, setSavedAccent] = useState<AccentColor>(accentColor);
+  const [accentSaveState, setAccentSaveState] = useState<"idle" | "success" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [accentError, setAccentError] = useState<string | null>(null);
+
+  useEffect(() => {
+    saveAccentColorPreference(accentColor);
+  }, [accentColor]);
 
   function onCutoffChange(next: string) {
     setCutoffDate(next);
@@ -40,7 +78,7 @@ export function SettingsPage({
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    startTransition(async () => {
+    startDiscoverTransition(async () => {
       setError(null);
       const result = await updateDiscoverCutoffDate(cutoffDate);
       if (result?.error) {
@@ -52,6 +90,32 @@ export function SettingsPage({
       if (result?.cutoffDate) {
         setCutoffDate(result.cutoffDate);
         setSavedCutoffDate(result.cutoffDate);
+      }
+    });
+  }
+
+  function onAccentSelect(next: AccentColor) {
+    setSelectedAccent(next);
+    setAccentSaveState("idle");
+    setAccentError(null);
+    saveAccentColorPreference(next);
+  }
+
+  function onAccentSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    startAccentTransition(async () => {
+      setAccentError(null);
+      const result = await updateAccentColor(selectedAccent);
+      if (result?.error) {
+        setAccentSaveState("error");
+        setAccentError(result.error);
+        return;
+      }
+      setAccentSaveState("success");
+      if (result?.accentColor) {
+        setSelectedAccent(result.accentColor);
+        setSavedAccent(result.accentColor);
+        saveAccentColorPreference(result.accentColor);
       }
     });
   }
@@ -90,14 +154,7 @@ export function SettingsPage({
                 </p>
               </div>
               <form action={logout}>
-                <button
-                  type="submit"
-                  className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12px] text-muted-foreground transition-colors duration-150 hover:text-foreground"
-                  style={{ borderColor: "var(--rule)" }}
-                >
-                  <LogOut size={12} strokeWidth={1.75} />
-                  Sign out
-                </button>
+                <SignOutButton />
               </form>
             </div>
           </Section>
@@ -130,12 +187,12 @@ export function SettingsPage({
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="label-meta tabular">
-                    {oldestAllowedDiscoverCutoffDate} - {latestAllowedDiscoverCutoffDate}
+                    {formatShortDate(cutoffDate)} - today
                   </span>
                   <AsyncButton
                     type="submit"
                     size="sm"
-                    state={isPending ? "pending" : saveState}
+                    state={isDiscoverPending ? "pending" : saveState}
                     idleLabel="Save"
                     pendingLabel="Saving"
                     successLabel="Saved"
@@ -151,6 +208,56 @@ export function SettingsPage({
               )}
             </form>
           </Section>
+
+          <Section label="03" title="Appearance">
+            <form onSubmit={onAccentSubmit}>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div className="min-w-0 flex-1">
+                  <p className="label-meta mb-3">Accent color</p>
+                  <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap" role="radiogroup" aria-label="Accent color">
+                    {ACCENT_OPTIONS.map((option) => {
+                      const isSelected = selectedAccent === option.id;
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={isSelected}
+                          onClick={() => onAccentSelect(option.id)}
+                          className={`inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-[13px] transition-colors duration-150 ${
+                            isSelected ? "border-[color:var(--primary)] bg-[color-mix(in_oklab,var(--primary)_8%,transparent)] text-foreground" : "border-rule text-muted-foreground hover:border-rule-strong hover:text-foreground"
+                          }`}
+                        >
+                          <span
+                            className="size-4 rounded-full border border-black/10"
+                            style={{ background: option.swatch }}
+                            aria-hidden
+                          />
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <AsyncButton
+                  type="submit"
+                  size="sm"
+                  state={isAccentPending ? "pending" : accentSaveState}
+                  idleLabel="Save"
+                  pendingLabel="Saving"
+                  successLabel="Saved"
+                  errorLabel="Retry"
+                  disabled={selectedAccent === savedAccent && accentSaveState !== "error"}
+                />
+              </div>
+              {accentError && (
+                <div className="mt-4">
+                  <InlineError message={accentError} onRetry={() => setAccentError(null)} />
+                </div>
+              )}
+            </form>
+          </Section>
+
         </motion.div>
       </main>
     </div>
@@ -192,4 +299,12 @@ function getInitials(email: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return email.slice(0, 1).toUpperCase();
   return parts.slice(0, 2).map((part) => part[0]?.toUpperCase()).join("");
+}
+
+function formatShortDate(value: string): string {
+  const [year, month, day] = value.split("-");
+  const monthNumber = Number(month);
+  const dayNumber = Number(day);
+  if (!year || !Number.isFinite(monthNumber) || !Number.isFinite(dayNumber)) return value;
+  return `${monthNumber}/${dayNumber}/${year}`;
 }

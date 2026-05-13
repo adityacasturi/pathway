@@ -5,7 +5,7 @@
 - Run `npm run verify`.
 - Run `npm run test:e2e` for anonymous/header checks.
 - Run authenticated E2E against a staging/test user with `E2E_USER_EMAIL`, `E2E_USER_PASSWORD`, and optionally `E2E_ALLOW_MUTATION=1`.
-- Apply Supabase migrations in order and confirm `select * from public.production_integrity_check();` returns zero violations.
+- Apply Supabase migrations in order and confirm `select * from app_private.production_integrity_check();` returns zero violations from the SQL editor or service-role context.
 - Confirm the latest Supabase migration version is present in the dashboard migration history.
 - Run Supabase security and performance advisors. Performance advisors should be clean; the remaining Auth leaked-password warning is expected on non-Pro projects.
 

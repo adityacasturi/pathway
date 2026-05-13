@@ -65,7 +65,7 @@ export function AsyncButton({
           </motion.span>
         )}
       </AnimatePresence>
-      <span className="relative inline-flex min-w-0 overflow-hidden">
+      <span className="relative inline-flex min-w-0 overflow-visible">
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.span
             key={label}
@@ -73,7 +73,7 @@ export function AsyncButton({
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="shrink-0 text-center leading-none whitespace-nowrap"
+            className="shrink-0 text-center leading-[1.2] whitespace-nowrap"
           >
             {label}
           </motion.span>

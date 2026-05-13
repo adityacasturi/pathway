@@ -5,10 +5,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist);
+  --font-sans: var(--font-inter);
   --font-mono: var(--font-jetbrains-mono);
-  --font-heading: var(--font-fraunces);
-  --font-display: var(--font-fraunces);
+  --font-heading: var(--font-instrument-serif);
+  --font-display: var(--font-instrument-serif);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -46,42 +46,95 @@
   --motion-ease-smooth: cubic-bezier(0.2, 0.8, 0.2, 1);
   --motion-ease-standard: cubic-bezier(0.3, 0.1, 0.3, 1);
 
-  /* Cool neutral base — near-white with a whisper of blue so whites don't
-     feel flat-sRGB. Think Linear / Vercel, not paper. */
-  --paper: oklch(0.99 0.002 260);
-  --paper-sunk: oklch(0.972 0.004 260);
-  --ink: oklch(0.18 0.03 260);
+  /* Rich finance neutral base: quiet paper, graphite ink, soft sage action. */
+  --paper: oklch(0.988 0.002 250);
+  --paper-sunk: oklch(0.965 0.004 250);
+  --ink: oklch(0.18 0.018 255);
 
   --background: var(--paper);
   --foreground: var(--ink);
-  --card: oklch(1 0 0);
+  --card: oklch(0.997 0.002 250);
   --card-foreground: var(--ink);
-  --popover: oklch(1 0 0);
+  --popover: oklch(0.997 0.002 250);
   --popover-foreground: var(--ink);
 
-  /* Citadel-deep cobalt. The one color that carries emphasis. */
-  --primary: oklch(0.36 0.18 262);
-  --primary-foreground: oklch(0.985 0.004 260);
-  --secondary: oklch(0.955 0.004 260);
+  --primary: oklch(0.52 0.055 150);
+  --primary-foreground: oklch(0.985 0.004 250);
+  --secondary: oklch(0.94 0.006 250);
   --secondary-foreground: var(--ink);
-  --muted: oklch(0.96 0.004 260);
-  --muted-foreground: oklch(0.52 0.018 260);
-  --accent: oklch(0.94 0.008 260);
+  --muted: oklch(0.948 0.006 250);
+  --muted-foreground: oklch(0.51 0.018 255);
+  --accent: oklch(0.93 0.018 150);
   --accent-foreground: var(--ink);
   --destructive: oklch(0.55 0.2 25);
 
   /* Hairlines. `rule` for dividers, `rule-strong` for stronger borders. */
-  --rule: oklch(0.905 0.006 260);
-  --rule-strong: oklch(0.82 0.008 260);
+  --rule: oklch(0.88 0.006 250);
+  --rule-strong: oklch(0.76 0.01 250);
   --border: var(--rule);
   --input: var(--rule);
-  --ring: oklch(0.55 0.15 262);
+  --ring: oklch(0.56 0.05 150);
   --radius: 0.5rem;
 
   /* Dark-on-light glows and highlight tints. Reused across cards / buttons. */
   --primary-wash: color-mix(in oklab, var(--primary) 8%, transparent);
   --primary-glow: 0 0 0 1px color-mix(in oklab, var(--primary) 30%, transparent),
                   0 18px 50px -24px color-mix(in oklab, var(--primary) 55%, transparent);
+  --market-gold: oklch(0.7 0.045 95);
+  color-scheme: light;
+}
+
+:root[data-accent="midnight"] {
+  --primary: oklch(0.3 0.045 270);
+  --accent: oklch(0.92 0.012 270);
+  --ring: oklch(0.46 0.045 270);
+  --market-gold: oklch(0.68 0.045 88);
+}
+
+:root[data-accent="sage"] {
+  --primary: oklch(0.52 0.055 150);
+  --accent: oklch(0.93 0.018 150);
+  --ring: oklch(0.56 0.05 150);
+  --market-gold: oklch(0.7 0.045 95);
+}
+
+:root[data-accent="sky"] {
+  --primary: oklch(0.54 0.06 245);
+  --accent: oklch(0.93 0.018 245);
+  --ring: oklch(0.58 0.055 245);
+  --market-gold: oklch(0.7 0.045 90);
+}
+
+:root[data-accent="rose"] {
+  --primary: oklch(0.47 0.075 20);
+  --accent: oklch(0.93 0.018 20);
+  --ring: oklch(0.55 0.065 20);
+  --market-gold: oklch(0.69 0.045 78);
+}
+:root {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ink: var(--ink);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-paper: var(--paper);
+  --color-paper-sunk: var(--paper-sunk);
 }
 
 @layer base {
@@ -95,11 +148,13 @@
   body {
     @apply bg-background text-foreground font-sans;
     text-rendering: optimizeLegibility;
-    font-feature-settings: "ss01", "ss02", "cv11", "liga";
+    font-feature-settings: "ss01", "cv11", "liga";
+    font-weight: 400;
     letter-spacing: 0;
   }
   h1, h2, h3, h4 {
-    @apply font-heading text-foreground;
+    @apply text-foreground;
+    font-family: var(--font-instrument-serif), Georgia, serif;
     font-feature-settings: "ss01", "lnum";
     letter-spacing: 0;
   }
@@ -117,14 +172,24 @@
 
 @layer utilities {
   /*
-   * Editorial page shell — a quiet paper sheet. No radial halos, no gridded
-   * backgrounds.
+   * Editorial page shell — a quiet paper sheet with restrained texture.
    */
   .page-shell {
     position: relative;
     isolation: isolate;
   }
-
+  .page-shell::before,
+  .landing-shell::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 12% 18%, color-mix(in oklab, var(--primary) 9%, transparent), transparent 28rem),
+      linear-gradient(180deg, color-mix(in oklab, white 48%, transparent), transparent 34%);
+    opacity: 0.55;
+  }
   /*
    * Masthead: the editorial block at the top of a page. Rule above, tiny
    * kicker (date / section), serif display title, short lede in prose.
@@ -138,18 +203,18 @@
     height: 1px;
     background: var(--rule-strong);
   }
-  /* Display / headline type. Tight-tracked sans — Linear/Vercel register. */
+  /* Display / headline type. High-contrast serif for editorial moments. */
   .display-serif {
-    font-family: var(--font-sans);
-    font-feature-settings: "ss01", "ss02", "cv11", "lnum";
+    font-family: var(--font-instrument-serif), Georgia, serif;
+    font-feature-settings: "ss01", "lnum";
     letter-spacing: 0;
-    line-height: 0.98;
-    font-weight: 500;
+    line-height: 0.92;
+    font-weight: 400;
   }
   .display-serif-italic {
-    font-family: var(--font-sans);
+    font-family: var(--font-instrument-serif), Georgia, serif;
     font-style: italic;
-    font-feature-settings: "ss01", "ss02";
+    font-feature-settings: "ss01";
     letter-spacing: 0;
     font-weight: 400;
   }
@@ -191,7 +256,7 @@
   }
   .paper-card-hover:hover {
     border-color: var(--rule-strong);
-    background: color-mix(in oklab, var(--card) 92%, var(--ink) 2%);
+    background: color-mix(in oklab, var(--card) 90%, var(--primary) 5%);
   }
 
   /* Horizontal hairline. Single-purpose utility used everywhere as a
@@ -201,6 +266,14 @@
     width: 100%;
     height: 1px;
     background: var(--rule);
+  }
+  .rule-accent {
+    background: linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--primary) 36%, var(--rule)) 0,
+      var(--rule) 34%,
+      var(--rule) 100%
+    );
   }
   .rule-strong {
     display: block;
@@ -230,9 +303,9 @@
     border: 1px solid transparent;
   }
   .stamp-ink {
-    color: var(--ink);
-    background: color-mix(in oklab, var(--ink) 6%, transparent);
-    border-color: color-mix(in oklab, var(--ink) 14%, transparent);
+    color: color-mix(in oklab, var(--primary) 70%, var(--ink));
+    background: color-mix(in oklab, var(--primary) 7%, transparent);
+    border-color: color-mix(in oklab, var(--primary) 18%, transparent);
   }
   .stamp-muted {
     color: var(--muted-foreground);
@@ -251,6 +324,250 @@
     background: var(--primary);
     color: var(--primary-foreground);
     box-shadow: var(--primary-glow);
+  }
+  .landing-header-rule {
+    background: var(--rule);
+  }
+  .public-nav-button {
+    position: relative;
+    display: inline-flex;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    overflow: hidden;
+    border-radius: 999px;
+    padding: 0 14px;
+    font-size: 13px;
+    font-weight: 500;
+    transition:
+      background-color 180ms var(--motion-ease-standard),
+      border-color 180ms var(--motion-ease-standard),
+      color 180ms var(--motion-ease-standard);
+  }
+  .public-nav-button-secondary {
+    border: 1px solid var(--rule);
+    color: var(--foreground);
+    background:
+      linear-gradient(180deg, color-mix(in oklab, white 62%, transparent), transparent),
+      color-mix(in oklab, var(--card) 92%, var(--ink) 1%);
+  }
+  .public-nav-button-secondary:hover {
+    border-color: var(--rule-strong);
+    background: color-mix(in oklab, var(--card) 90%, var(--primary) 5%);
+  }
+  .public-nav-button-primary {
+    padding-inline: 16px;
+    background: var(--primary);
+    color: var(--primary-foreground);
+    box-shadow: var(--primary-glow);
+  }
+  .public-nav-button-primary::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-110%);
+    background: linear-gradient(90deg, transparent, color-mix(in oklab, white 18%, transparent), transparent);
+    transition: transform 420ms var(--motion-ease-smooth);
+  }
+  .public-nav-button-primary:hover {
+    background: color-mix(in oklab, var(--primary) 88%, white 12%);
+  }
+  .public-nav-button-primary:hover::before {
+    transform: translateX(110%);
+  }
+  .public-nav-button-primary > * {
+    position: relative;
+    z-index: 1;
+  }
+  .landing-product-frame {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    padding: 8px;
+    background: var(--card);
+    border: 1px solid var(--rule-strong);
+    box-shadow:
+      0 1px 0 color-mix(in oklab, white 25%, transparent) inset,
+      0 26px 80px -54px color-mix(in oklab, var(--ink) 32%, transparent);
+  }
+  .landing-product-frame::before {
+    content: none;
+  }
+  .landing-feature-image {
+    position: relative;
+    z-index: 1;
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 5px;
+    border: 1px solid var(--rule);
+    background: var(--card);
+  }
+  .landing-hero {
+    min-height: calc(100vh - 18rem);
+    display: flex;
+    align-items: center;
+    position: relative;
+  }
+  .landing-hero-copy {
+    font-family: var(--font-sans);
+    letter-spacing: 0;
+    font-weight: 400;
+  }
+  .landing-scroll-cue {
+    position: absolute;
+    left: 50%;
+    bottom: -42px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    transform: translateX(-50%);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: color-mix(in oklab, var(--primary) 58%, var(--muted-foreground));
+    transition:
+      color 160ms var(--motion-ease-standard),
+      opacity 180ms var(--motion-ease-standard),
+      transform 180ms var(--motion-ease-standard);
+  }
+  .landing-scroll-cue:hover {
+    color: var(--foreground);
+    transform: translateX(-50%) translateY(2px);
+  }
+  .landing-scroll-cue-hidden {
+    pointer-events: none;
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px);
+  }
+  .landing-feature {
+    display: grid;
+    gap: 24px;
+    padding: 44px 0 56px;
+    border-top: 1px solid var(--rule);
+  }
+  .landing-feature:first-child {
+    border-top: 0;
+  }
+  .landing-feature-copy {
+    max-width: 28rem;
+    align-self: center;
+  }
+  .landing-feature .label-micro {
+    color: color-mix(in oklab, var(--primary) 72%, var(--muted-foreground));
+  }
+  .landing-feature-frame {
+    width: 100%;
+    align-self: center;
+  }
+  .landing-detail-frame {
+    max-width: 640px;
+    justify-self: center;
+  }
+  .landing-mini-shot {
+    min-width: 0;
+    border-top: 1px solid var(--rule);
+    padding-top: 12px;
+  }
+  .brand-wordmark {
+    display: block;
+    width: auto;
+  }
+  .landing-offer {
+    position: relative;
+    display: inline-flex;
+    align-self: flex-start;
+    width: fit-content;
+    max-width: 100%;
+    align-items: center;
+    border: 1px solid color-mix(in oklab, var(--primary) 26%, var(--rule));
+    border-radius: 999px;
+    background:
+      linear-gradient(180deg, color-mix(in oklab, white 58%, transparent), transparent),
+      color-mix(in oklab, var(--card) 86%, var(--primary) 8%);
+    padding: 8px 14px;
+    box-shadow: 0 1px 0 color-mix(in oklab, white 80%, transparent) inset;
+  }
+  .landing-offer-title {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 5px;
+    font-size: 14px;
+    line-height: 1.35;
+    color: var(--muted-foreground);
+  }
+  .landing-offer-title span {
+    min-width: 0;
+  }
+  .landing-offer-title em {
+    color: color-mix(in oklab, var(--primary) 78%, var(--foreground));
+    font-style: normal;
+    font-weight: 500;
+  }
+  .landing-shell {
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-color: var(--background);
+  }
+  .landing-hero-title {
+    font-family: var(--font-instrument-serif), Georgia, serif;
+    font-style: italic;
+    font-weight: 400;
+    line-height: 0.9;
+    letter-spacing: 0;
+    font-feature-settings: "ss01", "lnum";
+  }
+  .landing-hero-title span {
+    display: block;
+  }
+  .landing-subcopy {
+    font-family: var(--font-sans);
+    letter-spacing: 0;
+    font-weight: 400;
+  }
+  @media (min-width: 1024px) {
+    .landing-feature {
+      grid-template-columns: minmax(0, 1fr) minmax(18rem, 0.36fr);
+      align-items: center;
+      gap: 48px;
+      padding: 68px 0 82px;
+    }
+    .landing-feature-reverse {
+      grid-template-columns: minmax(18rem, 0.36fr) minmax(0, 1fr);
+    }
+    .landing-feature-reverse .landing-product-frame {
+      order: 2;
+    }
+    .landing-feature-reverse .landing-feature-copy {
+      order: 1;
+    }
+    .landing-feature-copy {
+      position: sticky;
+      top: 8rem;
+    }
+    .landing-detail-frame {
+      justify-self: start;
+    }
+    .landing-feature-detail {
+      column-gap: 26px;
+    }
+    .landing-feature-detail .landing-feature-copy {
+      margin-left: -160px;
+    }
+  }
+  .school-logo-img {
+    filter: grayscale(1);
+    opacity: 0.62;
+    transition: filter 200ms var(--motion-ease-smooth),
+                opacity 200ms var(--motion-ease-smooth);
+  }
+  .school-logo-img:hover {
+    filter: none;
+    opacity: 1;
   }
 
   /* Very subtle ambient aura behind primary numbers / KPIs. */
@@ -287,6 +604,10 @@
     letter-spacing: 0;
     font-weight: 500;
     color: var(--ink);
+    transition: color 160ms var(--motion-ease-standard);
+  }
+  .figure:hover .figure-number {
+    color: color-mix(in oklab, var(--primary) 72%, var(--ink));
   }
   .figure-label {
     font-family: var(--font-sans);
@@ -330,7 +651,7 @@
                 opacity 200ms var(--motion-ease-smooth);
   }
   .school-logo-track {
-    animation: school-logo-marquee 28s linear infinite;
+    animation: school-logo-marquee 24s linear infinite;
   }
   .school-logo-fade {
     -webkit-mask-image: linear-gradient(
@@ -366,8 +687,8 @@
     bottom: -2px;
     height: 1px;
     width: 100%;
-    background: currentColor;
-    opacity: 0.22;
+    background: var(--primary);
+    opacity: 0.35;
     transform-origin: left;
     transition: opacity 160ms var(--motion-ease-standard),
                 transform 240ms var(--motion-ease-smooth);
@@ -394,7 +715,17 @@
 }
 @keyframes school-logo-marquee {
   from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
+  to   { transform: translateX(-25%); }
+}
+@keyframes landing-feature-in {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

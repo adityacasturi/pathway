@@ -16,7 +16,7 @@ export default async function StatsRoute() {
       .order("created_at", { ascending: false }),
   ]);
 
-  if (!userResult.data.user) redirect("/login");
+  if (!userResult.data.user) redirect("/");
   assertSupabaseOk(appsResult.error, "Load stats");
 
   const applications: Application[] = (appsResult.data ?? []).map((row) =>

@@ -31,9 +31,9 @@ import type { FeedPosting, FeedSeason } from "@/lib/feed/source";
 
 type SeasonFilter = "all" | FeedSeason;
 
-const SHOW_DISMISSED_STORAGE_KEY = "launchpad:discover-show-dismissed";
-const HIDE_APPLIED_STORAGE_KEY = "launchpad:discover-hide-applied";
-const LAST_SEEN_STORAGE_KEY = "launchpad:feed-last-seen-at";
+const SHOW_DISMISSED_STORAGE_KEY = "pathway:discover-show-dismissed";
+const HIDE_APPLIED_STORAGE_KEY = "pathway:discover-hide-applied";
+const LAST_SEEN_STORAGE_KEY = "pathway:feed-last-seen-at";
 const SEARCH_TOKEN_PATTERN = /"[^"]*"|'[^']*'|\S+/g;
 
 const SEASON_FILTER_OPTIONS: FilterOption<SeasonFilter>[] = [

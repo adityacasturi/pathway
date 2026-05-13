@@ -20,7 +20,7 @@ import {
 } from "@/components/route-skeletons";
 
 const NAV_ITEMS = [
-  { href: "/", label: "Home", icon: HomeIcon, skeleton: <HomeSkeleton /> },
+  { href: "/home", label: "Home", icon: HomeIcon, skeleton: <HomeSkeleton /> },
   { href: "/applications", label: "Applications", icon: LayoutGrid, skeleton: <DashboardSkeleton /> },
   { href: "/stats", label: "Stats", icon: ChartNoAxesCombined, skeleton: <StatsSkeleton /> },
   { href: "/discover", label: "Discover", icon: Compass, skeleton: <DiscoverSkeleton /> },
@@ -34,8 +34,8 @@ type PillPosition = {
 };
 
 function getActiveNavHref(pathname: string) {
-  if (pathname === "/") return "/";
-  return NAV_ITEMS.find((item) => item.href !== "/" && pathname.startsWith(item.href))?.href ?? "/";
+  if (pathname === "/home") return "/home";
+  return NAV_ITEMS.find((item) => item.href !== "/home" && pathname.startsWith(item.href))?.href ?? "/home";
 }
 
 function getNavToneClass(active: boolean, pillReady: boolean) {

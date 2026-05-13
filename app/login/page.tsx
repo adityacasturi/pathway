@@ -1,63 +1,23 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { CheckCircle2, ShieldCheck } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { CheckCircle2, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { login, signup } from "@/lib/actions/auth";
 import {
   type PasswordRule,
-  getEmailValidationError,
+  getSignupEmailValidationError,
   getSignupPasswordError,
   getSignupPasswordRules,
-  isSignupPasswordValid,
 } from "@/lib/auth/validation";
 import { AsyncButton } from "@/components/ui/async-button";
 import { Input } from "@/components/ui/input";
 import { InlineError } from "@/components/ui/inline-error";
 import { Label } from "@/components/ui/label";
 import { motionVariants } from "@/lib/ui/motion";
-
-const SCHOOL_LOGOS = [
-  { name: "University of Washington", src: "/school-logos/uw.svg" },
-  { name: "MIT", src: "/school-logos/mit.svg" },
-  { name: "UC San Diego", src: "/school-logos/ucsd.svg" },
-  { name: "University of Maryland", src: "/school-logos/umd.svg" },
-  { name: "Georgia Tech", src: "/school-logos/gatech.svg" },
-] as const;
-
-function SchoolLogoCarousel() {
-  const logos = [...SCHOOL_LOGOS, ...SCHOOL_LOGOS];
-
-  return (
-    <section className="mt-11" aria-label="Universities using Launchpad">
-      <div className="mb-4 flex items-center gap-3">
-        <span className="h-px flex-1 bg-rule" />
-        <p className="label-micro shrink-0">Used by students at</p>
-        <span className="h-px flex-1 bg-rule" />
-      </div>
-      <div className="school-logo-fade overflow-hidden">
-        <div className="school-logo-track flex w-max items-center gap-8">
-          {logos.map((school, index) => (
-            // Plain <img> because these are static local assets.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={`${school.src}-${index}`}
-              src={school.src}
-              alt={index >= SCHOOL_LOGOS.length ? "" : `${school.name} logo`}
-              width={112}
-              height={36}
-              loading="lazy"
-              decoding="async"
-              className="h-8 max-w-32 shrink-0 object-contain opacity-80 grayscale transition duration-200 hover:opacity-100 hover:grayscale-0"
-              aria-hidden={index >= SCHOOL_LOGOS.length}
-            />
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
 
 function getPasswordQualityLabel(metCount: number, total: number) {
   if (metCount === total) return "Ready";
@@ -137,28 +97,90 @@ function PasswordQualityPanel({ rules }: { rules: PasswordRule[] }) {
   );
 }
 
+function PasswordField({
+  id,
+  name,
+  value,
+  visible,
+  disabled,
+  autoComplete,
+  ariaDescribedBy,
+  ariaInvalid,
+  minLength,
+  pattern,
+  title,
+  onChange,
+  onToggleVisible,
+}: {
+  id: string;
+  name: string;
+  value: string;
+  visible: boolean;
+  disabled: boolean;
+  autoComplete: string;
+  ariaDescribedBy?: string;
+  ariaInvalid?: boolean;
+  minLength?: number;
+  pattern?: string;
+  title?: string;
+  onChange: (value: string) => void;
+  onToggleVisible: () => void;
+}) {
+  return (
+    <div className="relative">
+      <Input
+        id={id}
+        name={name}
+        type={visible ? "text" : "password"}
+        required
+        minLength={minLength}
+        pattern={pattern}
+        title={title}
+        autoComplete={autoComplete}
+        disabled={disabled}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        aria-invalid={ariaInvalid}
+        aria-describedby={ariaDescribedBy}
+        placeholder="Password"
+        className="h-11 rounded-lg bg-card px-3 pr-11 text-[15px] placeholder:text-muted-foreground/40 focus-visible:border-foreground/30"
+      />
+      <button
+        type="button"
+        onClick={onToggleVisible}
+        disabled={disabled}
+        aria-label={visible ? "Hide password" : "Show password"}
+        className="absolute right-2 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-45"
+      >
+        {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+      </button>
+    </div>
+  );
+}
+
 export default function LoginPage() {
   const router = useRouter();
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const searchParams = useSearchParams();
+  const initialMode = searchParams.get("mode") === "signup" ? "signup" : "login";
+  const [mode, setMode] = useState<"login" | "signup">(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [state, setState] = useState<"idle" | "pending" | "success" | "error">("idle");
   const isPending = state === "pending";
   const isAwaitingConfirmation = Boolean(successMessage);
   const signupEmailError = useMemo(
-    () => (mode === "signup" && email ? getEmailValidationError(email) : null),
+    () => (mode === "signup" && email ? getSignupEmailValidationError(email) : null),
     [email, mode],
   );
   const passwordRules = useMemo(() => getSignupPasswordRules(password, email), [email, password]);
-  const isSignupReady =
-    mode !== "signup" ||
-    (email.length > 0 &&
-      password.length > 0 &&
-      !getEmailValidationError(email) &&
-      isSignupPasswordValid(password, email));
-  const isSubmitDisabled = isAwaitingConfirmation || (mode === "signup" && !isSignupReady);
+  const passwordsDoNotMatch =
+    mode === "signup" && passwordConfirmation.length > 0 && password !== passwordConfirmation;
+  const isSubmitDisabled = isAwaitingConfirmation;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -174,8 +196,11 @@ export default function LoginPage() {
     if (actionMode === "signup") {
       const submittedEmail = String(formData.get("email") ?? "");
       const submittedPassword = String(formData.get("password") ?? "");
+      const submittedPasswordConfirmation = String(formData.get("password_confirmation") ?? "");
       const validationError =
-        getEmailValidationError(submittedEmail) ?? getSignupPasswordError(submittedPassword, submittedEmail);
+        getSignupEmailValidationError(submittedEmail) ??
+        getSignupPasswordError(submittedPassword, submittedEmail) ??
+        (submittedPassword !== submittedPasswordConfirmation ? "Passwords do not match." : null);
 
       if (validationError) {
         setError(validationError);
@@ -209,7 +234,7 @@ export default function LoginPage() {
     }
 
     setState("success");
-    router.replace("/");
+    router.replace("/home");
     router.refresh();
   }
 
@@ -223,7 +248,16 @@ export default function LoginPage() {
           animate="visible"
         >
           <div className="mb-10">
-            <p className="label-micro">Launchpad</p>
+            <Link href="/" aria-label="Pathway home" className="inline-flex items-center">
+              <Image
+                src="/brand/pathway-logo-black-transparent-600w.png"
+                alt="Pathway"
+                width={600}
+                height={148}
+                priority
+                className="brand-wordmark h-[36px] w-auto sm:h-[40px]"
+              />
+            </Link>
             <h1 className="display-serif mt-5 text-[2.25rem] text-foreground">
               {mode === "login" ? "Sign in" : "Create account"}
             </h1>
@@ -240,6 +274,8 @@ export default function LoginPage() {
                 type="email"
                 required
                 autoComplete="email"
+                pattern={mode === "signup" ? ".+@[uU][wW]\\.[eE][dD][uU]" : undefined}
+                title={mode === "signup" ? "Use your @uw.edu email for now." : undefined}
                 disabled={isPending || isAwaitingConfirmation}
                 value={email}
                 onChange={(event) => {
@@ -259,7 +295,7 @@ export default function LoginPage() {
                     signupEmailError ? "text-destructive" : "text-muted-foreground"
                   }`}
                 >
-                  {signupEmailError ?? "Use a real, permanent email address."}
+                  {signupEmailError ?? "Use your @uw.edu email for now."}
                 </p>
               )}
             </div>
@@ -268,11 +304,9 @@ export default function LoginPage() {
               <Label htmlFor="password" className="label-meta">
                 Password
               </Label>
-              <Input
+              <PasswordField
                 id="password"
                 name="password"
-                type="password"
-                required
                 minLength={mode === "signup" ? 8 : undefined}
                 pattern={mode === "signup" ? "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{8,}$" : undefined}
                 title={
@@ -283,20 +317,60 @@ export default function LoginPage() {
                 autoComplete={mode === "login" ? "current-password" : "new-password"}
                 disabled={isPending || isAwaitingConfirmation}
                 value={password}
-                onChange={(event) => {
-                  setPassword(event.target.value);
+                visible={showPassword}
+                onToggleVisible={() => setShowPassword((value) => !value)}
+                onChange={(nextValue) => {
+                  setPassword(nextValue);
                   if (state === "error") setState("idle");
                   setError(null);
                 }}
-                aria-invalid={
+                ariaInvalid={
                   mode === "signup" && password.length > 0 && passwordRules.some((rule) => !rule.met)
                 }
-                aria-describedby={mode === "signup" ? "signup-password-rules" : undefined}
-                placeholder="Password"
-                className="h-11 rounded-lg bg-card px-3 text-[15px] placeholder:text-muted-foreground/40 focus-visible:border-foreground/30"
+                ariaDescribedBy={mode === "signup" ? "signup-password-rules" : undefined}
               />
               {mode === "signup" && <PasswordQualityPanel rules={passwordRules} />}
             </div>
+
+            {mode === "signup" && (
+              <div className="space-y-2">
+                <Label htmlFor="password_confirmation" className="label-meta">
+                  Confirm password
+                </Label>
+                <PasswordField
+                  id="password_confirmation"
+                  name="password_confirmation"
+                  autoComplete="new-password"
+                  disabled={isPending || isAwaitingConfirmation}
+                  value={passwordConfirmation}
+                  visible={showPasswordConfirmation}
+                  onToggleVisible={() => setShowPasswordConfirmation((value) => !value)}
+                  onChange={(nextValue) => {
+                    setPasswordConfirmation(nextValue);
+                    if (state === "error") setState("idle");
+                    setError(null);
+                  }}
+                  ariaInvalid={passwordsDoNotMatch}
+                  ariaDescribedBy="signup-password-confirmation-help"
+                />
+                <p
+                  id="signup-password-confirmation-help"
+                  className={`text-[12px] leading-relaxed ${
+                    passwordsDoNotMatch
+                      ? "text-destructive"
+                      : passwordConfirmation.length > 0 && password === passwordConfirmation
+                        ? "text-[color-mix(in_oklab,#2f7d5b_88%,var(--foreground))]"
+                        : "text-muted-foreground"
+                  }`}
+                >
+                  {passwordsDoNotMatch
+                    ? "Passwords do not match."
+                    : passwordConfirmation.length > 0 && password === passwordConfirmation
+                      ? "Passwords match."
+                      : "Type your password again."}
+                </p>
+              </div>
+            )}
 
             <AnimatePresence mode="wait">
               {successMessage && (
@@ -307,9 +381,13 @@ export default function LoginPage() {
                   animate="visible"
                   exit="hidden"
                   role="status"
-                  className="flex items-center gap-2 rounded-md border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-300"
+                  className="flex items-start gap-2 rounded-lg border bg-card px-3 py-3 text-[12px] leading-relaxed text-foreground"
+                  style={{
+                    borderColor: "color-mix(in oklab, var(--primary) 18%, var(--rule))",
+                    background: "color-mix(in oklab, var(--primary) 4%, var(--card))",
+                  }}
                 >
-                  <CheckCircle2 className="size-3.5 shrink-0" />
+                  <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-primary" />
                   <span>{successMessage}</span>
                 </motion.div>
               )}
@@ -338,15 +416,24 @@ export default function LoginPage() {
             />
           </form>
 
-          <p className="mt-7 text-center text-[13px] leading-relaxed text-muted-foreground">
+          <form
+            action="/login"
+            method="get"
+            className="mt-7 text-center text-[13px] leading-relaxed text-muted-foreground"
+          >
+            {mode === "login" ? <input type="hidden" name="mode" value="signup" /> : null}
             {mode === "login" ? "New here?" : "Already have an account?"}{" "}
             <button
-              type="button"
-              onClick={() => {
+              type="submit"
+              onClick={(event) => {
                 if (isPending) return;
+                event.preventDefault();
                 setMode(mode === "login" ? "signup" : "login");
                 setError(null);
                 setSuccessMessage(null);
+                setPasswordConfirmation("");
+                setShowPassword(false);
+                setShowPasswordConfirmation(false);
                 setState("idle");
               }}
               disabled={isPending}
@@ -354,9 +441,7 @@ export default function LoginPage() {
             >
               {mode === "login" ? "Create an account" : "Sign in instead"}
             </button>
-          </p>
-
-          <SchoolLogoCarousel />
+          </form>
         </motion.div>
       </main>
     </div>

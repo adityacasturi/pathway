@@ -23,8 +23,8 @@ type SeasonFilter = "all" | ApplicationSeason;
 type SortKey = "company" | "role" | "status" | "last_activity" | "deadline";
 type SortDirection = "asc" | "desc";
 
-const HIDE_REJECTED_STORAGE_KEY = "launchpad:hide-rejected";
-const HIDE_ARCHIVED_STORAGE_KEY = "launchpad:hide-archived";
+const HIDE_REJECTED_STORAGE_KEY = "pathway:hide-rejected";
+const HIDE_ARCHIVED_STORAGE_KEY = "pathway:hide-archived";
 const SEARCH_TOKEN_PATTERN = /"[^"]*"|'[^']*'|\S+/g;
 
 const SEASON_FILTER_OPTIONS: FilterOption<SeasonFilter>[] = [

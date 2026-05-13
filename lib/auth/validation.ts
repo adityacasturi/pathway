@@ -1,5 +1,6 @@
 const MAX_EMAIL_LENGTH = 320;
 const MIN_PASSWORD_LENGTH = 8;
+const ALLOWED_SIGNUP_EMAIL_DOMAIN = "uw.edu";
 export const MAX_PASSWORD_LENGTH = 1024;
 
 const DISPOSABLE_EMAIL_DOMAINS = new Set([
@@ -86,6 +87,18 @@ export function getEmailValidationError(email: string): string | null {
   return null;
 }
 
+export function getSignupEmailValidationError(email: string): string | null {
+  const emailError = getEmailValidationError(email);
+  if (emailError) return emailError;
+
+  const domain = normalizeEmail(email).split("@")[1];
+  if (domain !== ALLOWED_SIGNUP_EMAIL_DOMAIN) {
+    return "Use your @uw.edu email for now.";
+  }
+
+  return null;
+}
+
 export function getSignupPasswordRules(password: string, email: string): PasswordRule[] {
   const emailUser = normalizeEmail(email).split("@")[0] ?? "";
   const includesEmailUser =
@@ -114,8 +127,4 @@ export function getSignupPasswordError(password: string, email: string): string 
   }
 
   return "Password must be at least 8 characters and include lowercase, uppercase, number, and symbol.";
-}
-
-export function isSignupPasswordValid(password: string, email: string): boolean {
-  return getSignupPasswordError(password, email) === null;
 }

@@ -3,7 +3,7 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Application } from "@/types/application";
 import { AnimatePresence, motion } from "framer-motion";
-import { Archive, ArchiveRestore, ExternalLink, SlidersHorizontal } from "lucide-react";
+import { Archive, ArchiveRestore, CircleDot, ExternalLink, ListFilter, SlidersHorizontal } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { safeExternalHref } from "@/lib/url";
 import { deleteApplication } from "@/lib/actions/applications";
@@ -94,8 +94,8 @@ function SortToolbar({
       transition={transitions.layout}
     >
       <div className="flex flex-wrap items-center gap-2" aria-label="Application counts">
-        <SummaryPill value={matchingCount} label="Matching" />
-        <SummaryPill value={activeCount} label="Active" />
+        <SummaryPill value={matchingCount} label="Matching" icon={<ListFilter size={12} strokeWidth={1.75} />} />
+        <SummaryPill value={activeCount} label="Active" icon={<CircleDot size={12} strokeWidth={1.75} />} />
         <SummaryPill value={archivedCount} label="Archived" icon={<Archive size={12} strokeWidth={1.75} />} />
       </div>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
@@ -186,12 +186,16 @@ function SummaryPill({
   return (
     <motion.span
       layout
-      className="inline-flex h-8 items-center gap-2 rounded-full border px-3 text-[12px] text-muted-foreground"
+      className="inline-flex h-8 items-center justify-center gap-1.5 rounded-full border px-3 text-[12px] text-muted-foreground"
       style={{ borderColor: "var(--rule)" }}
       transition={transitions.layout}
     >
-      {icon}
-      <span className="relative inline-flex min-w-[1.25rem] justify-end overflow-hidden font-mono text-[12px] text-foreground tabular">
+      {icon ? (
+        <span className="inline-flex size-3.5 items-center justify-center" aria-hidden>
+          {icon}
+        </span>
+      ) : null}
+      <span className="relative inline-flex justify-end overflow-hidden font-mono text-[12px] text-foreground tabular">
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.span
             key={value}
@@ -381,7 +385,7 @@ export function ApplicationsTable({
                     </div>
                   </div>
 
-                  <div className="hidden min-w-0 text-[12px] text-muted-foreground md:block">
+                  <div className="hidden min-w-0 text-[12px] font-medium text-muted-foreground md:block">
                     <span className="block truncate">{app.location ?? ""}</span>
                   </div>
 
@@ -391,7 +395,7 @@ export function ApplicationsTable({
                     <StatusBadge status={app.status} variant="compact" />
                   </div>
 
-                  <div className="hidden text-right label-meta tabular md:block">
+                  <div className="hidden text-right label-meta font-medium tabular md:block">
                     {formatDate(app.last_activity_date)}
                   </div>
                 </div>

@@ -1,4 +1,4 @@
-# Launchpad
+# Pathway
 
 A minimal internship application tracker. Log in, add applications, and track each one through its lifecycle of events (applied → OA → interview → offer / rejected). Status is always derived from the events on each application.
 
@@ -14,6 +14,7 @@ Built with Next.js 16 (App Router + Server Actions), Supabase (Auth + Postgres w
    ```bash
    NEXT_PUBLIC_SUPABASE_URL=...
    NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+   NEXT_PUBLIC_SITE_URL=http://localhost:3000
    # Optional: enables cached company logos via https://logo.dev
    LOGO_DEV_TOKEN=...
    ```
@@ -52,7 +53,7 @@ lib/actions/        Next.js server actions (mutations)
 lib/config/         Pure config + state helpers (events, status derivation)
 lib/supabase/       Supabase client factories (server / browser)
 lib/ui/             Shared UI utilities (motion variants)
-proxy.ts            Auth gate — redirects to /login when no session
+proxy.ts            Auth gate — redirects to the landing page when no session
 supabase/migrations Append-only SQL migrations
 types/              TypeScript types (`Application`, `ApplicationEvent`, …)
 ```

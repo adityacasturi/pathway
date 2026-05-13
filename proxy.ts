@@ -6,8 +6,8 @@ import { NextResponse, type NextRequest } from "next/server";
  *
  * Behavior:
  * - Refreshes the Supabase session via cookies on each request.
- * - Redirects unauthenticated users to /login (except public routes).
- * - Redirects already-signed-in users away from /login back to the dashboard.
+ * - Redirects unauthenticated users to the public landing page (except public routes).
+ * - Redirects already-signed-in users away from public auth/landing routes back to the app.
  */
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -39,16 +39,21 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
   const isPublicRoute =
+    pathname === "/" ||
     pathname === "/login" ||
+    pathname.startsWith("/brand/") ||
     pathname.startsWith("/school-logos/") ||
-    pathname === "/favicon.ico";
+    pathname.startsWith("/product-screenshots/") ||
+    pathname === "/favicon.ico" ||
+    pathname === "/icon.png" ||
+    pathname === "/apple-icon.png";
 
   if (!user && !isPublicRoute) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(new URL("/", request.url));
   }
 
-  if (user && pathname === "/login") {
-    return NextResponse.redirect(new URL("/", request.url));
+  if (user && (pathname === "/" || pathname === "/login")) {
+    return NextResponse.redirect(new URL("/home", request.url));
   }
 
   return supabaseResponse;
