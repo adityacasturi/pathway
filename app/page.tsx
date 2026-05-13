@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 import { LandingProductStory } from "@/components/landing-product-story";
 import { LandingScrollCue } from "@/components/landing-scroll-cue";
 import { SchoolLogoCarousel } from "@/components/school-logo-carousel";
+import { WaitlistDialog } from "@/components/waitlist-dialog";
+import { SIGNUPS_ENABLED } from "@/lib/auth/signup-enabled";
 
 export const dynamic = "force-dynamic";
 
@@ -91,12 +93,16 @@ function LandingPage() {
             >
               Sign in
             </Link>
-            <Link
-              href="/login?mode=signup"
-              className="public-nav-button public-nav-button-primary"
-            >
-              Get started <ArrowRight size={13} strokeWidth={1.8} />
-            </Link>
+            {SIGNUPS_ENABLED && (
+              <Link
+                href="/login?mode=signup"
+                className="public-nav-button public-nav-button-secondary"
+                style={{ borderColor: "var(--rule)" }}
+              >
+                Sign up <ArrowRight size={13} strokeWidth={1.8} />
+              </Link>
+            )}
+            <WaitlistDialog />
           </nav>
         </div>
         <span aria-hidden className="landing-header-rule block h-px w-full" />
@@ -114,7 +120,7 @@ function LandingPage() {
           <div className="landing-offer mt-6 max-w-xl">
             <p className="landing-offer-title">
               <span>
-                Exclusive beta access for <em>@uw.edu</em> students
+                Now taking waitlist signups for <em>@uw.edu</em> students
               </span>
             </p>
           </div>

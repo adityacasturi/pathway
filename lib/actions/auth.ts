@@ -10,10 +10,12 @@ import {
   normalizeEmail,
 } from "@/lib/auth/validation";
 import { redirect } from "next/navigation";
+import { SIGNUPS_ENABLED } from "@/lib/auth/signup-enabled";
 
 type AuthActionResult =
   | { status: "authenticated" }
   | { status: "confirmation_required" }
+  | { status: "already_confirmed" }
   | { error: string };
 
 type AuthErrorLike = {
@@ -104,17 +106,38 @@ export async function login(formData: FormData): Promise<AuthActionResult> {
     email: credentials.email,
     password: credentials.password,
   });
-  if (error) return { error: formatAuthError(error) };
+  if (error) {
+    const normalized = error.message.toLowerCase();
+    if (normalized.includes("email not confirmed") || normalized.includes("not confirmed")) {
+      const { error: resendErr } = await supabase.auth.resend({
+        type: "signup",
+        email: credentials.email,
+        options: { emailRedirectTo: getEmailRedirectTo() },
+      });
+      if (resendErr) return { error: formatAuthError(resendErr) };
+      return { status: "confirmation_required" as const };
+    }
+    return { error: formatAuthError(error) };
+  }
 
   if (!data.user?.email_confirmed_at || looksAutoConfirmed(data.user)) {
     await supabase.auth.signOut();
-    return { error: "Confirm your email before signing in." };
+    const { error: resendErr } = await supabase.auth.resend({
+      type: "signup",
+      email: credentials.email,
+      options: { emailRedirectTo: getEmailRedirectTo() },
+    });
+    if (resendErr) return { error: formatAuthError(resendErr) };
+    return { status: "confirmation_required" as const };
   }
 
   return { status: "authenticated" as const };
 }
 
 export async function signup(formData: FormData): Promise<AuthActionResult> {
+  if (!SIGNUPS_ENABLED) {
+    return { error: "Signups are paused. Join the waitlist to get early access." };
+  }
   const rateLimit = await limitServerActionByIp("auth:signup", 4, 60_000);
   if (!rateLimit.ok) return { error: rateLimit.error ?? "Too many attempts. Please try again shortly." };
 
@@ -133,18 +156,82 @@ export async function signup(formData: FormData): Promise<AuthActionResult> {
   const { data, error } = await supabase.auth.signUp({
     email: credentials.email,
     password: credentials.password,
-    options: {
-      emailRedirectTo: getEmailRedirectTo(),
-    },
+    options: { emailRedirectTo: getEmailRedirectTo() },
   });
   if (error) return { error: formatAuthError(error) };
+
+  // Supabase obfuscates existing-account responses: a fresh signup has
+  // `identities.length > 0`, while a hit against an existing user (confirmed
+  // or unconfirmed) returns identities = []. Probe with resend to find out
+  // which: it succeeds for unconfirmed users and errors for confirmed ones.
+  if (data.user && (data.user.identities?.length ?? 0) === 0) {
+    const { error: resendErr } = await supabase.auth.resend({
+      type: "signup",
+      email: credentials.email,
+      options: { emailRedirectTo: getEmailRedirectTo() },
+    });
+    if (!resendErr) return { status: "confirmation_required" as const };
+    const normalized = resendErr.message.toLowerCase();
+    if (normalized.includes("already confirmed") || normalized.includes("already been confirmed")) {
+      return { status: "already_confirmed" as const };
+    }
+    return { error: formatAuthError(resendErr) };
+  }
+
   if (!data.session) return { status: "confirmation_required" as const };
 
   await supabase.auth.signOut();
   return {
     error:
-      "Email confirmation is not enabled yet. Enable email confirmations in Supabase before accepting new accounts.",
+      "Email confirmation is not enabled in Supabase. Enable it before accepting new accounts.",
   };
+}
+
+export async function verifyEmailOtp(formData: FormData): Promise<AuthActionResult> {
+  const rateLimit = await limitServerActionByIp("auth:verify-otp", 8, 60_000);
+  if (!rateLimit.ok) return { error: rateLimit.error ?? "Too many attempts. Please try again shortly." };
+
+  const email = formData.get("email");
+  const token = formData.get("token");
+  if (typeof email !== "string" || typeof token !== "string") {
+    return { error: "Email and code are required." };
+  }
+  const cleanEmail = normalizeEmail(email);
+  const cleanToken = token.replace(/\s+/g, "");
+  if (!/^\d{6}$/.test(cleanToken)) {
+    return { error: "Enter the 6-digit code from your email." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.verifyOtp({
+    email: cleanEmail,
+    token: cleanToken,
+    type: "signup",
+  });
+  if (error) return { error: formatAuthError(error) };
+  if (!data.session) return { error: "Unable to verify. Please try again." };
+
+  return { status: "authenticated" as const };
+}
+
+export async function resendEmailOtp(formData: FormData): Promise<{ ok: true } | { error: string }> {
+  const rateLimit = await limitServerActionByIp("auth:resend-otp", 3, 60_000);
+  if (!rateLimit.ok) return { error: rateLimit.error ?? "Too many attempts. Please try again shortly." };
+
+  const email = formData.get("email");
+  if (typeof email !== "string") return { error: "Email is required." };
+  const emailError = getEmailValidationError(email);
+  if (emailError) return { error: emailError };
+  const cleanEmail = normalizeEmail(email);
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email: cleanEmail,
+    options: { emailRedirectTo: getEmailRedirectTo() },
+  });
+  if (error) return { error: formatAuthError(error) };
+  return { ok: true };
 }
 
 export async function logout() {

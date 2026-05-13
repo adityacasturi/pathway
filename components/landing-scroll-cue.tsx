@@ -7,17 +7,35 @@ export function LandingScrollCue() {
   const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
-    let dismissed = false;
-    const update = () => {
-      if (dismissed) return;
-      if (window.scrollY > 18) {
-        dismissed = true;
-        setHidden(true);
+    let frame: number | null = null;
+    const compute = () => {
+      frame = null;
+      // Tie the cue's visibility to the first product section's appear-
+      // threshold so the two never both end up hidden at once. Threshold here
+      // must match the one in LandingProductStory for the first section.
+      const firstSection = document.querySelector<HTMLElement>(
+        "#product .landing-feature",
+      );
+      if (!firstSection) {
+        setHidden(window.scrollY > 18);
+        return;
       }
+      const ratio = 0.7;
+      const rect = firstSection.getBoundingClientRect();
+      setHidden(rect.top < window.innerHeight * ratio);
     };
-    update();
-    window.addEventListener("scroll", update, { passive: true });
-    return () => window.removeEventListener("scroll", update);
+    const schedule = () => {
+      if (frame !== null) return;
+      frame = window.requestAnimationFrame(compute);
+    };
+    compute();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    return () => {
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      if (frame !== null) window.cancelAnimationFrame(frame);
+    };
   }, []);
 
   return (

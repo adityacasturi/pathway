@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { CheckCircle2, Eye, EyeOff, ShieldCheck } from "lucide-react";
-import { login, signup } from "@/lib/actions/auth";
+import { login, resendEmailOtp, signup, verifyEmailOtp } from "@/lib/actions/auth";
+import { SIGNUPS_ENABLED } from "@/lib/auth/signup-enabled";
 import {
   type PasswordRule,
   getSignupEmailValidationError,
@@ -161,7 +162,8 @@ function PasswordField({
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialMode = searchParams.get("mode") === "signup" ? "signup" : "login";
+  const initialMode =
+    SIGNUPS_ENABLED && searchParams.get("mode") === "signup" ? "signup" : "login";
   const [mode, setMode] = useState<"login" | "signup">(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -171,8 +173,20 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [state, setState] = useState<"idle" | "pending" | "success" | "error">("idle");
+  const [otpEmail, setOtpEmail] = useState<string | null>(null);
+  const [otpCode, setOtpCode] = useState("");
+  const [resendState, setResendState] = useState<"idle" | "pending" | "success" | "error">("idle");
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const interval = window.setInterval(() => {
+      setResendCooldown((value) => (value <= 1 ? 0 : value - 1));
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, [resendCooldown]);
   const isPending = state === "pending";
-  const isAwaitingConfirmation = Boolean(successMessage);
+  const isAwaitingConfirmation = Boolean(otpEmail);
   const signupEmailError = useMemo(
     () => (mode === "signup" && email ? getSignupEmailValidationError(email) : null),
     [email, mode],
@@ -222,8 +236,24 @@ export default function LoginPage() {
     }
 
     if ("status" in result && result.status === "confirmation_required") {
-      setSuccessMessage("Account created. Check your email to confirm your account, then sign in.");
-      setState("success");
+      const submittedEmail = String(formData.get("email") ?? "").trim().toLowerCase();
+      setOtpEmail(submittedEmail);
+      setOtpCode("");
+      setSuccessMessage("We sent a 6-digit code to your email. Enter it below to continue.");
+      setState("idle");
+      setResendCooldown(60);
+      return;
+    }
+
+    if ("status" in result && result.status === "already_confirmed") {
+      setMode("login");
+      setPassword("");
+      setPasswordConfirmation("");
+      setShowPassword(false);
+      setShowPasswordConfirmation(false);
+      setError(null);
+      setSuccessMessage("An account already exists for this email. Sign in below.");
+      setState("idle");
       return;
     }
 
@@ -236,6 +266,74 @@ export default function LoginPage() {
     setState("success");
     router.replace("/home");
     router.refresh();
+  }
+
+  async function handleVerifyOtp(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!otpEmail || isPending) return;
+
+    const cleanCode = otpCode.replace(/\s+/g, "");
+    if (!/^\d{6}$/.test(cleanCode)) {
+      setError("Enter the 6-digit code from your email.");
+      setState("error");
+      return;
+    }
+
+    setError(null);
+    setSuccessMessage(null);
+    setState("pending");
+
+    const formData = new FormData();
+    formData.set("email", otpEmail);
+    formData.set("token", cleanCode);
+
+    const result = await verifyEmailOtp(formData).catch(() => ({
+      error: "Something went wrong. Please try again.",
+    }));
+
+    if ("error" in result) {
+      setError(result.error);
+      setState("error");
+      return;
+    }
+
+    setState("success");
+    router.replace("/home");
+    router.refresh();
+  }
+
+  async function handleResendOtp() {
+    if (!otpEmail || resendState === "pending" || resendCooldown > 0) return;
+
+    setResendState("pending");
+    setError(null);
+
+    const formData = new FormData();
+    formData.set("email", otpEmail);
+
+    const result = await resendEmailOtp(formData).catch(() => ({
+      error: "Something went wrong. Please try again.",
+    }));
+
+    if ("error" in result) {
+      setError(result.error);
+      setResendState("error");
+      return;
+    }
+
+    setResendState("success");
+    setSuccessMessage("We sent a new 6-digit code. Check your email.");
+    setResendCooldown(60);
+  }
+
+  function exitOtp() {
+    setOtpEmail(null);
+    setOtpCode("");
+    setSuccessMessage(null);
+    setError(null);
+    setState("idle");
+    setResendState("idle");
+    setResendCooldown(0);
   }
 
   return (
@@ -259,10 +357,115 @@ export default function LoginPage() {
               />
             </Link>
             <h1 className="display-serif mt-5 text-[2.25rem] text-foreground">
-              {mode === "login" ? "Sign in" : "Create account"}
+              {otpEmail
+                ? "Confirm your email"
+                : mode === "login"
+                  ? "Sign in"
+                  : "Create account"}
             </h1>
+            {otpEmail && (
+              <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
+                We sent a 6-digit code to{" "}
+                <span className="font-medium text-foreground">{otpEmail}</span>.
+              </p>
+            )}
           </div>
 
+          {otpEmail ? (
+            <form onSubmit={handleVerifyOtp} className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="otp" className="label-meta">
+                  6-digit code
+                </Label>
+                <Input
+                  id="otp"
+                  name="token"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  required
+                  maxLength={6}
+                  pattern="\d{6}"
+                  disabled={isPending}
+                  value={otpCode}
+                  onChange={(event) => {
+                    const next = event.target.value.replace(/\D/g, "").slice(0, 6);
+                    setOtpCode(next);
+                    if (state === "error") setState("idle");
+                    setError(null);
+                  }}
+                  placeholder="123456"
+                  className="h-11 rounded-lg bg-card px-3 text-center text-[18px] tracking-[0.4em] placeholder:text-muted-foreground/40 focus-visible:border-foreground/30"
+                />
+              </div>
+
+              <AnimatePresence mode="wait">
+                {successMessage && (
+                  <motion.div
+                    key={successMessage}
+                    variants={motionVariants.fadeIn}
+                    initial="hidden"
+                    animate="visible"
+                    exit="hidden"
+                    role="status"
+                    className="flex items-start gap-2 rounded-lg border bg-card px-3 py-3 text-[12px] leading-relaxed text-foreground"
+                    style={{
+                      borderColor: "color-mix(in oklab, var(--primary) 18%, var(--rule))",
+                      background: "color-mix(in oklab, var(--primary) 4%, var(--card))",
+                    }}
+                  >
+                    <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-primary" />
+                    <span>{successMessage}</span>
+                  </motion.div>
+                )}
+                {error && (
+                  <motion.div
+                    key={error}
+                    variants={motionVariants.fadeIn}
+                    initial="hidden"
+                    animate="visible"
+                    exit="hidden"
+                  >
+                    <InlineError message={error} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <AsyncButton
+                type="submit"
+                state={state}
+                idleLabel="Confirm and sign in"
+                pendingLabel="Verifying"
+                successLabel="Redirecting"
+                errorLabel="Try again"
+                disabled={otpCode.length !== 6}
+                className="primary-surface h-11 w-full rounded-lg text-[14px]"
+              />
+
+              <div className="flex items-center justify-between text-[13px] text-muted-foreground">
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={resendState === "pending" || isPending || resendCooldown > 0}
+                  className="font-medium text-foreground transition-colors duration-150 hover:text-primary disabled:pointer-events-none disabled:opacity-50"
+                >
+                  {resendState === "pending"
+                    ? "Sending…"
+                    : resendCooldown > 0
+                      ? `Resend in ${resendCooldown}s`
+                      : "Resend code"}
+                </button>
+                <button
+                  type="button"
+                  onClick={exitOtp}
+                  disabled={isPending}
+                  className="font-medium text-foreground transition-colors duration-150 hover:text-primary disabled:pointer-events-none disabled:opacity-50"
+                >
+                  Use a different email
+                </button>
+              </div>
+            </form>
+          ) : (
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
               <Label htmlFor="email" className="label-meta">
@@ -415,33 +618,36 @@ export default function LoginPage() {
               className="primary-surface h-11 w-full rounded-lg text-[14px]"
             />
           </form>
+          )}
 
-          <form
-            action="/login"
-            method="get"
-            className="mt-7 text-center text-[13px] leading-relaxed text-muted-foreground"
-          >
-            {mode === "login" ? <input type="hidden" name="mode" value="signup" /> : null}
-            {mode === "login" ? "New here?" : "Already have an account?"}{" "}
-            <button
-              type="submit"
-              onClick={(event) => {
-                if (isPending) return;
-                event.preventDefault();
-                setMode(mode === "login" ? "signup" : "login");
-                setError(null);
-                setSuccessMessage(null);
-                setPasswordConfirmation("");
-                setShowPassword(false);
-                setShowPasswordConfirmation(false);
-                setState("idle");
-              }}
-              disabled={isPending}
-              className="font-medium text-foreground transition-colors duration-150 hover:text-primary"
+          {SIGNUPS_ENABLED && !otpEmail && (
+            <form
+              action="/login"
+              method="get"
+              className="mt-7 text-center text-[13px] leading-relaxed text-muted-foreground"
             >
-              {mode === "login" ? "Create an account" : "Sign in instead"}
-            </button>
-          </form>
+              {mode === "login" ? <input type="hidden" name="mode" value="signup" /> : null}
+              {mode === "login" ? "New here?" : "Already have an account?"}{" "}
+              <button
+                type="submit"
+                onClick={(event) => {
+                  if (isPending) return;
+                  event.preventDefault();
+                  setMode(mode === "login" ? "signup" : "login");
+                  setError(null);
+                  setSuccessMessage(null);
+                  setPasswordConfirmation("");
+                  setShowPassword(false);
+                  setShowPasswordConfirmation(false);
+                  setState("idle");
+                }}
+                disabled={isPending}
+                className="font-medium text-foreground transition-colors duration-150 hover:text-primary"
+              >
+                {mode === "login" ? "Create an account" : "Sign in instead"}
+              </button>
+            </form>
+          )}
         </motion.div>
       </main>
     </div>
