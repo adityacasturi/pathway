@@ -1,8 +1,38 @@
 "use server";
 
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import { limitServerActionByIp } from "@/lib/rate-limit";
-import { getEmailValidationError, normalizeEmail } from "@/lib/auth/validation";
+import { clientKeyFromHeaders, limitServerActionByIp } from "@/lib/rate-limit";
+import { getSignupEmailValidationError, normalizeEmail } from "@/lib/auth/validation";
+
+type WaitlistRpcResult =
+  | { ok: true; alreadyJoined: boolean }
+  | { ok: false; error: string };
+
+function parseWaitlistRpcResult(data: unknown): WaitlistRpcResult {
+  if (
+    data &&
+    typeof data === "object" &&
+    "ok" in data &&
+    (data as { ok: unknown }).ok === true
+  ) {
+    return {
+      ok: true,
+      alreadyJoined: Boolean((data as { alreadyJoined?: unknown }).alreadyJoined),
+    };
+  }
+
+  if (
+    data &&
+    typeof data === "object" &&
+    "error" in data &&
+    typeof (data as { error?: unknown }).error === "string"
+  ) {
+    return { ok: false, error: (data as { error: string }).error };
+  }
+
+  return { ok: false, error: "Unable to join the waitlist. Please try again." };
+}
 
 export async function joinWaitlist(
   formData: FormData,
@@ -14,28 +44,31 @@ export async function joinWaitlist(
 
   const email = formData.get("email");
   if (typeof email !== "string") return { error: "Email is required." };
-  const emailError = getEmailValidationError(email);
+  const emailError = getSignupEmailValidationError(email);
   if (emailError) return { error: emailError };
   const cleanEmail = normalizeEmail(email);
-
+  const requestHeaders = await headers();
   const supabase = await createClient();
-  const { error: insertError } = await supabase
-    .from("waitlist")
-    .insert({ email: cleanEmail, source: "landing" });
+  const { data, error: rpcError } = await supabase.rpc("join_waitlist", {
+    p_email: cleanEmail,
+    p_ip_key: clientKeyFromHeaders(requestHeaders),
+    p_source: "landing",
+  });
 
-  const isDuplicate = insertError?.code === "23505";
-  if (insertError && !isDuplicate) {
-    console.error("[waitlist] insert failed", {
-      code: insertError.code,
-      message: insertError.message,
-      details: insertError.details,
-      hint: insertError.hint,
+  if (rpcError) {
+    console.error("[waitlist] rpc failed", {
+      code: rpcError.code,
+      message: rpcError.message,
+      details: rpcError.details,
+      hint: rpcError.hint,
     });
     return { error: "Unable to join the waitlist. Please try again." };
   }
 
-  const alreadyJoined = isDuplicate;
-  console.log("[waitlist] joined", { email: cleanEmail, alreadyJoined });
+  const result = parseWaitlistRpcResult(data);
+  if (!result.ok) return { error: result.error };
+
+  console.log("[waitlist] joined", { duplicate: result.alreadyJoined });
 
   // Best-effort push to Resend Audiences. Supabase row is the source of truth.
   const apiKey = process.env.RESEND_API_KEY;
@@ -45,7 +78,7 @@ export async function joinWaitlist(
       hasApiKey: Boolean(apiKey),
       hasAudienceId: Boolean(audienceId),
     });
-  } else if (!alreadyJoined) {
+  } else if (!result.alreadyJoined) {
     try {
       const response = await fetch(
         `https://api.resend.com/audiences/${audienceId}/contacts`,
@@ -62,15 +95,17 @@ export async function joinWaitlist(
         const body = await response.text();
         console.error("[waitlist] resend contact create failed", {
           status: response.status,
-          body,
+          bodyLength: body.length,
         });
       } else {
-        console.log("[waitlist] resend contact created", { email: cleanEmail });
+        console.log("[waitlist] resend contact created");
       }
     } catch (err) {
-      console.error("[waitlist] resend contact create threw", err);
+      console.error("[waitlist] resend contact create threw", {
+        message: err instanceof Error ? err.message : "Unknown error",
+      });
     }
   }
 
-  return { ok: true, alreadyJoined };
+  return { ok: true, alreadyJoined: result.alreadyJoined };
 }

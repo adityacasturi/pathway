@@ -13,7 +13,7 @@ import {
 import { InlineError } from "@/components/ui/inline-error";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getEmailValidationError } from "@/lib/auth/validation";
+import { getSignupEmailValidationError } from "@/lib/auth/validation";
 import { motionVariants } from "@/lib/ui/motion";
 
 export function WaitlistDialog({ triggerClassName }: { triggerClassName?: string }) {
@@ -36,7 +36,7 @@ export function WaitlistDialog({ triggerClassName }: { triggerClassName?: string
     e.preventDefault();
     if (isPending || isDone) return;
 
-    const validationError = getEmailValidationError(email);
+    const validationError = getSignupEmailValidationError(email);
     if (validationError) {
       setError(validationError);
       setState("error");
@@ -135,7 +135,7 @@ export function WaitlistDialog({ triggerClassName }: { triggerClassName?: string
                 if (state === "error") setState("idle");
                 setError(null);
               }}
-              placeholder="you@example.com"
+              placeholder="you@uw.edu"
               className="h-10 rounded-lg bg-card px-3 text-[14px] placeholder:text-muted-foreground/40 focus-visible:border-foreground/30"
             />
           </div>
