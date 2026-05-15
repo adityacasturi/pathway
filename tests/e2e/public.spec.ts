@@ -7,14 +7,14 @@ test("login renders with public signup available", async ({ page }) => {
   await expect(page.getByLabel("Email")).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Password", exact: true })).toBeVisible();
   await expect(page.getByLabel("Universities using Pathway")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Create an account" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Create an account" })).toBeVisible();
   await expect(page.getByText(/Signups are paused/i)).toHaveCount(0);
 });
 
 test("signup blocks non-edu emails before submit", async ({ page }) => {
   await page.goto("/register");
 
-  await expect(page).toHaveURL(/\/login\?mode=signup$/);
+  await expect(page).toHaveURL(/\/register$/);
   await expect(page.getByRole("heading", { name: "Create account" })).toBeVisible();
   await page.getByLabel("Email").fill("person@example.com");
   await expect(page.getByText("Use your school .edu email.")).toBeVisible();

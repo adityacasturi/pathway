@@ -38,7 +38,7 @@ Formal migrations are mandatory.
 ## Product State
 
 - Public account creation is enabled for students with `.edu` email addresses. The waitlist code is preserved but not mounted on the landing page.
-- Default accent theme is sage.
+- Default accent theme is midnight.
 - Discover hides applied postings by default.
 - Dashboard rows should stay simple and consistent with Discover rather than adding page-row animation flourishes.
 

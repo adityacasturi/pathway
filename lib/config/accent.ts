@@ -23,7 +23,7 @@ export const ACCENT_OPTIONS = [
 
 export type AccentColor = (typeof ACCENT_OPTIONS)[number]["id"];
 
-export const DEFAULT_ACCENT_COLOR: AccentColor = "sage";
+export const DEFAULT_ACCENT_COLOR: AccentColor = "midnight";
 
 const LEGACY_ACCENT_ALIASES: Record<string, AccentColor> = {
   powder: "sky",

@@ -15,7 +15,6 @@ import { SIGNUPS_ENABLED } from "@/lib/auth/signup-enabled";
 type AuthActionResult =
   | { status: "authenticated" }
   | { status: "confirmation_required" }
-  | { status: "already_confirmed" }
   | { error: string };
 
 type AuthErrorLike = {
@@ -160,22 +159,13 @@ export async function signup(formData: FormData): Promise<AuthActionResult> {
   });
   if (error) return { error: formatAuthError(error) };
 
-  // Supabase obfuscates existing-account responses: a fresh signup has
-  // `identities.length > 0`, while a hit against an existing user (confirmed
-  // or unconfirmed) returns identities = []. Probe with resend to find out
-  // which: it succeeds for unconfirmed users and errors for confirmed ones.
+  // Supabase obfuscates existing-account responses to prevent email
+  // enumeration: a fresh signup has `identities.length > 0`, while a hit
+  // against an existing user (confirmed or unconfirmed) returns identities = [].
+  // Reject re-registration outright; unconfirmed users can recover via /login,
+  // which auto-resends a confirmation code on "Email not confirmed".
   if (data.user && (data.user.identities?.length ?? 0) === 0) {
-    const { error: resendErr } = await supabase.auth.resend({
-      type: "signup",
-      email: credentials.email,
-      options: { emailRedirectTo: getEmailRedirectTo() },
-    });
-    if (!resendErr) return { status: "confirmation_required" as const };
-    const normalized = resendErr.message.toLowerCase();
-    if (normalized.includes("already confirmed") || normalized.includes("already been confirmed")) {
-      return { status: "already_confirmed" as const };
-    }
-    return { error: formatAuthError(resendErr) };
+    return { error: "An account already exists for this email. Try signing in instead." };
   }
 
   if (!data.session) return { status: "confirmation_required" as const };

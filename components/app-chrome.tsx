@@ -13,7 +13,7 @@ import { Sidebar } from "@/components/sidebar";
  * during the old-page -> loading.tsx -> new-page handoff.
  */
 
-const HIDDEN_PATHS = new Set(["/", "/login", "/set-password"]);
+const HIDDEN_PATHS = new Set(["/", "/login", "/register", "/set-password"]);
 
 export function AppChrome() {
   const pathname = usePathname();

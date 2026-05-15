@@ -79,7 +79,7 @@ Rules:
 
 ## UI Conventions
 
-- Default accent is sage (`lib/config/accent.ts`).
+- Default accent is midnight (`lib/config/accent.ts`).
 - Tailwind v4 tokens live in `app/globals.css`.
 - App shell navigation lives in `components/sidebar.tsx` and `components/app-chrome.tsx`.
 - Dashboard rows should stay simple and stable, matching Discover's restrained row behavior.

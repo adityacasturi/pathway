@@ -86,7 +86,7 @@ Signup and dormant waitlist protections:
 
 ## Theme
 
-The default accent is sage. `app/layout.tsx` sets the default `data-accent`, and authenticated user preference updates persist through `user_preferences`.
+The default accent is midnight. `app/layout.tsx` sets the default `data-accent`, and authenticated user preference updates persist through `user_preferences`.
 
 ## Testing
 

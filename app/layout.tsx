@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
 import { Instrument_Serif, Inter, JetBrains_Mono } from "next/font/google";
-import { AccentThemeProvider } from "@/components/accent-theme-provider";
 import { AppChrome } from "@/components/app-chrome";
-import { DEFAULT_ACCENT_COLOR } from "@/lib/config/accent";
+import {
+  DEFAULT_ACCENT_COLOR,
+  resolveAccentColor,
+  type AccentColor,
+} from "@/lib/config/accent";
+import { createClient } from "@/lib/supabase/server";
 import "./globals.css";
 
 const instrumentSerif = Instrument_Serif({
@@ -69,19 +73,37 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+async function getInitialAccentColor(): Promise<AccentColor> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return DEFAULT_ACCENT_COLOR;
+
+    const { data, error } = await supabase
+      .from("user_preferences")
+      .select("accent_color")
+      .maybeSingle<{ accent_color?: string | null }>();
+    if (error || !data) return DEFAULT_ACCENT_COLOR;
+    return resolveAccentColor(data.accent_color);
+  } catch {
+    return DEFAULT_ACCENT_COLOR;
+  }
+}
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const accent = await getInitialAccentColor();
   return (
     <html
       lang="en"
-      data-accent={DEFAULT_ACCENT_COLOR}
+      data-accent={accent}
       data-scroll-behavior="smooth"
       className={`${instrumentSerif.variable} ${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <AccentThemeProvider>
-          <AppChrome />
-          {children}
-        </AccentThemeProvider>
+        <AppChrome />
+        {children}
       </body>
     </html>
   );
