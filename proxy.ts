@@ -5,11 +5,37 @@ import { NextResponse, type NextRequest } from "next/server";
  * Auth gate that runs before every (non-asset) route.
  *
  * Behavior:
- * - Refreshes the Supabase session via cookies on each request.
+ * - Fast path: if the request has no Supabase auth cookie, the user is
+ *   definitively anonymous, so we skip the cross-region `auth.getUser()`
+ *   round-trip entirely. This is what makes public navigation snappy.
+ * - Otherwise refreshes the Supabase session via cookies on each request.
  * - Redirects unauthenticated users to the public landing page (except public routes).
  * - Redirects already-signed-in users away from public auth/landing routes back to the app.
  */
 export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const isPublicRoute =
+    pathname === "/" ||
+    pathname === "/login" ||
+    pathname === "/register" ||
+    pathname === "/auth/confirm" ||
+    pathname.startsWith("/brand/") ||
+    pathname.startsWith("/company-logos/") ||
+    pathname.startsWith("/school-logos/") ||
+    pathname.startsWith("/product-screenshots/") ||
+    pathname === "/favicon.ico" ||
+    pathname === "/icon.png" ||
+    pathname === "/apple-icon.png";
+
+  const hasAuthCookie = request.cookies
+    .getAll()
+    .some((c) => c.name.startsWith("sb-") && c.name.includes("auth-token"));
+
+  if (!hasAuthCookie) {
+    if (!isPublicRoute) return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -36,20 +62,6 @@ export async function proxy(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const { pathname } = request.nextUrl;
-  const isPublicRoute =
-    pathname === "/" ||
-    pathname === "/login" ||
-    pathname === "/register" ||
-    pathname === "/auth/confirm" ||
-    pathname.startsWith("/brand/") ||
-    pathname.startsWith("/company-logos/") ||
-    pathname.startsWith("/school-logos/") ||
-    pathname.startsWith("/product-screenshots/") ||
-    pathname === "/favicon.ico" ||
-    pathname === "/icon.png" ||
-    pathname === "/apple-icon.png";
 
   if (!user && !isPublicRoute) {
     return NextResponse.redirect(new URL("/", request.url));

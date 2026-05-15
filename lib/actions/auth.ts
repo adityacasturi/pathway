@@ -85,14 +85,6 @@ function getEmailRedirectTo() {
   return new URL("/login", normalized).toString();
 }
 
-function looksAutoConfirmed(user: { created_at?: string; email_confirmed_at?: string | null }) {
-  if (!user.created_at || !user.email_confirmed_at) return false;
-  const createdAt = Date.parse(user.created_at);
-  const confirmedAt = Date.parse(user.email_confirmed_at);
-  if (!Number.isFinite(createdAt) || !Number.isFinite(confirmedAt)) return false;
-  return Math.abs(confirmedAt - createdAt) < 1_000;
-}
-
 export async function login(formData: FormData): Promise<AuthActionResult> {
   const rateLimit = await limitServerActionByIp("auth:login", 8, 60_000);
   if (!rateLimit.ok) return { error: rateLimit.error ?? "Too many attempts. Please try again shortly." };
@@ -119,7 +111,10 @@ export async function login(formData: FormData): Promise<AuthActionResult> {
     return { error: formatAuthError(error) };
   }
 
-  if (!data.user?.email_confirmed_at || looksAutoConfirmed(data.user)) {
+  // Old unconfirmed accounts (from before email confirmation was disabled)
+  // still need to verify via OTP — auto-resend a code and route them through
+  // the OTP screen.
+  if (!data.user?.email_confirmed_at) {
     await supabase.auth.signOut();
     const { error: resendErr } = await supabase.auth.resend({
       type: "signup",
@@ -168,13 +163,12 @@ export async function signup(formData: FormData): Promise<AuthActionResult> {
     return { error: "An account already exists for this email. Try signing in instead." };
   }
 
-  if (!data.session) return { status: "confirmation_required" as const };
-
-  await supabase.auth.signOut();
-  return {
-    error:
-      "Email confirmation is not enabled in Supabase. Enable it before accepting new accounts.",
-  };
+  // Email confirmation is currently disabled in the Supabase project, so a
+  // fresh signup returns a session and we authenticate immediately. If
+  // confirmation is later re-enabled, fall back to the OTP flow — the UI and
+  // verifyEmailOtp/resendEmailOtp actions are still wired up for that case.
+  if (data.session) return { status: "authenticated" as const };
+  return { status: "confirmation_required" as const };
 }
 
 export async function verifyEmailOtp(formData: FormData): Promise<AuthActionResult> {

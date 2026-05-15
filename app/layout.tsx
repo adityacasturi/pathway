@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Instrument_Serif, Inter, JetBrains_Mono } from "next/font/google";
+import { cookies } from "next/headers";
 import { AppChrome } from "@/components/app-chrome";
 import {
   DEFAULT_ACCENT_COLOR,
@@ -75,6 +76,14 @@ export const metadata: Metadata = {
 
 async function getInitialAccentColor(): Promise<AccentColor> {
   try {
+    // Fast path: skip the cross-region Supabase round-trip for anonymous
+    // requests. No auth cookie -> definitely no user -> midnight.
+    const cookieStore = await cookies();
+    const hasAuthCookie = cookieStore
+      .getAll()
+      .some((c) => c.name.startsWith("sb-") && c.name.includes("auth-token"));
+    if (!hasAuthCookie) return DEFAULT_ACCENT_COLOR;
+
     const supabase = await createClient();
     const {
       data: { user },
