@@ -27,7 +27,7 @@ import {
 import type { FeedPosting, FeedSeason } from "@/lib/feed/source";
 import type { Application } from "@/types/application";
 
-const MAX_NEW_ROWS = 20;
+const MAX_NEW_ROWS = 5;
 const MAX_SAVED_ROWS = 12;
 
 function deadlineCountdown(deadline: { daysUntilDue: number }) {
@@ -206,13 +206,15 @@ export function Home({
     return ids;
   }, [newPostings, savedOverrides, savedPostings, trackedUrls, trackedUrlOverrides]);
 
-  const visibleNew = useMemo(
+  const availableNew = useMemo(
     () =>
-      newPostings
-        .filter((posting) => !hasAnyInteraction(dismissedSet, posting) && !trackedIdSet.has(posting.id))
-        .slice(0, MAX_NEW_ROWS),
+      newPostings.filter(
+        (posting) => !hasAnyInteraction(dismissedSet, posting) && !trackedIdSet.has(posting.id),
+      ),
     [dismissedSet, newPostings, trackedIdSet],
   );
+  const visibleNew = useMemo(() => availableNew.slice(0, MAX_NEW_ROWS), [availableNew]);
+  const hiddenNewCount = Math.max(0, availableNew.length - visibleNew.length);
   const visibleSaved = useMemo(() => {
     const byId = new Map<string, FeedPosting>();
     for (const posting of savedPostings) byId.set(posting.id, posting);
@@ -300,9 +302,9 @@ export function Home({
               <h2 className="display-serif text-[22px] text-foreground">
                 Since yesterday
               </h2>
-              {visibleNew.length > 0 && (
+              {availableNew.length > 0 && (
                 <span className="label-meta tabular">
-                  {visibleNew.length} new
+                  Showing {visibleNew.length} of {availableNew.length} new
                 </span>
               )}
             </div>
@@ -328,31 +330,46 @@ export function Home({
               </Link>
             </div>
           ) : (
-            <motion.ul
-              variants={motionVariants.list}
-              initial={false}
-              animate="visible"
-              className="divide-y"
-              style={{ borderColor: "var(--rule)" }}
-            >
-              <AnimatePresence initial={false}>
-                {visibleNew.map((posting) => (
-                  <PostingRow
-                    key={posting.id}
-                    posting={posting}
-                    dismissed={hasAnyInteraction(dismissedSet, posting)}
-                    saved={hasAnyInteraction(savedSet, posting)}
-                    tracked={trackedIdSet.has(posting.id)}
-                    isNew
-                    pending={pendingIds.has(posting.id)}
-                    savePending={pendingSavedIds.has(posting.id)}
-                    onTrack={openTrack}
-                    onToggleSaved={onToggleSaved}
-                    onToggleDismiss={onToggleDismiss}
-                  />
-                ))}
-              </AnimatePresence>
-            </motion.ul>
+            <>
+              <motion.ul
+                variants={motionVariants.list}
+                initial={false}
+                animate="visible"
+                className="divide-y"
+                style={{ borderColor: "var(--rule)" }}
+              >
+                <AnimatePresence initial={false}>
+                  {visibleNew.map((posting) => (
+                    <PostingRow
+                      key={posting.id}
+                      posting={posting}
+                      dismissed={hasAnyInteraction(dismissedSet, posting)}
+                      saved={hasAnyInteraction(savedSet, posting)}
+                      tracked={trackedIdSet.has(posting.id)}
+                      isNew
+                      pending={pendingIds.has(posting.id)}
+                      savePending={pendingSavedIds.has(posting.id)}
+                      onTrack={openTrack}
+                      onToggleSaved={onToggleSaved}
+                      onToggleDismiss={onToggleDismiss}
+                    />
+                  ))}
+                </AnimatePresence>
+              </motion.ul>
+              {hiddenNewCount > 0 && (
+                <div className="flex flex-col gap-3 border-t px-2 py-4 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: "var(--rule)" }}>
+                  <p className="label-meta">
+                    {hiddenNewCount} more new {hiddenNewCount === 1 ? "listing" : "listings"} are waiting in Discover.
+                  </p>
+                  <Link
+                    href="/discover"
+                    className="inline-flex items-center gap-1 text-[13px] font-medium text-foreground transition-colors duration-150 hover:text-muted-foreground"
+                  >
+                    View all new listings <ArrowRight size={13} strokeWidth={1.75} />
+                  </Link>
+                </div>
+              )}
+            </>
           )}
         </motion.section>
 

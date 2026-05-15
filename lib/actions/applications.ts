@@ -1,6 +1,7 @@
 "use server";
 
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
+import { limitServerActionByIp } from "@/lib/rate-limit";
 import { formatSupabaseMutationError } from "@/lib/supabase/errors";
 import { validateExternalHttpUrl } from "@/lib/url";
 import { APPLICATION_SEASONS, ApplicationEvent, ApplicationSeason } from "@/types/application";
@@ -9,6 +10,8 @@ import { revalidatePath } from "next/cache";
 const MAX_COMPANY_LENGTH = 120;
 const MAX_ROLE_LENGTH = 160;
 const MAX_LOCATION_LENGTH = 240;
+const WRITE_RATE_LIMIT_REQUESTS = 60;
+const WRITE_RATE_LIMIT_WINDOW_MS = 60_000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type ApplicationPatch = {
@@ -146,10 +149,21 @@ function revalidateApplicationSurfaces() {
   revalidatePath("/stats");
 }
 
+async function limitApplicationWrite() {
+  return limitServerActionByIp(
+    "applications:write",
+    WRITE_RATE_LIMIT_REQUESTS,
+    WRITE_RATE_LIMIT_WINDOW_MS,
+  );
+}
+
 export async function createApplication(
   formData: FormData,
   options: { revalidate?: boolean } = {},
 ) {
+  const rateLimit = await limitApplicationWrite();
+  if (!rateLimit.ok) return { error: rateLimit.error };
+
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
 
@@ -188,6 +202,9 @@ export async function updateApplicationFields(
   id: string,
   fields: ApplicationPatch,
 ) {
+  const rateLimit = await limitApplicationWrite();
+  if (!rateLimit.ok) return { error: rateLimit.error };
+
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
   if (!isUuid(id)) return { error: "Invalid application id." };
@@ -209,6 +226,9 @@ export async function updateApplicationFields(
 }
 
 export async function updateApplicationArchive(id: string, archived: boolean) {
+  const rateLimit = await limitApplicationWrite();
+  if (!rateLimit.ok) return { error: rateLimit.error };
+
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
   if (!isUuid(id)) return { error: "Invalid application id." };
@@ -226,6 +246,9 @@ export async function updateApplicationArchive(id: string, archived: boolean) {
 }
 
 export async function deleteApplication(id: string) {
+  const rateLimit = await limitApplicationWrite();
+  if (!rateLimit.ok) return { error: rateLimit.error };
+
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
   if (!isUuid(id)) return { error: "Invalid application id." };

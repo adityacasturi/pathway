@@ -477,8 +477,8 @@ export default function LoginPage() {
                 type="email"
                 required
                 autoComplete="email"
-                pattern={mode === "signup" ? ".+@[uU][wW]\\.[eE][dD][uU]" : undefined}
-                title={mode === "signup" ? "Use your @uw.edu email for now." : undefined}
+                pattern={mode === "signup" ? ".+\\.[eE][dD][uU]" : undefined}
+                title={mode === "signup" ? "Use your school .edu email." : undefined}
                 disabled={isPending || isAwaitingConfirmation}
                 value={email}
                 onChange={(event) => {
@@ -488,7 +488,7 @@ export default function LoginPage() {
                 }}
                 aria-invalid={Boolean(signupEmailError)}
                 aria-describedby={mode === "signup" ? "signup-email-help" : undefined}
-                placeholder="you@example.com"
+                placeholder="you@school.edu"
                 className="h-11 rounded-lg bg-card px-3 text-[15px] placeholder:text-muted-foreground/40 focus-visible:border-foreground/30"
               />
               {mode === "signup" && (
@@ -498,7 +498,7 @@ export default function LoginPage() {
                     signupEmailError ? "text-destructive" : "text-muted-foreground"
                   }`}
                 >
-                  {signupEmailError ?? "Use your @uw.edu email for now."}
+                  {signupEmailError ?? "Use your school .edu email."}
                 </p>
               )}
             </div>

@@ -13,6 +13,7 @@ import { ApplicationDetail } from "@/components/application-detail";
 import { StatusDot } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { FilterChip, FilterOption } from "@/components/ui/filter-chip";
+import { PageHeader, PageMain, PageShell } from "@/components/ui/page";
 import { motionVariants } from "@/lib/ui/motion";
 import { SearchInput } from "@/components/search-input";
 import { updateApplicationArchive } from "@/lib/actions/applications";
@@ -294,20 +295,22 @@ export function Dashboard({ applications: initialApplications }: Props) {
   }
 
   return (
-    <div className="page-shell min-h-screen bg-background">
-      <main className="max-w-6xl mx-auto px-6 sm:px-10 lg:px-16 pt-18 sm:pt-20 lg:pt-24 pb-24">
-        <motion.header className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between" variants={motionVariants.riseIn} initial={false} animate="visible">
-          <h1 className="display-serif text-[2.75rem] text-foreground sm:text-[3.25rem]">
-            Applications
-          </h1>
-          <Button
-            onClick={() => setDialogOpen(true)}
-            className="h-11 rounded-md px-5 text-[13px] font-medium primary-surface"
-          >
-            <Plus size={14} strokeWidth={2} />
-            Add application
-          </Button>
-        </motion.header>
+    <PageShell>
+      <PageMain width="lg">
+        <motion.div variants={motionVariants.riseIn} initial={false} animate="visible">
+          <PageHeader
+            title="Applications"
+            actions={
+              <Button
+                onClick={() => setDialogOpen(true)}
+                className="h-11 rounded-md px-5 text-[13px] font-medium primary-surface"
+              >
+                <Plus size={14} strokeWidth={2} />
+                Add application
+              </Button>
+            }
+          />
+        </motion.div>
 
         <motion.div
           className={`relative mb-6 ${searchFocused ? "z-[200]" : "z-20"}`}
@@ -412,7 +415,7 @@ export function Dashboard({ applications: initialApplications }: Props) {
           archivedIds={archivedIds}
           onArchiveChange={setApplicationArchived}
         />
-      </main>
+      </PageMain>
 
       <ApplicationDialog
         open={dialogOpen}
@@ -420,6 +423,6 @@ export function Dashboard({ applications: initialApplications }: Props) {
         onCreated={handleApplicationCreated}
       />
       <ApplicationDetail application={detail} onClose={() => setDetail(null)} />
-    </div>
+    </PageShell>
   );
 }

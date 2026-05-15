@@ -41,8 +41,10 @@ export async function proxy(request: NextRequest) {
   const isPublicRoute =
     pathname === "/" ||
     pathname === "/login" ||
+    pathname === "/register" ||
     pathname === "/auth/confirm" ||
     pathname.startsWith("/brand/") ||
+    pathname.startsWith("/company-logos/") ||
     pathname.startsWith("/school-logos/") ||
     pathname.startsWith("/product-screenshots/") ||
     pathname === "/favicon.ico" ||

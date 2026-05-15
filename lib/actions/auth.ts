@@ -136,7 +136,7 @@ export async function login(formData: FormData): Promise<AuthActionResult> {
 
 export async function signup(formData: FormData): Promise<AuthActionResult> {
   if (!SIGNUPS_ENABLED) {
-    return { error: "Signups are paused. Join the waitlist to get early access." };
+    return { error: "Signups are paused. Please check back soon." };
   }
   const rateLimit = await limitServerActionByIp("auth:signup", 4, 60_000);
   if (!rateLimit.ok) return { error: rateLimit.error ?? "Too many attempts. Please try again shortly." };
@@ -215,12 +215,15 @@ export async function verifyEmailOtp(formData: FormData): Promise<AuthActionResu
 }
 
 export async function resendEmailOtp(formData: FormData): Promise<{ ok: true } | { error: string }> {
+  if (!SIGNUPS_ENABLED) {
+    return { error: "Signups are paused. Please check back soon." };
+  }
   const rateLimit = await limitServerActionByIp("auth:resend-otp", 3, 60_000);
   if (!rateLimit.ok) return { error: rateLimit.error ?? "Too many attempts. Please try again shortly." };
 
   const email = formData.get("email");
   if (typeof email !== "string") return { error: "Email is required." };
-  const emailError = getEmailValidationError(email);
+  const emailError = getSignupEmailValidationError(email);
   if (emailError) return { error: emailError };
   const cleanEmail = normalizeEmail(email);
 

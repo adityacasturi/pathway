@@ -3,11 +3,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { HeroCompanyCardFan } from "@/components/hero-company-card-fan";
 import { LandingProductStory } from "@/components/landing-product-story";
 import { LandingScrollCue } from "@/components/landing-scroll-cue";
 import { SchoolLogoCarousel } from "@/components/school-logo-carousel";
-import { WaitlistDialog } from "@/components/waitlist-dialog";
-import { SIGNUPS_ENABLED } from "@/lib/auth/signup-enabled";
 
 export const dynamic = "force-dynamic";
 
@@ -93,22 +92,18 @@ function LandingPage() {
             >
               Sign in
             </Link>
-            {SIGNUPS_ENABLED && (
-              <Link
-                href="/login?mode=signup"
-                className="public-nav-button public-nav-button-secondary"
-                style={{ borderColor: "var(--rule)" }}
-              >
-                Sign up <ArrowRight size={13} strokeWidth={1.8} />
-              </Link>
-            )}
-            <WaitlistDialog />
+            <Link
+              href="/register"
+              className="public-nav-button public-nav-button-primary"
+            >
+              Get started <ArrowRight size={13} strokeWidth={1.8} />
+            </Link>
           </nav>
         </div>
         <span aria-hidden className="landing-header-rule block h-px w-full" />
       </header>
 
-      <section className="landing-hero mx-auto w-full max-w-7xl px-5 pb-12 pt-14 sm:px-8 lg:px-12">
+      <section className="landing-hero mx-auto grid w-full max-w-7xl gap-8 px-5 pb-12 pt-14 sm:px-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(22rem,0.75fr)] lg:px-12">
         <div className="flex min-w-0 flex-col justify-center">
           <h1 className="landing-hero-title max-w-6xl text-[3.65rem] text-foreground sm:text-[5.15rem] lg:text-[7.35rem]">
             <span>Find roles faster.</span>
@@ -120,7 +115,7 @@ function LandingPage() {
           <div className="landing-offer mt-6 max-w-xl">
             <p className="landing-offer-title">
               <span>
-                Now taking waitlist signups for <em>@uw.edu</em> students
+                Now open for students with a <em>.edu</em> email
               </span>
             </p>
           </div>
@@ -128,6 +123,7 @@ function LandingPage() {
             <SchoolLogoCarousel />
           </div>
         </div>
+        <HeroCompanyCardFan />
         <LandingScrollCue />
       </section>
 

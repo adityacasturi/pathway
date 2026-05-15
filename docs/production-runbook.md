@@ -59,8 +59,8 @@ Rules:
 
 The connector can run migrations, SQL checks, migration listing, and advisors. The dashboard still needs manual review for product/auth settings:
 
-- Auth signups disabled until the waitlist experiment ends.
-- Email confirmation enabled before public signup returns.
+- Auth signups enabled for `.edu` email addresses.
+- Email confirmation enabled for public signup.
 - Password policy: minimum 8 characters plus lowercase, uppercase, digit, and symbol requirements.
 - Leaked password protection enabled when the project plan supports it.
 - Custom SMTP configured for production email.

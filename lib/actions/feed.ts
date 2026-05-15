@@ -7,6 +7,16 @@ import { clearFeedMemo } from "@/lib/feed/source";
 import { limitServerActionByIp } from "@/lib/rate-limit";
 
 const MAX_POSTING_ID_LENGTH = 300;
+const INTERACTION_RATE_LIMIT_REQUESTS = 120;
+const INTERACTION_RATE_LIMIT_WINDOW_MS = 60_000;
+
+async function limitFeedInteractionWrite() {
+  return limitServerActionByIp(
+    "feed-interactions:write",
+    INTERACTION_RATE_LIMIT_REQUESTS,
+    INTERACTION_RATE_LIMIT_WINDOW_MS,
+  );
+}
 
 function cleanPostingId(postingId: unknown): string | null {
   if (typeof postingId !== "string") return null;
@@ -36,6 +46,9 @@ function cleanPostingIds(postingIds: unknown): string[] {
  */
 
 export async function dismissPosting(postingIds: string | string[]) {
+  const rateLimit = await limitFeedInteractionWrite();
+  if (!rateLimit.ok) return { error: rateLimit.error };
+
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
   const cleanedPostingIds = cleanPostingIds(postingIds);
@@ -54,6 +67,9 @@ export async function dismissPosting(postingIds: string | string[]) {
 }
 
 export async function undismissPosting(postingIds: string | string[]) {
+  const rateLimit = await limitFeedInteractionWrite();
+  if (!rateLimit.ok) return { error: rateLimit.error };
+
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
   const cleanedPostingIds = cleanPostingIds(postingIds);
@@ -71,6 +87,9 @@ export async function undismissPosting(postingIds: string | string[]) {
 }
 
 export async function savePosting(postingIds: string | string[]) {
+  const rateLimit = await limitFeedInteractionWrite();
+  if (!rateLimit.ok) return { error: rateLimit.error };
+
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
   const cleanedPostingIds = cleanPostingIds(postingIds);
@@ -89,6 +108,9 @@ export async function savePosting(postingIds: string | string[]) {
 }
 
 export async function unsavePosting(postingIds: string | string[]) {
+  const rateLimit = await limitFeedInteractionWrite();
+  if (!rateLimit.ok) return { error: rateLimit.error };
+
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
   const cleanedPostingIds = cleanPostingIds(postingIds);

@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, ChartNoAxesCombined, Clock3, Percent, TimerReset, Trophy } from "lucide-react";
 import { STATUS_LABELS } from "@/lib/config/events";
 import { motionVariants } from "@/lib/ui/motion";
+import { PageHeader, PageMain, PageSection, PageShell } from "@/components/ui/page";
 import type { Application, EventType, Status } from "@/types/application";
 
 type FlowNode = {
@@ -851,26 +852,23 @@ export function StatsPage({ applications }: Props) {
   } = computeStats(applications);
 
   return (
-    <div className="page-shell min-h-screen bg-background">
-      <main className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 pt-18 sm:pt-20 lg:pt-24 pb-24">
-        <motion.header
-          className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-          variants={motionVariants.riseIn}
-          initial="hidden"
-          animate="visible"
-        >
-          <h1 className="display-serif text-[2.75rem] text-foreground sm:text-[3.25rem]">
-            Stats
-          </h1>
-          <Link
-            href="/applications"
-            className="group inline-flex h-11 items-center gap-2 self-start rounded-md border px-5 text-[13px] font-medium text-foreground transition-colors hover:border-rule-strong"
-            style={{ borderColor: "var(--rule)" }}
-          >
-            Open pipeline
-            <ArrowRight size={14} strokeWidth={1.75} className="transition-transform group-hover:translate-x-0.5" />
-          </Link>
-        </motion.header>
+    <PageShell>
+      <PageMain width="xl">
+        <motion.div variants={motionVariants.riseIn} initial="hidden" animate="visible">
+          <PageHeader
+            title="Stats"
+            actions={
+              <Link
+                href="/applications"
+                className="group inline-flex h-11 items-center gap-2 self-start rounded-md border px-5 text-[13px] font-medium text-foreground transition-colors hover:border-rule-strong"
+                style={{ borderColor: "var(--rule)" }}
+              >
+                Open pipeline
+                <ArrowRight size={14} strokeWidth={1.75} className="transition-transform group-hover:translate-x-0.5" />
+              </Link>
+            }
+          />
+        </motion.div>
 
         <motion.div
           variants={motionVariants.fadeIn}
@@ -888,16 +886,16 @@ export function StatsPage({ applications }: Props) {
             interviewSampleSize={interviewSampleSize}
           />
 
-          <section className="mb-12">
-            <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <span className="label-micro">01 / Flow</span>
-                <h2 className="mt-3 display-serif text-[30px] text-foreground">Search Sankey</h2>
-              </div>
-              <span className="label-meta">{active.length} active applications</span>
-            </div>
+          <PageSection
+            label="01 / Flow"
+            title="Search Sankey"
+            meta={`${active.length} active applications`}
+            className="mb-12"
+            contentClassName="pt-1"
+            rule={false}
+          >
             <SankeyDiagram nodes={sankey.nodes} links={sankey.links} total={active.length} />
-          </section>
+          </PageSection>
 
           <div className="grid gap-5 lg:grid-cols-[1.12fr_0.88fr]">
             <MonthlyApplicationsChart months={monthlyCounts} />
@@ -922,7 +920,7 @@ export function StatsPage({ applications }: Props) {
             />
           </div>
         </motion.div>
-      </main>
-    </div>
+      </PageMain>
+    </PageShell>
   );
 }

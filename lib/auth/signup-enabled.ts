@@ -1,3 +1,3 @@
-// Single switch for public signups. Flip to `true` to re-enable the signup
-// action, the landing-page "Sign up" button, and the /login mode toggle.
-export const SIGNUPS_ENABLED = false;
+// Single switch for public signups. Keep waitlist code available, but route
+// public onboarding to account creation while this is true.
+export const SIGNUPS_ENABLED = true;

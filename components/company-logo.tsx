@@ -67,11 +67,12 @@ interface Props {
 
 export function CompanyLogo({ company, size = 20 }: Props) {
   const key = cacheKey(company);
-  const [failed, setFailed] = useState(() => failedCompanies.has(key));
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     // Re-check the shared cache whenever the company changes; no network
-    // work if we already know this one fails.
+    // work if we already know this one fails. Keep the initial value stable
+    // between server render and hydration; sessionStorage is client-only.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setFailed(failedCompanies.has(cacheKey(company)));
   }, [company]);

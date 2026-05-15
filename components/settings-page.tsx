@@ -16,6 +16,7 @@ import { AsyncButton } from "@/components/ui/async-button";
 import { InlineError } from "@/components/ui/inline-error";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PageHeader, PageMain, PageSection, PageShell } from "@/components/ui/page";
 
 interface Props {
   userEmail: string | null | undefined;
@@ -121,25 +122,18 @@ export function SettingsPage({
   }
 
   return (
-    <div className="page-shell min-h-screen bg-background">
-      <main className="max-w-3xl mx-auto px-6 sm:px-10 lg:px-16 pt-18 sm:pt-20 lg:pt-24 pb-24">
-        <motion.header
-          className="mb-10"
-          variants={motionVariants.riseIn}
-          initial={false}
-          animate="visible"
-        >
-          <h1 className="display-serif text-[2.75rem] text-foreground sm:text-[3.25rem]">
-            Settings
-          </h1>
-        </motion.header>
+    <PageShell>
+      <PageMain width="md">
+        <motion.div variants={motionVariants.riseIn} initial={false} animate="visible">
+          <PageHeader title="Settings" />
+        </motion.div>
 
         <motion.div
           variants={motionVariants.fadeIn}
           initial={false}
           animate="visible"
         >
-          <Section label="01" title="Account">
+          <PageSection label="01" title="Account">
             <div className="flex items-center gap-5 py-5">
               <div
                 className="inline-flex size-12 shrink-0 items-center justify-center rounded-full font-mono text-[12px] font-medium tracking-[0.1em] uppercase text-foreground"
@@ -157,9 +151,9 @@ export function SettingsPage({
                 <SignOutButton />
               </form>
             </div>
-          </Section>
+          </PageSection>
 
-          <Section label="02" title="Discover">
+          <PageSection label="02" title="Discover">
             <form onSubmit={onSubmit}>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div className="min-w-0 flex-1">
@@ -207,9 +201,9 @@ export function SettingsPage({
                 </div>
               )}
             </form>
-          </Section>
+          </PageSection>
 
-          <Section label="03" title="Appearance">
+          <PageSection label="03" title="Appearance">
             <form onSubmit={onAccentSubmit}>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div className="min-w-0 flex-1">
@@ -256,40 +250,11 @@ export function SettingsPage({
                 </div>
               )}
             </form>
-          </Section>
+          </PageSection>
 
         </motion.div>
-      </main>
-    </div>
-  );
-}
-
-function Section({
-  label,
-  title,
-  description,
-  children,
-}: {
-  label: string;
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="mb-14">
-      <div className="mb-5 flex items-baseline gap-3">
-        <span className="label-micro">{label}</span>
-        <h2 className="display-serif text-[24px] text-foreground">{title}</h2>
-      </div>
-      {description && (
-        <p className="mb-5 max-w-xl text-[13px] leading-relaxed text-muted-foreground">
-          {description}
-        </p>
-      )}
-      <span className="rule mb-0" />
-      <div className="py-5">{children}</div>
-      <span className="rule mt-0" />
-    </section>
+      </PageMain>
+    </PageShell>
   );
 }
 

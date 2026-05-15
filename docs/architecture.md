@@ -1,6 +1,6 @@
 # Architecture
 
-Pathway is a Next.js 16 App Router application backed by Supabase Auth and Postgres. The product is currently in a waitlist-first phase: public signup is disabled, the waitlist only accepts `@uw.edu` addresses, and authenticated access is limited to existing/QA users.
+Pathway is a Next.js 16 App Router application backed by Supabase Auth and Postgres. Public signup is enabled for students with `.edu` email addresses; the waitlist implementation is preserved for future use but is not mounted on the landing page.
 
 ## Runtime And Framework
 
@@ -17,8 +17,9 @@ Agents changing Next.js behavior must read the relevant guide in `node_modules/n
 
 | Route | Purpose |
 | --- | --- |
-| `/` | Public landing page and waitlist entry |
-| `/login` | Sign in; signup UI is paused |
+| `/` | Public landing page and signup entry |
+| `/login` | Sign in and account creation |
+| `/register` | Stable signup entry that redirects to `/login?mode=signup` |
 | `/home` | Authenticated overview of active applications and feed highlights |
 | `/applications` | Main application tracker |
 | `/discover` | Live internship posting feed |
@@ -52,12 +53,12 @@ Priority order is rejected, offer, interview, OA, applied.
 
 Mutations live in `lib/actions/`:
 
-- `auth.ts`: login, OTP verification, logout, paused signup handling
+- `auth.ts`: login, signup, OTP verification, and logout
 - `applications.ts`: create, update, archive, delete applications
 - `events.ts`: create/update/delete events and OA deadline fields
 - `feed.ts`: save, unsave, dismiss, restore, and refresh Discover postings
 - `settings.ts`: user preferences
-- `waitlist.ts`: UW-only waitlist writes and anti-abuse enforcement
+- `waitlist.ts`: dormant `.edu` waitlist writes and anti-abuse enforcement
 
 Actions validate inputs, use Supabase server clients or narrow RPCs, and revalidate affected paths.
 
@@ -73,11 +74,11 @@ User-specific state is stored separately:
 
 ## Waitlist And Signup State
 
-`SIGNUPS_ENABLED` is false. Signup UI is paused while waitlist demand is measured.
+`SIGNUPS_ENABLED` is true. Signup UI is available from `/register` and `/login?mode=signup`.
 
-Waitlist protections:
+Signup and dormant waitlist protections:
 
-- Email must normalize to `@uw.edu`
+- Email must normalize to a `.edu` domain
 - Server-side durable limits check hashed email/IP identifiers
 - Hashing uses HMAC-SHA256 with a database-owned secret in `app_private.waitlist_config`
 - Raw emails are not logged

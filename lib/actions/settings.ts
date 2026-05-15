@@ -7,7 +7,11 @@ import {
 } from "@/lib/config/discover";
 import { isAccentColor } from "@/lib/config/accent";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
+import { limitServerActionByIp } from "@/lib/rate-limit";
 import { formatSupabaseMutationError } from "@/lib/supabase/errors";
+
+const SETTINGS_RATE_LIMIT_REQUESTS = 30;
+const SETTINGS_RATE_LIMIT_WINDOW_MS = 60_000;
 
 function isMissingAccentColumnError(error: { code?: string; message?: string } | null): boolean {
   return Boolean(
@@ -17,7 +21,18 @@ function isMissingAccentColumnError(error: { code?: string; message?: string } |
   );
 }
 
+async function limitSettingsWrite() {
+  return limitServerActionByIp(
+    "settings:write",
+    SETTINGS_RATE_LIMIT_REQUESTS,
+    SETTINGS_RATE_LIMIT_WINDOW_MS,
+  );
+}
+
 export async function updateDiscoverCutoffDate(cutoffDate: string) {
+  const rateLimit = await limitSettingsWrite();
+  if (!rateLimit.ok) return { error: rateLimit.error };
+
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
   if (!isValidDiscoverCutoffDate(cutoffDate)) return { error: "Invalid cutoff date." };
@@ -42,6 +57,9 @@ export async function updateDiscoverCutoffDate(cutoffDate: string) {
 }
 
 export async function updateAccentColor(accentColor: string) {
+  const rateLimit = await limitSettingsWrite();
+  if (!rateLimit.ok) return { error: rateLimit.error };
+
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
   if (!isAccentColor(accentColor)) return { error: "Choose a supported accent color." };

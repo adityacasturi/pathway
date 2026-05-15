@@ -1,37 +1,42 @@
 import { expect, test } from "@playwright/test";
 
-test("login renders with public signup paused", async ({ page }) => {
+test("login renders with public signup available", async ({ page }) => {
   await page.goto("/login");
 
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
   await expect(page.getByLabel("Email")).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Password", exact: true })).toBeVisible();
   await expect(page.getByLabel("Universities using Pathway")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Create an account" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Create an account" })).toBeVisible();
   await expect(page.getByText(/Signups are paused/i)).toHaveCount(0);
 });
 
-test("waitlist blocks non-UW emails before submit", async ({ page }) => {
-  await page.goto("/");
-  await page.getByRole("button", { name: /Join the waitlist/i }).click();
+test("signup blocks non-edu emails before submit", async ({ page }) => {
+  await page.goto("/register");
 
-  await expect(page.getByRole("heading", { name: "Join the waitlist." })).toBeVisible();
+  await expect(page).toHaveURL(/\/login\?mode=signup$/);
+  await expect(page.getByRole("heading", { name: "Create account" })).toBeVisible();
   await page.getByLabel("Email").fill("person@example.com");
-  await page.getByRole("button", { name: "Join waitlist" }).click();
+  await expect(page.getByText("Use your school .edu email.")).toBeVisible();
+  await expect(
+    page.getByLabel("Email").evaluate((input) => (input as HTMLInputElement).validity.patternMismatch),
+  ).resolves.toBe(true);
 
-  await expect(page.getByText("Use your @uw.edu email for now.")).toBeVisible();
-  await page.getByLabel("Email").fill("student@uw.edu");
-  await expect(page.getByText("Use your @uw.edu email for now.")).toHaveCount(0);
+  await page.getByLabel("Email").fill("student@example.edu");
+  await expect(
+    page.getByLabel("Email").evaluate((input) => (input as HTMLInputElement).validity.patternMismatch),
+  ).resolves.toBe(false);
 });
 
 test("landing page renders for anonymous users", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: /Find roles faster/i })).toBeVisible();
-  await expect(page.getByText(/Now taking waitlist signups for/i)).toBeVisible();
+  await expect(page.getByText(/Now open for students with a/i)).toBeVisible();
   await expect(page.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/login");
+  await expect(page.getByRole("link", { name: /Get started/i })).toHaveAttribute("href", "/register");
   await expect(page.getByRole("link", { name: "Pathway home" })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Join the waitlist/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Join the waitlist/i })).toHaveCount(0);
   await expect(page.getByLabel("Universities using Pathway")).toBeVisible();
   await expect(page.getByRole("link", { name: "View product" })).toHaveCount(0);
   await expect(page.getByText("Built for internship recruiting")).toHaveCount(0);

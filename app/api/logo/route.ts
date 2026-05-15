@@ -7,7 +7,7 @@ const CACHE_SECONDS = 60 * 60 * 24 * 30;
 const NEGATIVE_CACHE_SECONDS = 60 * 60 * 24;
 const FETCH_TIMEOUT_MS = 2500;
 const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_REQUESTS = 120;
+const RATE_LIMIT_REQUESTS = 60;
 
 export const dynamic = "force-dynamic";
 

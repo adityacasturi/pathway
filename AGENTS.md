@@ -33,14 +33,21 @@ Formal migrations are mandatory.
 - Never expose Resend keys or other secrets through `NEXT_PUBLIC_` variables.
 - RLS is part of the product contract. Do not broaden grants or policies without a migration and a clear reason.
 - Authenticated user data must remain scoped by `auth.uid()` or trusted server-side user lookup.
-- Waitlist writes require `@uw.edu`, durable anti-abuse checks, and hashed identifiers for IP/email rate-limit metadata. The app calls only `public.join_waitlist`; table writes and HMAC hashing happen inside `app_private.join_waitlist`.
+- Signup and dormant waitlist writes require a school `.edu` email, durable anti-abuse checks, and hashed identifiers for IP/email rate-limit metadata. The app calls only `public.join_waitlist`; table writes and HMAC hashing happen inside `app_private.join_waitlist`.
 
 ## Product State
 
-- Public account creation is intentionally disabled while the waitlist is being measured.
+- Public account creation is enabled for students with `.edu` email addresses. The waitlist code is preserved but not mounted on the landing page.
 - Default accent theme is sage.
 - Discover hides applied postings by default.
 - Dashboard rows should stay simple and consistent with Discover rather than adding page-row animation flourishes.
+
+## UI Consistency
+
+- Treat `components/ui/` as the app's design-system boundary. Prefer existing primitives before adding one-off Tailwind class clusters.
+- Use `PageShell`, `PageMain`, `PageHeader`, and `PageSection` from `components/ui/page.tsx` for authenticated page structure, spacing, and section rhythm.
+- Keep page-level spacing on those primitives instead of repeating `max-w-*`, `px-*`, `pt-*`, `pb-*`, and header margin classes in feature components.
+- Prefer shadcn/Base UI-style local primitives that can be owned and themed in this repo. Avoid adding MUI, Magic UI, Aceternity UI, or similar broad UI libraries unless the product direction explicitly calls for that surface.
 
 ## Documentation
 

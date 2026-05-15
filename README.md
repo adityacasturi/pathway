@@ -1,6 +1,6 @@
 # Pathway
 
-Pathway is a focused internship search workspace for UW students. Signups are currently paused while waitlist interest is measured; the public waitlist accepts `@uw.edu` addresses only. Authenticated users can track applications, manage event timelines, review stats, and browse live internship postings in Discover.
+Pathway is a focused internship search workspace for students with `.edu` email addresses. Public signup is enabled; authenticated users can track applications, manage event timelines, review stats, and browse live internship postings in Discover.
 
 Built with Next.js 16 App Router, React 19, Server Actions, Supabase Auth/Postgres/RLS, Tailwind CSS v4, Playwright, and shadcn-style UI primitives on `@base-ui/react`.
 
@@ -101,7 +101,7 @@ See [docs/architecture.md](./docs/architecture.md) for the system walkthrough an
 
 ## Production Notes
 
-- Keep signups disabled until the waitlist experiment is over. The waitlist RPC enforces `@uw.edu`, stores raw emails only in `public.waitlist`, and stores HMAC-hashed anti-abuse identifiers in `public.waitlist_attempts`.
+- Public signup requires a `.edu` email. The preserved waitlist RPC enforces the same `.edu` rule, stores raw emails only in `public.waitlist`, and stores HMAC-hashed anti-abuse identifiers in `public.waitlist_attempts`.
 - Waitlist hashing uses a database-owned secret in `app_private.waitlist_config`; no app env secret is required for this path.
 - Default UI accent is sage. User preferences are stored in `public.user_preferences`.
 - Supabase dashboard checks that are not fully automatable from this repo still matter: Auth password policy, email confirmation, SMTP, redirect allow-list, leaked password protection, backups/PITR, and advisor review.

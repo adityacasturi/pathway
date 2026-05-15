@@ -112,7 +112,7 @@ export function WaitlistDialog({ triggerClassName }: { triggerClassName?: string
 
           <p className="mt-4 text-[14px] leading-[1.65] text-muted-foreground">
             Pathway is currently invite-only for{" "}
-            <em className="font-medium not-italic text-foreground">@uw.edu</em>{" "}
+            <em className="font-medium not-italic text-foreground">.edu</em>{" "}
             students. Add your email and we&apos;ll reach out as access opens.
           </p>
         </div>
@@ -135,7 +135,7 @@ export function WaitlistDialog({ triggerClassName }: { triggerClassName?: string
                 if (state === "error") setState("idle");
                 setError(null);
               }}
-              placeholder="you@uw.edu"
+              placeholder="you@school.edu"
               className="h-10 rounded-lg bg-card px-3 text-[14px] placeholder:text-muted-foreground/40 focus-visible:border-foreground/30"
             />
           </div>

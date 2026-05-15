@@ -1,12 +1,15 @@
 "use server";
 
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
+import { limitServerActionByIp } from "@/lib/rate-limit";
 import { formatSupabaseMutationError } from "@/lib/supabase/errors";
 import { revalidatePath } from "next/cache";
 import { ApplicationEvent, EventType, Status } from "@/types/application";
 
 const EVENT_TYPES: readonly EventType[] = ["applied", "oa", "interview", "offer", "rejected", "note"];
 const MAX_NOTES_LENGTH = 2000;
+const WRITE_RATE_LIMIT_REQUESTS = 90;
+const WRITE_RATE_LIMIT_WINDOW_MS = 60_000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const LOCAL_APPLIED_EVENT_RE = /^local-([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})-applied$/i;
 
@@ -23,6 +26,14 @@ function revalidateApplicationSurfaces() {
 
 function isEventType(value: string): value is EventType {
   return (EVENT_TYPES as readonly string[]).includes(value);
+}
+
+async function limitEventWrite() {
+  return limitServerActionByIp(
+    "application-events:write",
+    WRITE_RATE_LIMIT_REQUESTS,
+    WRITE_RATE_LIMIT_WINDOW_MS,
+  );
 }
 
 function isUuid(value: string): boolean {
@@ -103,6 +114,9 @@ export async function createEvent(
   notes?: string,
   deadlineDate?: string | null,
 ) {
+  const rateLimit = await limitEventWrite();
+  if (!rateLimit.ok) return { error: rateLimit.error };
+
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
   if (!isUuid(applicationId)) return { error: "Invalid application id." };
@@ -146,6 +160,9 @@ export async function updateEventDeadline(
   applicationId: string,
   deadlineDate: string | null,
 ) {
+  const rateLimit = await limitEventWrite();
+  if (!rateLimit.ok) return { error: rateLimit.error };
+
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
   if (!isUuid(applicationId)) return { error: "Invalid application id." };
@@ -180,6 +197,9 @@ export async function updateEventDeadlineCompletion(
   applicationId: string,
   completed: boolean,
 ) {
+  const rateLimit = await limitEventWrite();
+  if (!rateLimit.ok) return { error: rateLimit.error };
+
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
   if (!isUuid(applicationId)) return { error: "Invalid application id." };
@@ -204,6 +224,9 @@ export async function updateEventDeadlineCompletion(
 }
 
 export async function updateEventDate(eventId: string, applicationId: string, newDate: string) {
+  const rateLimit = await limitEventWrite();
+  if (!rateLimit.ok) return { error: rateLimit.error };
+
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
   if (!isUuid(applicationId)) return { error: "Invalid application id." };
@@ -241,6 +264,9 @@ export async function updateEventDate(eventId: string, applicationId: string, ne
 }
 
 export async function updateEventNotes(eventId: string, notes: string) {
+  const rateLimit = await limitEventWrite();
+  if (!rateLimit.ok) return { error: rateLimit.error };
+
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
   if (typeof notes !== "string") return { error: "Invalid notes." };
@@ -264,6 +290,9 @@ export async function updateEventNotes(eventId: string, notes: string) {
 }
 
 export async function deleteEvent(eventId: string, applicationId: string) {
+  const rateLimit = await limitEventWrite();
+  if (!rateLimit.ok) return { error: rateLimit.error };
+
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
   if (!isUuid(eventId) || !isUuid(applicationId)) return { error: "Invalid event id." };

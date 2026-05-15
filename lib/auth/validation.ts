@@ -1,6 +1,5 @@
 const MAX_EMAIL_LENGTH = 320;
 const MIN_PASSWORD_LENGTH = 8;
-const ALLOWED_SIGNUP_EMAIL_DOMAIN = "uw.edu";
 export const MAX_PASSWORD_LENGTH = 1024;
 
 const DISPOSABLE_EMAIL_DOMAINS = new Set([
@@ -92,8 +91,8 @@ export function getSignupEmailValidationError(email: string): string | null {
   if (emailError) return emailError;
 
   const domain = normalizeEmail(email).split("@")[1];
-  if (domain !== ALLOWED_SIGNUP_EMAIL_DOMAIN) {
-    return "Use your @uw.edu email for now.";
+  if (!domain?.endsWith(".edu")) {
+    return "Use your school .edu email.";
   }
 
   return null;
