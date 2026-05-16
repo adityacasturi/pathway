@@ -15,6 +15,10 @@
 
 import { unstable_noStore } from "next/cache";
 import { resolveDiscoverCutoffDate } from "@/lib/config/discover";
+import {
+  detectCountriesAcross,
+  hasRemoteLocation,
+} from "@/lib/feed/location";
 import { errorMessage, logServerEvent } from "@/lib/observability";
 
 /** How long (in seconds) to cache a fetched source before re-pulling. */
@@ -37,6 +41,10 @@ export interface FeedPosting {
   title: string;
   url: string;
   locations: string[];
+  /** ISO 3166-1 alpha-2 codes derived from `locations`. May be empty. */
+  countries: string[];
+  /** True if any location reads as remote; used for the Remote filter pill. */
+  hasRemote: boolean;
   season: FeedSeason;
   /** Unix seconds; rendered as a relative age ("2d ago"). */
   datePosted: number;
@@ -103,6 +111,7 @@ function baseValid(row: RawListing): boolean {
 function buildPosting(row: RawListing, sourceId: string, season: FeedSeason): FeedPosting {
   const id = stablePostingId(row.url as string);
   const upstreamId = row.id as string;
+  const locations = Array.isArray(row.locations) ? row.locations : [];
   return {
     id,
     interactionIds: Array.from(new Set([id, upstreamId, `${sourceId}:${upstreamId}`])),
@@ -110,7 +119,9 @@ function buildPosting(row: RawListing, sourceId: string, season: FeedSeason): Fe
     company: row.company_name as string,
     title: row.title as string,
     url: row.url as string,
-    locations: Array.isArray(row.locations) ? row.locations : [],
+    locations,
+    countries: detectCountriesAcross(locations),
+    hasRemote: hasRemoteLocation(locations),
     season,
     datePosted: typeof row.date_posted === "number" ? row.date_posted : 0,
     dateUpdated:
@@ -382,10 +393,13 @@ function roleDedupeKey(posting: FeedPosting): string {
 function mergePosting(existing: FeedPosting, posting: FeedPosting): FeedPosting {
   const locations = Array.from(new Set([...existing.locations, ...posting.locations]));
   const interactionIds = Array.from(new Set([...existing.interactionIds, ...posting.interactionIds]));
+  const countries = Array.from(new Set([...existing.countries, ...posting.countries]));
   return {
     ...existing,
     interactionIds,
     locations,
+    countries,
+    hasRemote: existing.hasRemote || posting.hasRemote,
     datePosted: Math.max(existing.datePosted, posting.datePosted),
     dateUpdated: Math.max(existing.dateUpdated, posting.dateUpdated),
   };

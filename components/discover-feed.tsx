@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
   useTransition,
+  type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
@@ -15,11 +16,11 @@ import { CheckCheck, RefreshCw, SlidersHorizontal } from "lucide-react";
 import { ApplicationDialog } from "@/components/application-dialog";
 import { PostingRow } from "@/components/posting-row";
 import { InlineError } from "@/components/ui/inline-error";
-import { FilterChip, FilterOption } from "@/components/ui/filter-chip";
 import { SkeletonBlock } from "@/components/ui/loading-indicator";
 import { motionVariants } from "@/lib/ui/motion";
 import { SearchInput } from "@/components/search-input";
 import { normalizeUrl } from "@/lib/url";
+import { countryLabel } from "@/lib/feed/location";
 import {
   dismissPosting,
   refreshFeed,
@@ -33,14 +34,22 @@ type SeasonFilter = "all" | FeedSeason;
 
 const SHOW_DISMISSED_STORAGE_KEY = "pathway:discover-show-dismissed";
 const HIDE_APPLIED_STORAGE_KEY = "pathway:discover-hide-applied";
+const SEASON_STORAGE_KEY = "pathway:discover-season";
+const COUNTRIES_STORAGE_KEY = "pathway:discover-countries";
 const LAST_SEEN_STORAGE_KEY = "pathway:feed-last-seen-at";
 const SEARCH_TOKEN_PATTERN = /"[^"]*"|'[^']*'|\S+/g;
 
-const SEASON_FILTER_OPTIONS: FilterOption<SeasonFilter>[] = [
+const SEASON_OPTIONS: { value: SeasonFilter; label: string }[] = [
   { value: "all", label: "All" },
   { value: "Summer", label: "Summer" },
   { value: "Fall", label: "Fall" },
 ];
+
+const VALID_SEASONS = new Set<SeasonFilter>(["all", "Summer", "Fall"]);
+
+// Synthetic country code used by the Remote filter pill. Lowercase so it
+// can never collide with a real ISO 3166-1 alpha-2 country code.
+const REMOTE_CODE = "remote";
 
 // Progressive render window. The filter/search still runs over the full list
 // (cheap), but we only paint a chunk at a time. The IntersectionObserver
@@ -105,6 +114,7 @@ export function DiscoverFeed({
   // letting React keep the input responsive while it catches up on the list.
   const deferredQuery = useDeferredValue(query);
   const [seasonFilter, setSeasonFilter] = useState<SeasonFilter>("all");
+  const [selectedCountries, setSelectedCountries] = useState<Set<string>>(() => new Set());
   const [showDismissed, setShowDismissed] = useState(false);
   const [showSavedOnly, setShowSavedOnly] = useState(initialSavedOnly);
   const [hideApplied, setHideApplied] = useState(true);
@@ -148,6 +158,24 @@ export function DiscoverFeed({
 
     const hideAppliedPref = localStorage.getItem(HIDE_APPLIED_STORAGE_KEY);
     if (hideAppliedPref !== null) setHideApplied(hideAppliedPref === "1");
+
+    const seasonPref = localStorage.getItem(SEASON_STORAGE_KEY);
+    if (seasonPref && VALID_SEASONS.has(seasonPref as SeasonFilter)) {
+      setSeasonFilter(seasonPref as SeasonFilter);
+    }
+
+    const countriesPref = localStorage.getItem(COUNTRIES_STORAGE_KEY);
+    if (countriesPref) {
+      try {
+        const parsed = JSON.parse(countriesPref);
+        if (Array.isArray(parsed)) {
+          setSelectedCountries(new Set(parsed.filter((v): v is string => typeof v === "string")));
+        }
+      } catch {
+        // Corrupt entry, ignore.
+      }
+    }
+
     setPreferencesReady(true);
 
     return () => {
@@ -164,6 +192,19 @@ export function DiscoverFeed({
     if (!preferencesReady) return;
     localStorage.setItem(HIDE_APPLIED_STORAGE_KEY, hideApplied ? "1" : "0");
   }, [preferencesReady, hideApplied]);
+
+  useEffect(() => {
+    if (!preferencesReady) return;
+    localStorage.setItem(SEASON_STORAGE_KEY, seasonFilter);
+  }, [preferencesReady, seasonFilter]);
+
+  useEffect(() => {
+    if (!preferencesReady) return;
+    localStorage.setItem(
+      COUNTRIES_STORAGE_KEY,
+      JSON.stringify(Array.from(selectedCountries)),
+    );
+  }, [preferencesReady, selectedCountries]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -335,6 +376,16 @@ export function DiscoverFeed({
       if (showSavedOnly && !hasAnyInteraction(savedSet, p)) continue;
       if (hideApplied && trackedIdSet.has(p.id)) continue;
 
+      if (selectedCountries.size > 0) {
+        // Union semantics: a posting passes if any of its classified countries
+        // is selected, OR if the "Remote" pill is selected and the posting
+        // mentions remote anywhere. So "Remote, US" matches both USA and
+        // Remote, and selecting both yields the union (not the intersection).
+        const countryMatches = p.countries.some((c) => selectedCountries.has(c));
+        const remoteMatches = p.hasRemote && selectedCountries.has(REMOTE_CODE);
+        if (!countryMatches && !remoteMatches) continue;
+      }
+
       const hay = haystacks.get(p.id) ?? "";
       if (searchTerms.length && !searchTerms.every((term) => hay.includes(term))) continue;
       out.push(p);
@@ -346,6 +397,7 @@ export function DiscoverFeed({
     showDismissed,
     showSavedOnly,
     hideApplied,
+    selectedCountries,
     dismissedSet,
     savedSet,
     trackedIdSet,
@@ -375,7 +427,14 @@ export function DiscoverFeed({
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setVisibleCount(INITIAL_VISIBLE);
-  }, [deferredQuery, seasonFilter, showDismissed, showSavedOnly, hideApplied]);
+  }, [
+    deferredQuery,
+    seasonFilter,
+    showDismissed,
+    showSavedOnly,
+    hideApplied,
+    selectedCountries,
+  ]);
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -401,7 +460,49 @@ export function DiscoverFeed({
     () => filtered.slice(0, visibleCount),
     [filtered, visibleCount],
   );
+
+  // Location pills shown in the filter popover. Country counts come from the
+  // actual feed, sorted by frequency. A synthetic "Remote" pill is appended
+  // and counts every posting that mentions remote anywhere — including ones
+  // that also carry a country, so selecting Remote *and* USA produces a
+  // union (rather than the intersection of pure-remote postings).
+  const countryOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    let remoteCount = 0;
+    for (const p of postings) {
+      for (const code of p.countries) {
+        counts.set(code, (counts.get(code) ?? 0) + 1);
+      }
+      if (p.hasRemote) remoteCount += 1;
+    }
+    const sorted = Array.from(counts.entries())
+      .map(([code, count]) => ({ code, count, label: countryLabel(code) }))
+      .sort((a, b) => {
+        if (b.count !== a.count) return b.count - a.count;
+        return a.label.localeCompare(b.label);
+      });
+    if (remoteCount > 0) {
+      sorted.push({ code: REMOTE_CODE, count: remoteCount, label: "Remote" });
+    }
+    return sorted;
+  }, [postings]);
+
+  const onToggleCountry = useCallback((code: string) => {
+    setSelectedCountries((prev) => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
+      return next;
+    });
+  }, []);
+
+  const onClearCountries = useCallback(() => {
+    setSelectedCountries(new Set());
+  }, []);
+
   const activeFilterCount =
+    Number(seasonFilter !== "all") +
+    Number(selectedCountries.size > 0) +
     Number(showSavedOnly) +
     Number(hideApplied) +
     Number(showDismissed);
@@ -492,22 +593,15 @@ export function DiscoverFeed({
               />
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <FilterChip
-                label="Season"
-                value={seasonFilter}
-                onChange={setSeasonFilter}
-                defaultValue="all"
-                options={SEASON_FILTER_OPTIONS}
-              />
               <div ref={filtersRef} className="relative">
                 <button
                   type="button"
                   onClick={() => setFiltersOpen((open) => !open)}
                   aria-expanded={filtersOpen}
-                  className="inline-flex h-9 items-center gap-2 rounded-full border px-3 text-[12px] text-muted-foreground transition-colors duration-150 hover:text-foreground aria-expanded:text-foreground"
+                  className="inline-flex h-12 items-center gap-2 rounded-xl border bg-background/80 px-4 text-sm text-muted-foreground transition-colors duration-150 hover:text-foreground aria-expanded:text-foreground"
                   style={{ borderColor: activeFilterCount > 0 || filtersOpen ? "var(--rule-strong)" : "var(--rule)" }}
                 >
-                  <SlidersHorizontal size={13} strokeWidth={1.75} />
+                  <SlidersHorizontal size={15} strokeWidth={1.75} />
                   Filters
                   {activeFilterCount > 0 && (
                     <span className="inline-flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
@@ -522,24 +616,55 @@ export function DiscoverFeed({
                     initial="hidden"
                     animate="visible"
                     exit="exit"
-                    className="absolute right-0 top-[calc(100%+8px)] z-[90] w-56 rounded-md border bg-popover p-2 shadow-[0_18px_40px_-28px_color-mix(in_oklab,var(--ink)_45%,transparent)]"
+                    className="absolute right-0 top-[calc(100%+8px)] z-[90] w-[320px] origin-top-right rounded-xl border bg-popover shadow-[0_24px_48px_-28px_color-mix(in_oklab,var(--ink)_55%,transparent)]"
                     style={{ borderColor: "var(--rule-strong)" }}
                   >
-                    <FilterToggle
-                      label="Saved only"
-                      checked={showSavedOnly}
-                      onChange={setShowSavedOnly}
-                    />
-                    <FilterToggle
-                      label="Hide applied"
-                      checked={hideApplied}
-                      onChange={setHideApplied}
-                    />
-                    <FilterToggle
-                      label="Show dismissed"
-                      checked={showDismissed}
-                      onChange={setShowDismissed}
-                    />
+                    <FilterSection title="Season">
+                      <SegmentedControl
+                        value={seasonFilter}
+                        options={SEASON_OPTIONS}
+                        onChange={setSeasonFilter}
+                      />
+                    </FilterSection>
+
+                    <FilterSection
+                      title="Location"
+                      action={
+                        selectedCountries.size > 0
+                          ? { label: "Clear", onClick: onClearCountries }
+                          : undefined
+                      }
+                    >
+                      {countryOptions.length === 0 ? (
+                        <p className="px-1 py-1.5 text-[12px] text-muted-foreground">
+                          No locations detected in this feed.
+                        </p>
+                      ) : (
+                        <CountryChips
+                          options={countryOptions}
+                          selected={selectedCountries}
+                          onToggle={onToggleCountry}
+                        />
+                      )}
+                    </FilterSection>
+
+                    <FilterSection title="Visibility">
+                      <FilterToggle
+                        label="Saved only"
+                        checked={showSavedOnly}
+                        onChange={setShowSavedOnly}
+                      />
+                      <FilterToggle
+                        label="Hide applied"
+                        checked={hideApplied}
+                        onChange={setHideApplied}
+                      />
+                      <FilterToggle
+                        label="Show dismissed"
+                        checked={showDismissed}
+                        onChange={setShowDismissed}
+                      />
+                    </FilterSection>
                   </motion.div>
                   )}
                 </AnimatePresence>
@@ -555,6 +680,24 @@ export function DiscoverFeed({
             </div>
           )}
         </motion.div>
+
+        {preferencesReady && (
+          <div className="mt-5 mb-3 flex items-center justify-end font-mono text-[11px] text-muted-foreground">
+            {filtered.length === postings.length ? (
+              <span>{postings.length.toLocaleString()} postings</span>
+            ) : (
+              <span>
+                <span className="text-foreground">
+                  {filtered.length.toLocaleString()}
+                </span>
+                <span className="text-muted-foreground/70">
+                  {" "}
+                  of {postings.length.toLocaleString()} postings
+                </span>
+              </span>
+            )}
+          </div>
+        )}
 
         <span className="rule" />
 
@@ -614,6 +757,122 @@ export function DiscoverFeed({
   );
 }
 
+function FilterSection({
+  title,
+  action,
+  children,
+}: {
+  title: string;
+  action?: { label: string; onClick: () => void };
+  children: ReactNode;
+}) {
+  return (
+    <section
+      className="px-4 py-4 [&+section]:border-t"
+      style={{ borderColor: "var(--rule)" }}
+    >
+      <header className="mb-4 flex items-center justify-between">
+        <h3 className="font-mono text-[11px] font-medium text-foreground">
+          {title}
+        </h3>
+        {action && (
+          <button
+            type="button"
+            onClick={action.onClick}
+            className="font-mono text-[10px] text-muted-foreground transition-colors hover:text-foreground"
+          >
+            {action.label}
+          </button>
+        )}
+      </header>
+      {children}
+    </section>
+  );
+}
+
+function SegmentedControl<T extends string>({
+  value,
+  options,
+  onChange,
+}: {
+  value: T;
+  options: { value: T; label: string }[];
+  onChange: (next: T) => void;
+}) {
+  return (
+    <div
+      role="radiogroup"
+      className="inline-flex w-full items-center gap-0.5 rounded-lg border p-0.5"
+      style={{ borderColor: "var(--rule)" }}
+    >
+      {options.map((option) => {
+        const active = value === option.value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onChange(option.value)}
+            className={
+              "flex-1 rounded-md px-2.5 py-1.5 text-[12px] font-medium transition-colors duration-150 " +
+              (active
+                ? "bg-foreground/10 text-foreground"
+                : "text-muted-foreground hover:text-foreground")
+            }
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function CountryChips({
+  options,
+  selected,
+  onToggle,
+}: {
+  options: { code: string; count: number; label: string }[];
+  selected: Set<string>;
+  onToggle: (code: string) => void;
+}) {
+  return (
+    <div className="-mx-1 max-h-44 overflow-y-auto px-1">
+      <div className="flex flex-wrap gap-1.5">
+        {options.map((option) => {
+          const active = selected.has(option.code);
+          return (
+            <button
+              key={option.code}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onToggle(option.code)}
+              className={
+                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition-colors duration-150 " +
+                (active
+                  ? "border-foreground/20 bg-foreground/10 text-foreground"
+                  : "border-transparent bg-foreground/[0.04] text-muted-foreground hover:bg-foreground/[0.07] hover:text-foreground")
+              }
+            >
+              <span>{option.label}</span>
+              <span
+                className={
+                  "text-[10px] tabular-nums " +
+                  (active ? "text-foreground/60" : "text-muted-foreground/70")
+                }
+              >
+                {option.count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function FilterToggle({
   label,
   checked,
@@ -624,7 +883,7 @@ function FilterToggle({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex cursor-pointer select-none items-center justify-between gap-4 rounded-sm px-2 py-2 text-[12px] text-foreground transition-colors hover:bg-[color-mix(in_oklab,var(--ink)_5%,transparent)]">
+    <label className="flex cursor-pointer select-none items-center justify-between gap-4 rounded-sm px-1 py-1.5 text-[12px] text-foreground transition-colors hover:bg-[color-mix(in_oklab,var(--ink)_5%,transparent)]">
       <span>{label}</span>
       <input
         type="checkbox"
