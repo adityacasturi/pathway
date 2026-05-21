@@ -1,0 +1,40 @@
+name: PR checks
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    name: PR checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test:unit
+
+      - name: Static integration checks for new company migrations
+        run: |
+          set -euo pipefail
+          SLUGS=$(
+            git diff --name-only origin/main...HEAD -- 'supabase/migrations/*.sql' \
+              | sed -nE 's|.*/[0-9]+_add_([a-z0-9-]+)_.*\.sql|\1|p' \
+              | sort -u \
+              | tr '\n' ' '
+          )
+          if [ -z "${SLUGS// }" ]; then
+            echo "No new company migration slugs detected; skipping integration verify."
+            exit 0
+          fi
+          echo "Verifying slugs: $SLUGS"
+          npm run verify:integration -- $SLUGS --static
