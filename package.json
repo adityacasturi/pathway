@@ -11,6 +11,10 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "test:unit": "node --test --experimental-strip-types --experimental-specifier-resolution=node tests/unit/*.test.ts",
+    "scrape": "node --experimental-strip-types scripts/scrape.ts",
+    "verify:integration": "node --experimental-strip-types scripts/verify-company-integration.ts",
+    "integration:queue": "node --experimental-strip-types scripts/integration-queue.ts",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "verify": "npm run lint && npm run typecheck && npm audit --audit-level=moderate && npm run build"

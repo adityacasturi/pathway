@@ -1,0 +1,49 @@
+name: PR checks
+
+on:
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  verify:
+    name: PR checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test:unit
+
+      - name: Static integration checks for new company migrations
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          SLUGS=$(node -e "
+            const { execSync } = require('node:child_process');
+            const base = process.env.BASE_REF;
+            const diff = execSync(
+              'git diff --name-only origin/' + base + '...HEAD -- supabase/migrations/',
+              { encoding: 'utf8' },
+            );
+            const re = /[0-9]+_add_([a-z0-9-]+)_(greenhouse|eightfold|jobs)_/i;
+            const slugs = [...new Set(
+              diff.split('\n').map((line) => line.match(re)?.[1]).filter(Boolean),
+            )];
+            process.stdout.write(slugs.join(' '));
+          ")
+          if [ -z "${SLUGS// }" ]; then
+            echo "No new company migration slugs detected; skipping integration verify."
+            exit 0
+          fi
+          echo "Verifying slugs: $SLUGS"
+          npm run verify:integration -- $SLUGS --static
