@@ -14,7 +14,7 @@ Pathway is a Next.js 16, React 19, Supabase-backed internship tracker. Treat thi
 - Use Node.js 22.x. The production target and Supabase platform guidance assume Node 22.
 - Prefer existing patterns in `app/`, `components/`, `lib/actions/`, `lib/config/`, and `lib/supabase/`.
 - Run focused checks while working and `npm run verify` before claiming production readiness when feasible.
-- **Company integrations:** work on `integrate/company/<slug>` branches only (never push to `main`). Claim work with `npm run integration:queue -- claim --json`. See `docs/agent-company-integration.md` and `docs/cursor-automation-company-integrations.md`. After adding a company, run `npm run verify:integration -- <slug>` and `npm run integration:queue -- complete <slug>` before opening a PR.
+- **Company integrations:** merge into **`dev`**, not `main`. Work on `integrate/company/<slug>` branches only. Claim work with `npm run integration:queue -- claim --json`. See `docs/agent-company-integration.md` and `docs/cursor-automation-company-integrations.md`. After adding a company, run `npm run verify:integration -- <slug>` and `npm run integration:queue -- complete <slug>` before opening a PR to `dev`.
 - For e2e, run `npm run test:e2e`; set `E2E_USER_EMAIL` and `E2E_USER_PASSWORD` for authenticated coverage, and `E2E_ALLOW_MUTATION=1` for mutation smoke tests.
 
 ## Supabase Migration Rules

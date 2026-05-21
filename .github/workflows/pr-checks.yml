@@ -2,7 +2,7 @@ name: PR checks
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, dev]
 
 jobs:
   verify:
@@ -27,7 +27,7 @@ jobs:
         run: |
           set -euo pipefail
           SLUGS=$(
-            git diff --name-only origin/main...HEAD -- 'supabase/migrations/*.sql' \
+            git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'supabase/migrations/*.sql' \
               | sed -nE 's|.*/[0-9]+_add_([a-z0-9-]+)_.*\.sql|\1|p' \
               | sort -u \
               | tr '\n' ' '

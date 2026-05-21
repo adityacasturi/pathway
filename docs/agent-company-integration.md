@@ -23,16 +23,18 @@ npm run integration:queue -- block <slug> --reason "why"
 
 | Branch | Purpose | Vercel |
 |--------|---------|--------|
-| `main` | Production | **Production** deployment |
+| `main` | Production (stable) | **Production** deployment |
+| `dev` | Integration / staging | **Staging** (configure in Vercel) |
 | `integrate/company/<slug>` | One company per PR | **Preview** only |
 
-**Rule:** Agents never push to `main`.
+**Rule:** Agents and feature work merge into **`dev`**, not `main`. Promote `dev` → `main` only when staging is ready for production.
 
 ### GitHub + Vercel
 
-1. Protect `main` — require PR + `PR checks` CI
-2. Vercel production branch = `main`; previews on other branches
-3. Cloud agent secrets: `SUPABASE_SERVICE_ROLE_KEY` (for `--scrape`)
+1. Protect `main` — require PR; only accept merges from `dev` when releasing
+2. Use **`dev`** as the base branch for integration PRs and hourly automations
+3. Vercel production branch = `main`; point staging/previews at `dev` where helpful
+4. Cloud agent secrets: `SUPABASE_SERVICE_ROLE_KEY` (for `--scrape`)
 
 ## Verification
 
@@ -58,7 +60,7 @@ VERIFY_MIN_FOUND=3 npm run verify:integration -- <slug>
 5. `supabase/migrations/NNN_add_<slug>_....sql` + apply via Supabase MCP
 6. Tests in `tests/unit/ats-adapters.test.ts`
 7. `npm run verify:integration -- <slug>`
-8. PR to `main` with verify output; update `docs/company-integration-queue.json`
+8. PR to **`dev`** with verify output; update `docs/company-integration-queue.json`
 
 ## Tiering (in queue JSON)
 

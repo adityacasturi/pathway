@@ -47,7 +47,7 @@ Edit `docs/company-integration-queue.json`:
 | Field | Value |
 |-------|--------|
 | **Trigger** | Scheduled — cron `0 * * * *` (every hour) |
-| **Repository** | `pathway` (this repo), default branch `main` |
+| **Repository** | `pathway` (this repo), base branch **`dev`** (not `main`) |
 | **Tools** | Open pull request, Memories (optional), Send to Slack (optional) |
 | **Secrets** | `SUPABASE_SERVICE_ROLE_KEY` in Cursor cloud agent secrets |
 
@@ -63,14 +63,14 @@ Parse the JSON. If `count` is 0, exit successfully with a short note (no PRs).
 
 ## 2. Per claimed slug (one company at a time)
 For each entry in `slugs`:
-- Branch: `integrate/company/<slug>` from latest main (never reuse another slug's branch)
+- Branch: `integrate/company/<slug>` from latest **dev** (never reuse another slug's branch)
 - Follow docs/agent-company-integration.md
 - If queue row has `boardToken` / `tier`, use them; do not guess tokens
 - Add migration + adapter/registry/tests as needed
 - Apply Supabase migration via MCP when schema changes
 - Run: npm run verify:integration -- <slug>
 - Optional if secret available: npm run verify:integration -- <slug> --scrape
-- Open a **separate PR to main** per slug with verify output
+- Open a **separate PR to dev** per slug with verify output
 - On success: npm run integration:queue -- complete <slug> --postings <N>
 - On hard failure: npm run integration:queue -- block <slug> --reason "short reason"
 
@@ -79,7 +79,7 @@ Include `docs/company-integration-queue.json` updates in each PR (or one queue P
 
 ## Rules
 - US-only engineering internships only
-- Never commit to main directly
+- Never commit to `main` or `dev` directly (use `integrate/company/<slug>` branches)
 - If verify fails after honest attempt, block and document; do not merge broken integrations
 - Target quality over speed: 0 PRs is OK if nothing claimable
 ```
