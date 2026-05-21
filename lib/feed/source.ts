@@ -20,6 +20,8 @@ import {
   hasRemoteLocation,
 } from "@/lib/feed/location";
 import { errorMessage, logServerEvent } from "@/lib/observability";
+import { isUsOnlyInternship } from "@/lib/postings/us-only";
+import { isTargetEngineeringInternshipRole } from "@/lib/scraping/normalize";
 
 /** How long (in seconds) to cache a fetched source before re-pulling. */
 const FEED_REVALIDATE_SECONDS = 60 * 60; // 1h
@@ -108,10 +110,13 @@ function baseValid(row: RawListing): boolean {
   return true;
 }
 
-function buildPosting(row: RawListing, sourceId: string, season: FeedSeason): FeedPosting {
+function buildPosting(row: RawListing, sourceId: string, season: FeedSeason): FeedPosting | null {
   const id = stablePostingId(row.url as string);
   const upstreamId = row.id as string;
   const locations = Array.isArray(row.locations) ? row.locations : [];
+  if (!isUsOnlyInternship(locations)) {
+    return null;
+  }
   return {
     id,
     interactionIds: Array.from(new Set([id, upstreamId, `${sourceId}:${upstreamId}`])),
@@ -170,6 +175,7 @@ export function clearFeedMemo(): void {
 function parseVanshb03(row: RawListing, sourceId: string): FeedPosting | null {
   if (!baseValid(row)) return null;
   if (!isAllowedSeason(row.season)) return null;
+  if (!isTargetEngineeringInternshipRole(row.title ?? "", row.season ?? "")) return null;
   return buildPosting(row, sourceId, row.season as FeedSeason);
 }
 
@@ -192,6 +198,7 @@ function parseSimplify(row: RawListing, sourceId: string): FeedPosting | null {
   if (!SIMPLIFY_ALLOWED_CATEGORIES.has(row.category ?? "")) return null;
   const season = extractSeasonFromTerms(row.terms);
   if (!season) return null;
+  if (!isTargetEngineeringInternshipRole(row.title ?? "", row.terms?.join(" ") ?? "")) return null;
   return buildPosting(row, sourceId, season);
 }
 

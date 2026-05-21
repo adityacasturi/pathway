@@ -8,6 +8,8 @@ import {
   Compass,
   Home as HomeIcon,
   LayoutGrid,
+  Navigation,
+  Rows3,
   Settings,
 } from "lucide-react";
 import { NavLink } from "@/components/nav-link";
@@ -24,6 +26,8 @@ const NAV_ITEMS = [
   { href: "/applications", label: "Applications", icon: LayoutGrid, skeleton: <DashboardSkeleton /> },
   { href: "/stats", label: "Stats", icon: ChartNoAxesCombined, skeleton: <StatsSkeleton /> },
   { href: "/discover", label: "Discover", icon: Compass, skeleton: <DiscoverSkeleton /> },
+  { href: "/scout", label: "Scout", icon: Navigation, skeleton: <DiscoverSkeleton /> },
+  { href: "/sources", label: "Boards", icon: Rows3, skeleton: <DiscoverSkeleton /> },
   { href: "/settings", label: "Settings", icon: Settings, skeleton: <SettingsSkeleton /> },
 ] as const;
 
@@ -148,6 +152,8 @@ export function Sidebar() {
       {NAV_ITEMS.map(({ href, label, icon: Icon, skeleton }) => {
         const active = activeNavHref === href;
         const toneClass = getNavToneClass(active, pillPosition.ready);
+        const iconClass =
+          href === "/scout" ? "relative shrink-0 rotate-[35deg]" : "relative shrink-0";
 
         return (
           <span
@@ -169,7 +175,7 @@ export function Sidebar() {
               ariaLabel={label}
               className={`relative inline-flex h-8 items-center justify-center gap-1.5 rounded-full px-2.5 text-[12px] font-medium transition-colors duration-200 sm:px-3 sm:text-[13px] ${toneClass}`}
             >
-              <Icon size={13} strokeWidth={1.8} className="relative shrink-0" />
+              <Icon size={13} strokeWidth={1.8} className={iconClass} />
               <span className="sr-only sm:not-sr-only sm:relative sm:tracking-tight">{label}</span>
             </NavLink>
           </span>

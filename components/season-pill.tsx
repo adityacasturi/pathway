@@ -1,24 +1,24 @@
-type Season = "Summer" | "Fall";
+import { resolveDisplaySeason, type DisplaySeason } from "@/lib/postings/season";
 
-/*
- * Season marker — compact, warm metadata that stays easy to skim in dense
- * rows. Summer gets a sun-tinted amber; Fall gets an autumn rust instead of
- * the previous cool grey-ish read.
- */
-export function SeasonPill({ season }: { season: Season }) {
-  const color =
-    season === "Summer"
-      ? "oklch(0.54 0.14 78)"
-      : "oklch(0.56 0.15 48)";
+export function SeasonPill({ season }: { season: string }) {
+  const displaySeason = resolveDisplaySeason(season);
   return (
-    <span
-      className="inline-flex items-center rounded-[4px] px-1.5 py-[1px] font-mono text-[9px] font-medium tracking-[0.16em] uppercase"
-      style={{
-        color,
-        background: `color-mix(in oklab, ${color} 8%, transparent)`,
-      }}
-    >
-      {season}
+    <span className={`season-pill season-pill--${toneClass(displaySeason)}`}>
+      <span className="season-pill-dot" aria-hidden />
+      <span className="season-pill-label">{displaySeason}</span>
     </span>
   );
+}
+
+function toneClass(season: DisplaySeason): string {
+  switch (season) {
+    case "Summer":
+      return "summer";
+    case "Fall":
+      return "fall";
+    case "Spring":
+      return "spring";
+    case "Winter":
+      return "winter";
+  }
 }

@@ -20,7 +20,6 @@ import { SkeletonBlock } from "@/components/ui/loading-indicator";
 import { motionVariants } from "@/lib/ui/motion";
 import { SearchInput } from "@/components/search-input";
 import { normalizeUrl } from "@/lib/url";
-import { countryLabel } from "@/lib/feed/location";
 import {
   dismissPosting,
   refreshFeed,
@@ -35,7 +34,6 @@ type SeasonFilter = "all" | FeedSeason;
 const SHOW_DISMISSED_STORAGE_KEY = "pathway:discover-show-dismissed";
 const HIDE_APPLIED_STORAGE_KEY = "pathway:discover-hide-applied";
 const SEASON_STORAGE_KEY = "pathway:discover-season";
-const COUNTRIES_STORAGE_KEY = "pathway:discover-countries";
 const LAST_SEEN_STORAGE_KEY = "pathway:feed-last-seen-at";
 const SEARCH_TOKEN_PATTERN = /"[^"]*"|'[^']*'|\S+/g;
 
@@ -46,10 +44,6 @@ const SEASON_OPTIONS: { value: SeasonFilter; label: string }[] = [
 ];
 
 const VALID_SEASONS = new Set<SeasonFilter>(["all", "Summer", "Fall"]);
-
-// Synthetic country code used by the Remote filter pill. Lowercase so it
-// can never collide with a real ISO 3166-1 alpha-2 country code.
-const REMOTE_CODE = "remote";
 
 // Progressive render window. The filter/search still runs over the full list
 // (cheap), but we only paint a chunk at a time. The IntersectionObserver
@@ -114,7 +108,6 @@ export function DiscoverFeed({
   // letting React keep the input responsive while it catches up on the list.
   const deferredQuery = useDeferredValue(query);
   const [seasonFilter, setSeasonFilter] = useState<SeasonFilter>("all");
-  const [selectedCountries, setSelectedCountries] = useState<Set<string>>(() => new Set());
   const [showDismissed, setShowDismissed] = useState(false);
   const [showSavedOnly, setShowSavedOnly] = useState(initialSavedOnly);
   const [hideApplied, setHideApplied] = useState(true);
@@ -164,18 +157,6 @@ export function DiscoverFeed({
       setSeasonFilter(seasonPref as SeasonFilter);
     }
 
-    const countriesPref = localStorage.getItem(COUNTRIES_STORAGE_KEY);
-    if (countriesPref) {
-      try {
-        const parsed = JSON.parse(countriesPref);
-        if (Array.isArray(parsed)) {
-          setSelectedCountries(new Set(parsed.filter((v): v is string => typeof v === "string")));
-        }
-      } catch {
-        // Corrupt entry, ignore.
-      }
-    }
-
     setPreferencesReady(true);
 
     return () => {
@@ -197,14 +178,6 @@ export function DiscoverFeed({
     if (!preferencesReady) return;
     localStorage.setItem(SEASON_STORAGE_KEY, seasonFilter);
   }, [preferencesReady, seasonFilter]);
-
-  useEffect(() => {
-    if (!preferencesReady) return;
-    localStorage.setItem(
-      COUNTRIES_STORAGE_KEY,
-      JSON.stringify(Array.from(selectedCountries)),
-    );
-  }, [preferencesReady, selectedCountries]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -376,16 +349,6 @@ export function DiscoverFeed({
       if (showSavedOnly && !hasAnyInteraction(savedSet, p)) continue;
       if (hideApplied && trackedIdSet.has(p.id)) continue;
 
-      if (selectedCountries.size > 0) {
-        // Union semantics: a posting passes if any of its classified countries
-        // is selected, OR if the "Remote" pill is selected and the posting
-        // mentions remote anywhere. So "Remote, US" matches both USA and
-        // Remote, and selecting both yields the union (not the intersection).
-        const countryMatches = p.countries.some((c) => selectedCountries.has(c));
-        const remoteMatches = p.hasRemote && selectedCountries.has(REMOTE_CODE);
-        if (!countryMatches && !remoteMatches) continue;
-      }
-
       const hay = haystacks.get(p.id) ?? "";
       if (searchTerms.length && !searchTerms.every((term) => hay.includes(term))) continue;
       out.push(p);
@@ -397,7 +360,6 @@ export function DiscoverFeed({
     showDismissed,
     showSavedOnly,
     hideApplied,
-    selectedCountries,
     dismissedSet,
     savedSet,
     trackedIdSet,
@@ -433,7 +395,6 @@ export function DiscoverFeed({
     showDismissed,
     showSavedOnly,
     hideApplied,
-    selectedCountries,
   ]);
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -456,53 +417,13 @@ export function DiscoverFeed({
     return () => io.disconnect();
   }, [preferencesReady, visibleCount, filtered.length]);
 
-  const visible = useMemo(
+  const visiblePostings = useMemo(
     () => filtered.slice(0, visibleCount),
     [filtered, visibleCount],
   );
 
-  // Location pills shown in the filter popover. Country counts come from the
-  // actual feed, sorted by frequency. A synthetic "Remote" pill is appended
-  // and counts every posting that mentions remote anywhere — including ones
-  // that also carry a country, so selecting Remote *and* USA produces a
-  // union (rather than the intersection of pure-remote postings).
-  const countryOptions = useMemo(() => {
-    const counts = new Map<string, number>();
-    let remoteCount = 0;
-    for (const p of postings) {
-      for (const code of p.countries) {
-        counts.set(code, (counts.get(code) ?? 0) + 1);
-      }
-      if (p.hasRemote) remoteCount += 1;
-    }
-    const sorted = Array.from(counts.entries())
-      .map(([code, count]) => ({ code, count, label: countryLabel(code) }))
-      .sort((a, b) => {
-        if (b.count !== a.count) return b.count - a.count;
-        return a.label.localeCompare(b.label);
-      });
-    if (remoteCount > 0) {
-      sorted.push({ code: REMOTE_CODE, count: remoteCount, label: "Remote" });
-    }
-    return sorted;
-  }, [postings]);
-
-  const onToggleCountry = useCallback((code: string) => {
-    setSelectedCountries((prev) => {
-      const next = new Set(prev);
-      if (next.has(code)) next.delete(code);
-      else next.add(code);
-      return next;
-    });
-  }, []);
-
-  const onClearCountries = useCallback(() => {
-    setSelectedCountries(new Set());
-  }, []);
-
   const activeFilterCount =
     Number(seasonFilter !== "all") +
-    Number(selectedCountries.size > 0) +
     Number(showSavedOnly) +
     Number(hideApplied) +
     Number(showDismissed);
@@ -627,27 +548,6 @@ export function DiscoverFeed({
                       />
                     </FilterSection>
 
-                    <FilterSection
-                      title="Location"
-                      action={
-                        selectedCountries.size > 0
-                          ? { label: "Clear", onClick: onClearCountries }
-                          : undefined
-                      }
-                    >
-                      {countryOptions.length === 0 ? (
-                        <p className="px-1 py-1.5 text-[12px] text-muted-foreground">
-                          No locations detected in this feed.
-                        </p>
-                      ) : (
-                        <CountryChips
-                          options={countryOptions}
-                          selected={selectedCountries}
-                          onToggle={onToggleCountry}
-                        />
-                      )}
-                    </FilterSection>
-
                     <FilterSection title="Visibility">
                       <FilterToggle
                         label="Saved only"
@@ -723,7 +623,7 @@ export function DiscoverFeed({
                 className="divide-y"
                 style={{ borderColor: "var(--rule)" }}
               >
-                {visible.map((posting) => (
+                {visiblePostings.map((posting) => (
                   <PostingRow
                     key={posting.id}
                     posting={posting}
@@ -825,50 +725,6 @@ function SegmentedControl<T extends string>({
           </button>
         );
       })}
-    </div>
-  );
-}
-
-function CountryChips({
-  options,
-  selected,
-  onToggle,
-}: {
-  options: { code: string; count: number; label: string }[];
-  selected: Set<string>;
-  onToggle: (code: string) => void;
-}) {
-  return (
-    <div className="-mx-1 max-h-44 overflow-y-auto px-1">
-      <div className="flex flex-wrap gap-1.5">
-        {options.map((option) => {
-          const active = selected.has(option.code);
-          return (
-            <button
-              key={option.code}
-              type="button"
-              aria-pressed={active}
-              onClick={() => onToggle(option.code)}
-              className={
-                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition-colors duration-150 " +
-                (active
-                  ? "border-foreground/20 bg-foreground/10 text-foreground"
-                  : "border-transparent bg-foreground/[0.04] text-muted-foreground hover:bg-foreground/[0.07] hover:text-foreground")
-              }
-            >
-              <span>{option.label}</span>
-              <span
-                className={
-                  "text-[10px] tabular-nums " +
-                  (active ? "text-foreground/60" : "text-muted-foreground/70")
-                }
-              >
-                {option.count}
-              </span>
-            </button>
-          );
-        })}
-      </div>
     </div>
   );
 }

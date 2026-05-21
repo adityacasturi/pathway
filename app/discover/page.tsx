@@ -9,7 +9,10 @@ import { resolveDiscoverCutoffDate } from "@/lib/config/discover";
 export const dynamic = "force-dynamic";
 
 interface DiscoverPageProps {
-  searchParams: Promise<{ q?: string | string[]; saved?: string | string[] }>;
+  searchParams: Promise<{
+    q?: string | string[];
+    saved?: string | string[];
+  }>;
 }
 
 export default async function DiscoverPage({ searchParams }: DiscoverPageProps) {
