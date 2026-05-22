@@ -405,12 +405,12 @@
       "priority": 40,
       "autoApprove": true,
       "boardToken": "databricks",
-      "status": "in_progress",
-      "claimedAt": "2026-05-22T00:14:45.237Z",
-      "claimedBy": "run-2026-05-22T00:14",
-      "completedAt": null,
-      "lastVerifiedAt": null,
-      "postingsFound": null
+      "status": "done",
+      "claimedAt": null,
+      "claimedBy": null,
+      "completedAt": "2026-05-22T00:16:42.396Z",
+      "lastVerifiedAt": "2026-05-22T00:16:42.396Z",
+      "postingsFound": 1
     },
     {
       "slug": "snowflake",
