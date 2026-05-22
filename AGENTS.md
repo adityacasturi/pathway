@@ -53,3 +53,33 @@ Formal migrations are mandatory.
 
 - Keep `README.md`, `docs/architecture.md`, and `docs/production-runbook.md` current when changing architecture, setup, database workflow, env vars, or launch checks.
 - If you add a migration, mention the verification performed and whether it has been applied remotely.
+
+## Cursor Cloud specific instructions
+
+### Services overview
+
+Pathway is a single Next.js 16 application backed by a hosted Supabase project (no local DB). There are no Docker containers, sidecars, or background workers.
+
+### Running the app
+
+- `npm run dev` starts the Turbopack dev server on port 3000. See `CLAUDE.md` and `README.md` for the full scripts table.
+- The dev server starts successfully even with placeholder Supabase credentials. Public pages (landing, login, register) render and function without a live Supabase connection; authenticated routes redirect to `/`.
+
+### Environment variables
+
+A `.env.local` file is required with at minimum `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `NEXT_PUBLIC_SITE_URL`. Real Supabase credentials are needed for authenticated flows (login, application tracker, discover feed, etc.). See `README.md` for the full list.
+
+### Testing
+
+- **Lint**: `npm run lint` (ESLint 9, no config flags needed).
+- **Typecheck**: `npm run typecheck` (TypeScript strict, no emit).
+- **E2E (public)**: `E2E_BASE_URL=http://localhost:3000 npx playwright test tests/e2e/public.spec.ts --project=chromium` runs against an already-running dev server. Without `E2E_BASE_URL`, Playwright spawns its own dev server on port 3100.
+- **E2E (authenticated)**: Requires `E2E_USER_EMAIL` and `E2E_USER_PASSWORD` env vars pointing to a QA account.
+- **Full verification**: `npm run verify` runs lint, typecheck, audit, and production build.
+- Playwright browsers must be installed: `npx playwright install --with-deps chromium`.
+
+### Gotchas
+
+- The `engines` field enforces Node 22.x; nvm is pre-installed in the VM with v22 active.
+- `postcss` is pinned via `overrides` in `package.json` to 8.5.10; do not upgrade it independently.
+- The Supabase MCP server and Vercel MCP server both require authentication to use their tools. If they show `needsAuth`, you cannot run migrations or pull env vars through MCP.
