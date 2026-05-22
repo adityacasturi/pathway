@@ -9,12 +9,15 @@ test("isUsOnlyInternship accepts United States locations", () => {
   assert.equal(isUsOnlyInternship(["San Francisco, CA"]), true);
   assert.equal(isUsOnlyInternship(["Remote in US"]), true);
   assert.equal(isUsOnlyInternship(["New York, NY", "Remote"]), true);
+  assert.equal(isUsOnlyInternship(["US-CA-Menlo Park"]), true);
+  assert.equal(isUsOnlyInternship(["US-CA-Menlo Park", "US-WA-Bellevue"]), true);
 });
 
 test("isUsOnlyInternship rejects non-US or ambiguous locations", () => {
   assert.equal(isUsOnlyInternship(["London, UK"]), false);
   assert.equal(isUsOnlyInternship(["Toronto, Canada"]), false);
   assert.equal(isUsOnlyInternship(["New York, NY", "London, UK"]), false);
+  assert.equal(isUsOnlyInternship(["PL-Warsaw"]), false);
   assert.equal(isUsOnlyInternship(["Remote"]), false);
   assert.equal(isUsOnlyInternship([]), false);
 });

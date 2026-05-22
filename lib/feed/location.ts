@@ -289,6 +289,19 @@ function classifySegment(segment: string): string[] {
   const trimmed = segment.trim();
   if (!trimmed) return [];
 
+  // Ashby / enterprise boards: US-CA-Menlo Park, US-WA-Bellevue
+  const hyphenParts = trimmed.split("-").map((part) => part.trim()).filter(Boolean);
+  if (hyphenParts.length >= 2) {
+    const countryToken = hyphenParts[0].replace(/[^A-Za-z]/g, "").toUpperCase();
+    if (countryToken === "US" || countryToken === "USA") {
+      const stateToken = hyphenParts[1].replace(/[^A-Za-z]/g, "").toUpperCase();
+      if (stateToken.length === 2 && US_STATE_CODES.has(stateToken)) {
+        return ["US"];
+      }
+      return ["US"];
+    }
+  }
+
   const subTokens = trimmed
     .split(/,|\s+in\s+|\s+-\s+|[()[\]]/i)
     .map((t) => t.trim())
