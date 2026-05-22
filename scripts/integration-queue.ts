@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { PENDING_INTEGRATION_SEEDS } from "../lib/scraping/integration-queue-seed.ts";
 import {
   blockCompany,
@@ -36,6 +37,9 @@ switch (command) {
     break;
   case "release-stale":
     runReleaseStale();
+    break;
+  case "run":
+    runApplyBatch(parseClaimArgs(rest));
     break;
   default:
     printUsage();
@@ -156,6 +160,82 @@ function runBlock(slug: string | undefined, reason: string) {
   printStatus(queue);
 }
 
+function runApplyBatch(options: {
+  count?: number;
+  json?: boolean;
+  includeCustom?: boolean;
+  customOnly?: boolean;
+}) {
+  const queue = loadQueue();
+  const count =
+    options.count ??
+    Number.parseInt(process.env.INTEGRATION_CLAIM_COUNT ?? String(queue.claimBatchSize), 10);
+  const runId = process.env.INTEGRATION_RUN_ID ?? `run-${new Date().toISOString().slice(0, 16)}`;
+  const claimed = claimNextBatch(queue, {
+    count,
+    runId,
+    includeCustom: options.includeCustom,
+    customOnly: options.customOnly,
+  });
+  saveQueue(queue);
+
+  if (claimed.length === 0) {
+    const message = "No claimable companies (pending + autoApprove).";
+    if (options.json) {
+      console.log(JSON.stringify({ runId, count: 0, slugs: [], results: [], message }, null, 2));
+    } else {
+      console.log(message);
+      printStatus(queue);
+    }
+    process.exit(options.json ? 0 : 1);
+  }
+
+  const applyArgs = [
+    process.execPath,
+    "--experimental-strip-types",
+    "scripts/apply-company-integration.ts",
+    "--claimed",
+  ];
+  if (process.env.INTEGRATION_COMMIT_DEV === "1") {
+    applyArgs.push("--commit-dev");
+  }
+
+  const apply = spawnSync(applyArgs[0], applyArgs.slice(1), {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    stdio: "inherit",
+    env: process.env,
+  });
+
+  if (options.json) {
+    const refreshed = loadQueue();
+    const results = claimed.map((company) => {
+      const row = refreshed.companies.find((entry) => entry.slug === company.slug);
+      return {
+        slug: company.slug,
+        status: row?.status ?? "unknown",
+        postingsFound: row?.postingsFound ?? null,
+        blockedReason: row?.blockedReason ?? null,
+      };
+    });
+    console.log(
+      JSON.stringify(
+        {
+          runId,
+          count: claimed.length,
+          slugs: claimed.map((company) => company.slug),
+          applyExitCode: apply.status ?? 1,
+          results,
+        },
+        null,
+        2,
+      ),
+    );
+  }
+
+  process.exit(apply.status === 0 ? 0 : 1);
+}
+
 function runReleaseStale() {
   const queue = loadQueue();
   const released = releaseStaleClaims(queue);
@@ -203,6 +283,7 @@ function printUsage() {
   console.log("  complete <slug> [--postings N] [--notes text]");
   console.log("  block <slug> --reason \"...\"");
   console.log("  release-stale     Reset stale in_progress rows");
+  console.log("  run [--count N]   Claim then apply to Supabase (no PR); use INTEGRATION_COMMIT_DEV=1 to push dev");
   console.log("");
   console.log("Env:");
   console.log("  INTEGRATION_CLAIM_COUNT=3   Override batch size (default from queue file)");

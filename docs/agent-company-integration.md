@@ -4,18 +4,37 @@ Scale target: **~50 companies/day** via hourly Cursor Automations + queue. See *
 
 ## Queue-first workflow
 
+### Default: direct Supabase apply (no PR)
+
+For **Greenhouse / Lever / Ashby** rows with a confirmed `boardToken`:
+
 ```bash
-# Operator / automation starts here
-npm run integration:queue -- claim --json
+npm run integration:queue -- run --count 1
+# or: claim then apply
+npm run integration:queue -- claim --count 1 --json
+npm run integration:apply -- --claimed
 ```
 
-Each claimed slug gets its own branch: `integrate/company/<slug>` (one PR per company).
+This verifies live postings, upserts company + source + postings via `SUPABASE_SERVICE_ROLE_KEY`, marks the queue `done`, and optionally writes a migration file for the repo.
 
-After verify + PR:
+Optional: push queue/migration updates to `dev` without a PR:
 
 ```bash
-npm run integration:queue -- complete <slug> --postings <count>
-# or on failure:
+INTEGRATION_COMMIT_DEV=1 npm run integration:queue -- run --count 1
+```
+
+### PR path (custom ATS only)
+
+Custom tiers (Apple, Google, NVIDIA-style adapters) still need code in the repo:
+
+```bash
+npm run integration:queue -- claim --json
+# branch integrate/company/<slug>, open PR to dev, then merge
+```
+
+On failure:
+
+```bash
 npm run integration:queue -- block <slug> --reason "why"
 ```
 
@@ -23,9 +42,9 @@ npm run integration:queue -- block <slug> --reason "why"
 
 | Branch | Purpose | Vercel |
 |--------|---------|--------|
-| `main` | Production (stable) | **Production** deployment |
-| `dev` | Integration / staging | **Staging** (configure in Vercel) |
-| `integrate/company/<slug>` | One company per PR | **Preview** only |
+| `main` | Production (stable) | **Production** — https://www.trypathway.app |
+| `dev` | Integration / staging | **Preview** — https://dev.trypathway.app (also `pathway-git-dev-pathway-tracker.vercel.app`) |
+| `integrate/company/<slug>` | One company per PR | **Preview** only (per-branch `*.vercel.app` URL) |
 
 **Rule:** Agents and feature work merge into **`dev`**, not `main`. Promote `dev` → `main` only when staging is ready for production.
 
@@ -33,7 +52,7 @@ npm run integration:queue -- block <slug> --reason "why"
 
 1. Protect `main` — require PR; only accept merges from `dev` when releasing
 2. Use **`dev`** as the base branch for integration PRs and hourly automations
-3. Vercel production branch = `main`; point staging/previews at `dev` where helpful
+3. Vercel **production branch** = `main` (unchanged). Pushes to **`dev`** deploy as Preview; stable staging URL = **https://dev.trypathway.app**
 4. Cloud agent secrets: `SUPABASE_SERVICE_ROLE_KEY` (for `--scrape`)
 
 ## Verification
