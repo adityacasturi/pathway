@@ -1,6 +1,6 @@
 # Cursor Automation: company integrations (50/day)
 
-Hourly cloud agent that claims work from `docs/company-integration-queue.json`, verifies standard ATS companies, and **applies directly to Supabase** (no PR). Custom ATS still uses a PR.
+Hourly cloud agent that claims work from `docs/company-integration-queue.json`. Each row is **company name only** (`tier: discover`). The agent **resolves the careers page**, **discovers** Greenhouse/Lever/Ashby, then **applies directly to Supabase** (no PR). Custom ATS is **blocked** for manual work.
 
 ## Throughput math
 
@@ -12,6 +12,23 @@ Hourly cloud agent that claims work from `docs/company-integration-queue.json`, 
 | Runs × batch | 24 × 2 = **48/day** (raise batch to 3 or run extra manual claims to hit 50) |
 
 To hit 50 exactly: set `claimBatchSize` to **3** in the queue JSON, or run `INTEGRATION_CLAIM_COUNT=3` in the automation environment.
+
+## Faster cloud agent startup (recommended)
+
+Each automation run boots a fresh Ubuntu VM, clones `pathway`, and installs deps — that is usually **5–15 minutes** on the first run.
+
+To speed up later runs:
+
+1. Open [Cloud Agents → Environments](https://cursor.com/dashboard/cloud-agents#environments)
+2. Create an environment for repo **`pathway`** (branch **`dev`**)
+3. Set **install** to `npm ci` (also in repo `.cursor/environment.json`)
+4. Add secrets: `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+5. Let Cursor finish setup once, then **save a snapshot** of the VM
+6. In your automation, select that **saved environment** (not “default”)
+
+After a snapshot exists, runs mostly pay `git pull` + incremental `npm ci`, not a full cold start.
+
+**Integration runs do not need `npm run build`.** The prompt below only runs `integration:queue run` (seconds of work once deps exist).
 
 ## Test first (do this before hourly runs)
 
@@ -58,11 +75,17 @@ npm run integration:queue -- status
 
 Edit `docs/company-integration-queue.json`:
 
-- Set `autoApprove: true` on Greenhouse/Lever/Ashby rows once `boardToken` is confirmed
-- Set `autoApprove: false` on hard custom ATS (Apple, Google, …) until you add `boardToken` / `notes`
+- Queue rows: `slug`, `name`, `tier: discover`, `autoApprove: true` — no `careersUrl` or `boardToken` required
+- Optional `careersUrl` or `domain` only when discovery fails (e.g. `domain: block.xyz`)
+- Set `autoApprove: false` + `tier: custom` on hard ATS (Apple, Google, …)
 - Add more slugs toward 500; keep `priority` lower = sooner
 
-**Hourly agents only auto-claim `pending` + `autoApprove: true`.** Tier C rows need `--include-custom` or you flip `autoApprove` after research.
+**Hourly agents only auto-claim `pending` + `autoApprove: true`.** Custom tiers need `--include-custom` or manual PR work.
+
+```bash
+npm run integration:queue -- reset-guesses        # clear guessed boardToken
+npm run integration:queue -- clear-careers-hints  # test name-only careers discovery
+```
 
 ### 4. Create the automation
 
@@ -89,8 +112,10 @@ If count is 0, exit successfully with a short note.
 
 ## 2. What this does (no PR for standard ATS)
 - Claims one `pending` + `autoApprove` company from docs/company-integration-queue.json
-- For greenhouse/lever/ashby: runs npm run integration:apply (live verify + Supabase upsert)
-- Marks queue row done or blocked
+- Resolves careers page from company name (domain heuristics + homepage links + known overrides)
+- Fetches careers HTML, discovers Greenhouse/Lever/Ashby board token (no slug guessing)
+- If standard ATS: verify API + Supabase upsert via integration:apply
+- If no known ATS: block row for manual integration
 - Optionally commits queue + migration file to **dev** (not main)
 
 ## 3. Custom tiers only (apple, google, nvidia, etc.)
@@ -103,6 +128,7 @@ If tier is custom and apply fails with "requires manual integration":
 - US-only engineering internships only
 - Never push to main
 - No pull requests for standard ATS integrations
+- Do **not** run `npm run build`, `npm run verify`, or e2e — only `integration:queue run`
 - Target quality over speed: 0 applies is OK if nothing claimable
 ```
 
@@ -121,6 +147,10 @@ npm run integration:queue -- claim --count 3 --json
 npm run integration:queue -- complete stripe --postings 14
 npm run integration:queue -- block apple --reason "No public JSON API"
 npm run integration:queue -- release-stale
+npm run integration:queue -- discover-careers snowflake
+npm run integration:queue -- discover snowflake
+npm run integration:queue -- reset-guesses
+npm run integration:queue -- clear-careers-hints
 ```
 
 ## PR review at scale

@@ -260,7 +260,6 @@
     {
       "slug": "two-sigma",
       "name": "Two Sigma",
-      "careersUrl": "https://careers.twosigma.com",
       "tier": "discover",
       "priority": 20,
       "autoApprove": false,
@@ -274,7 +273,6 @@
     {
       "slug": "hudson-river-trading",
       "name": "Hudson River Trading",
-      "careersUrl": "https://www.hudsonrivertrading.com/careers",
       "tier": "discover",
       "priority": 21,
       "autoApprove": false,
@@ -288,7 +286,6 @@
     {
       "slug": "de-shaw",
       "name": "DE Shaw",
-      "careersUrl": "https://www.deshaw.com/careers",
       "tier": "discover",
       "priority": 22,
       "autoApprove": false,
@@ -302,7 +299,6 @@
     {
       "slug": "jump-trading",
       "name": "Jump Trading",
-      "careersUrl": "https://www.jumptrading.com/careers",
       "tier": "discover",
       "priority": 23,
       "autoApprove": false,
@@ -316,7 +312,6 @@
     {
       "slug": "virtu",
       "name": "Virtu Financial",
-      "careersUrl": "https://www.virtu.com/careers",
       "tier": "discover",
       "priority": 24,
       "autoApprove": false,
@@ -330,7 +325,6 @@
     {
       "slug": "imc",
       "name": "IMC",
-      "careersUrl": "https://www.imc.com/careers",
       "tier": "discover",
       "priority": 25,
       "autoApprove": false,
@@ -344,7 +338,6 @@
     {
       "slug": "akuna",
       "name": "Akuna Capital",
-      "careersUrl": "https://www.akunacapital.com/careers",
       "tier": "discover",
       "priority": 26,
       "autoApprove": false,
@@ -358,7 +351,6 @@
     {
       "slug": "citadel-securities",
       "name": "Citadel Securities",
-      "careersUrl": "https://www.citadelsecurities.com/careers",
       "tier": "discover",
       "priority": 27,
       "autoApprove": false,
@@ -372,7 +364,6 @@
     {
       "slug": "millennium",
       "name": "Millennium",
-      "careersUrl": "https://www.mlp.com/careers",
       "tier": "discover",
       "priority": 28,
       "autoApprove": false,
@@ -386,7 +377,6 @@
     {
       "slug": "point72",
       "name": "Point72",
-      "careersUrl": "https://careers.point72.com",
       "tier": "discover",
       "priority": 29,
       "autoApprove": false,
@@ -416,258 +406,245 @@
     {
       "slug": "snowflake",
       "name": "Snowflake",
-      "careersUrl": "https://careers.snowflake.com",
-      "tier": "greenhouse",
+      "tier": "ashby",
       "priority": 41,
       "autoApprove": true,
-      "boardToken": "snowflake",
-      "status": "blocked",
+      "status": "pending",
       "claimedAt": null,
       "claimedBy": null,
       "completedAt": null,
       "lastVerifiedAt": null,
       "postingsFound": null,
-      "blockedReason": "Greenhouse returned 404 for https://boards-api.greenhouse.io/v1/boards/snowflake/jobs?content=true"
+      "notes": "Discovered ATS (https://jobs.ashbyhq.com/snowflake): HTML on https://careers.snowflake.com/us/en/search-results; verified via API",
+      "boardToken": "snowflake",
+      "sourceType": "ashby",
+      "adapterKey": "snowflake-ashby",
+      "careersUrl": "https://careers.snowflake.com/us/en"
     },
     {
       "slug": "mongodb",
       "name": "MongoDB",
-      "careersUrl": "https://www.mongodb.com/careers",
-      "tier": "greenhouse",
+      "tier": "discover",
       "priority": 42,
       "autoApprove": true,
-      "boardToken": "mongodb",
       "status": "pending",
       "claimedAt": null,
       "claimedBy": null,
       "completedAt": null,
       "lastVerifiedAt": null,
-      "postingsFound": null
+      "postingsFound": null,
+      "notes": "Awaiting ATS discovery from careers page",
+      "careersUrl": "https://www.mongodb.com/company/careers"
     },
     {
       "slug": "cloudflare",
       "name": "Cloudflare",
-      "careersUrl": "https://www.cloudflare.com/careers",
-      "tier": "greenhouse",
+      "tier": "discover",
       "priority": 43,
       "autoApprove": true,
-      "boardToken": "cloudflare",
       "status": "pending",
       "claimedAt": null,
       "claimedBy": null,
       "completedAt": null,
       "lastVerifiedAt": null,
-      "postingsFound": null
+      "postingsFound": null,
+      "notes": "Awaiting ATS discovery from careers page"
     },
     {
       "slug": "pinterest",
       "name": "Pinterest",
-      "careersUrl": "https://www.pinterestcareers.com",
-      "tier": "greenhouse",
+      "tier": "discover",
       "priority": 44,
       "autoApprove": true,
-      "boardToken": "pinterest",
       "status": "pending",
       "claimedAt": null,
       "claimedBy": null,
       "completedAt": null,
       "lastVerifiedAt": null,
-      "postingsFound": null
+      "postingsFound": null,
+      "notes": "Awaiting ATS discovery from careers page"
     },
     {
       "slug": "snap",
       "name": "Snap",
-      "careersUrl": "https://careers.snap.com",
-      "tier": "greenhouse",
+      "tier": "discover",
       "priority": 45,
       "autoApprove": true,
-      "boardToken": "snap",
       "status": "pending",
       "claimedAt": null,
       "claimedBy": null,
       "completedAt": null,
       "lastVerifiedAt": null,
-      "postingsFound": null
+      "postingsFound": null,
+      "notes": "Awaiting ATS discovery from careers page"
     },
     {
       "slug": "block",
       "name": "Block",
-      "careersUrl": "https://block.xyz/careers",
-      "tier": "greenhouse",
+      "tier": "discover",
       "priority": 46,
       "autoApprove": true,
-      "boardToken": "block",
       "status": "pending",
       "claimedAt": null,
       "claimedBy": null,
       "completedAt": null,
       "lastVerifiedAt": null,
-      "postingsFound": null
+      "postingsFound": null,
+      "notes": "Awaiting ATS discovery from careers page"
     },
     {
       "slug": "instacart",
       "name": "Instacart",
-      "careersUrl": "https://instacart.careers",
-      "tier": "greenhouse",
+      "tier": "discover",
       "priority": 47,
       "autoApprove": true,
-      "boardToken": "instacart",
       "status": "pending",
       "claimedAt": null,
       "claimedBy": null,
       "completedAt": null,
       "lastVerifiedAt": null,
-      "postingsFound": null
+      "postingsFound": null,
+      "notes": "Awaiting ATS discovery from careers page"
     },
     {
       "slug": "hubspot",
       "name": "HubSpot",
-      "careersUrl": "https://www.hubspot.com/careers",
-      "tier": "greenhouse",
+      "tier": "discover",
       "priority": 48,
       "autoApprove": true,
-      "boardToken": "hubspot",
       "status": "pending",
       "claimedAt": null,
       "claimedBy": null,
       "completedAt": null,
       "lastVerifiedAt": null,
-      "postingsFound": null
+      "postingsFound": null,
+      "notes": "Awaiting ATS discovery from careers page"
     },
     {
       "slug": "twilio",
       "name": "Twilio",
-      "careersUrl": "https://www.twilio.com/company/jobs",
-      "tier": "greenhouse",
+      "tier": "discover",
       "priority": 49,
       "autoApprove": true,
-      "boardToken": "twilio",
       "status": "pending",
       "claimedAt": null,
       "claimedBy": null,
       "completedAt": null,
       "lastVerifiedAt": null,
-      "postingsFound": null
+      "postingsFound": null,
+      "notes": "Awaiting ATS discovery from careers page"
     },
     {
       "slug": "okta",
       "name": "Okta",
-      "careersUrl": "https://www.okta.com/company/careers",
-      "tier": "greenhouse",
+      "tier": "discover",
       "priority": 50,
       "autoApprove": true,
-      "boardToken": "okta",
       "status": "pending",
       "claimedAt": null,
       "claimedBy": null,
       "completedAt": null,
       "lastVerifiedAt": null,
-      "postingsFound": null
+      "postingsFound": null,
+      "notes": "Awaiting ATS discovery from careers page"
     },
     {
       "slug": "elastic",
       "name": "Elastic",
-      "careersUrl": "https://www.elastic.co/careers",
-      "tier": "greenhouse",
+      "tier": "discover",
       "priority": 51,
       "autoApprove": true,
-      "boardToken": "elastic",
       "status": "pending",
       "claimedAt": null,
       "claimedBy": null,
       "completedAt": null,
       "lastVerifiedAt": null,
-      "postingsFound": null
+      "postingsFound": null,
+      "notes": "Awaiting ATS discovery from careers page"
     },
     {
       "slug": "gitlab",
       "name": "GitLab",
-      "careersUrl": "https://about.gitlab.com/jobs",
-      "tier": "greenhouse",
+      "tier": "discover",
       "priority": 52,
       "autoApprove": true,
-      "boardToken": "gitlab",
       "status": "pending",
       "claimedAt": null,
       "claimedBy": null,
       "completedAt": null,
       "lastVerifiedAt": null,
-      "postingsFound": null
+      "postingsFound": null,
+      "notes": "Awaiting ATS discovery from careers page"
     },
     {
       "slug": "hashicorp",
       "name": "HashiCorp",
-      "careersUrl": "https://www.hashicorp.com/careers",
-      "tier": "greenhouse",
+      "tier": "discover",
       "priority": 53,
       "autoApprove": true,
-      "boardToken": "hashicorp",
       "status": "pending",
       "claimedAt": null,
       "claimedBy": null,
       "completedAt": null,
       "lastVerifiedAt": null,
-      "postingsFound": null
+      "postingsFound": null,
+      "notes": "Awaiting ATS discovery from careers page"
     },
     {
       "slug": "confluent",
       "name": "Confluent",
-      "careersUrl": "https://careers.confluent.io",
-      "tier": "greenhouse",
+      "tier": "discover",
       "priority": 54,
       "autoApprove": true,
-      "boardToken": "confluent",
       "status": "pending",
       "claimedAt": null,
       "claimedBy": null,
       "completedAt": null,
       "lastVerifiedAt": null,
-      "postingsFound": null
+      "postingsFound": null,
+      "notes": "Awaiting ATS discovery from careers page"
     },
     {
       "slug": "cockroach-labs",
       "name": "Cockroach Labs",
-      "careersUrl": "https://www.cockroachlabs.com/careers",
-      "tier": "greenhouse",
+      "tier": "discover",
       "priority": 55,
       "autoApprove": true,
-      "boardToken": "cockroachlabs",
       "status": "pending",
       "claimedAt": null,
       "claimedBy": null,
       "completedAt": null,
       "lastVerifiedAt": null,
-      "postingsFound": null
+      "postingsFound": null,
+      "notes": "Awaiting ATS discovery from careers page"
     },
     {
       "slug": "scale-ai",
       "name": "Scale AI",
-      "careersUrl": "https://scale.com/careers",
-      "tier": "greenhouse",
+      "tier": "discover",
       "priority": 56,
       "autoApprove": true,
-      "boardToken": "scaleai",
       "status": "pending",
       "claimedAt": null,
       "claimedBy": null,
       "completedAt": null,
       "lastVerifiedAt": null,
-      "postingsFound": null
+      "postingsFound": null,
+      "notes": "Awaiting ATS discovery from careers page"
     },
     {
       "slug": "anduril",
       "name": "Anduril",
-      "careersUrl": "https://www.anduril.com/careers",
-      "tier": "greenhouse",
+      "tier": "discover",
       "priority": 57,
       "autoApprove": true,
-      "boardToken": "anduril",
       "status": "pending",
       "claimedAt": null,
       "claimedBy": null,
       "completedAt": null,
       "lastVerifiedAt": null,
-      "postingsFound": null
+      "postingsFound": null,
+      "notes": "Awaiting ATS discovery from careers page"
     },
     {
       "slug": "palantir",
@@ -708,47 +685,44 @@
     {
       "slug": "cruise",
       "name": "Cruise",
-      "careersUrl": "https://www.getcruise.com/careers",
-      "tier": "greenhouse",
+      "tier": "discover",
       "priority": 60,
       "autoApprove": true,
-      "boardToken": "getcruise",
       "status": "pending",
       "claimedAt": null,
       "claimedBy": null,
       "completedAt": null,
       "lastVerifiedAt": null,
-      "postingsFound": null
+      "postingsFound": null,
+      "notes": "Awaiting ATS discovery from careers page"
     },
     {
       "slug": "waymo",
       "name": "Waymo",
-      "careersUrl": "https://waymo.com/careers",
-      "tier": "greenhouse",
+      "tier": "discover",
       "priority": 61,
       "autoApprove": true,
-      "boardToken": "waymo",
       "status": "pending",
       "claimedAt": null,
       "claimedBy": null,
       "completedAt": null,
       "lastVerifiedAt": null,
-      "postingsFound": null
+      "postingsFound": null,
+      "notes": "Awaiting ATS discovery from careers page"
     },
     {
       "slug": "rivian",
       "name": "Rivian",
-      "careersUrl": "https://careers.rivian.com",
-      "tier": "greenhouse",
+      "tier": "discover",
       "priority": 62,
       "autoApprove": true,
-      "boardToken": "rivian",
       "status": "pending",
       "claimedAt": null,
       "claimedBy": null,
       "completedAt": null,
       "lastVerifiedAt": null,
-      "postingsFound": null
+      "postingsFound": null,
+      "notes": "Awaiting ATS discovery from careers page"
     },
     {
       "slug": "figma",
@@ -771,7 +745,6 @@
     {
       "slug": "spacex",
       "name": "SpaceX",
-      "careersUrl": "https://www.spacex.com/careers",
       "tier": "discover",
       "priority": 70,
       "autoApprove": false,
@@ -785,7 +758,6 @@
     {
       "slug": "tiktok",
       "name": "TikTok",
-      "careersUrl": "https://careers.tiktok.com",
       "tier": "discover",
       "priority": 71,
       "autoApprove": false,
@@ -799,7 +771,6 @@
     {
       "slug": "bytedance",
       "name": "ByteDance",
-      "careersUrl": "https://jobs.bytedance.com",
       "tier": "discover",
       "priority": 72,
       "autoApprove": false,
@@ -813,7 +784,6 @@
     {
       "slug": "shopify",
       "name": "Shopify",
-      "careersUrl": "https://www.shopify.com/careers",
       "tier": "discover",
       "priority": 73,
       "autoApprove": false,
@@ -827,7 +797,6 @@
     {
       "slug": "squarespace",
       "name": "Squarespace",
-      "careersUrl": "https://www.squarespace.com/careers",
       "tier": "discover",
       "priority": 74,
       "autoApprove": false,
@@ -841,7 +810,6 @@
     {
       "slug": "toast",
       "name": "Toast",
-      "careersUrl": "https://careers.toasttab.com",
       "tier": "discover",
       "priority": 75,
       "autoApprove": false,
@@ -855,7 +823,6 @@
     {
       "slug": "sofi",
       "name": "SoFi",
-      "careersUrl": "https://www.sofi.com/careers",
       "tier": "discover",
       "priority": 76,
       "autoApprove": false,
@@ -869,7 +836,6 @@
     {
       "slug": "chime",
       "name": "Chime",
-      "careersUrl": "https://www.chime.com/careers",
       "tier": "discover",
       "priority": 77,
       "autoApprove": false,
@@ -883,7 +849,6 @@
     {
       "slug": "affirm",
       "name": "Affirm",
-      "careersUrl": "https://www.affirm.com/careers",
       "tier": "discover",
       "priority": 78,
       "autoApprove": false,
@@ -897,7 +862,6 @@
     {
       "slug": "marqeta",
       "name": "Marqeta",
-      "careersUrl": "https://www.marqeta.com/careers",
       "tier": "discover",
       "priority": 79,
       "autoApprove": false,
@@ -911,7 +875,6 @@
     {
       "slug": "carta",
       "name": "Carta",
-      "careersUrl": "https://cart.com/careers",
       "tier": "discover",
       "priority": 80,
       "autoApprove": false,
@@ -925,7 +888,6 @@
     {
       "slug": "rippling",
       "name": "Rippling",
-      "careersUrl": "https://www.rippling.com/careers",
       "tier": "discover",
       "priority": 81,
       "autoApprove": false,
@@ -939,7 +901,6 @@
     {
       "slug": "glean",
       "name": "Glean",
-      "careersUrl": "https://www.glean.com/careers",
       "tier": "discover",
       "priority": 82,
       "autoApprove": false,
@@ -953,7 +914,6 @@
     {
       "slug": "cohere",
       "name": "Cohere",
-      "careersUrl": "https://cohere.com/careers",
       "tier": "discover",
       "priority": 83,
       "autoApprove": false,
@@ -967,7 +927,6 @@
     {
       "slug": "mistral",
       "name": "Mistral",
-      "careersUrl": "https://mistral.ai/careers",
       "tier": "discover",
       "priority": 84,
       "autoApprove": false,
@@ -981,7 +940,6 @@
     {
       "slug": "xai",
       "name": "xAI",
-      "careersUrl": "https://x.ai/careers",
       "tier": "discover",
       "priority": 85,
       "autoApprove": false,
@@ -995,7 +953,6 @@
     {
       "slug": "character-ai",
       "name": "Character.AI",
-      "careersUrl": "https://character.ai/careers",
       "tier": "discover",
       "priority": 86,
       "autoApprove": false,

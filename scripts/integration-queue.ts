@@ -1,4 +1,11 @@
 import { spawnSync } from "node:child_process";
+import { discoverAtsFromCareersPage } from "../lib/scraping/discover-ats.ts";
+import { discoverCareersUrl } from "../lib/scraping/discover-careers.ts";
+import {
+  applyDiscoveryToCompany,
+  clearCareersUrlHints,
+  resetPendingAtsGuesses,
+} from "../lib/scraping/integration-discover.ts";
 import { PENDING_INTEGRATION_SEEDS } from "../lib/scraping/integration-queue-seed.ts";
 import {
   blockCompany,
@@ -16,35 +23,54 @@ import {
 const command = process.argv[2] ?? "help";
 const rest = process.argv.slice(3);
 
-switch (command) {
-  case "status":
-    printStatus(loadQueue());
-    break;
-  case "sync":
-    runSync();
-    break;
-  case "init":
-    runInit();
-    break;
-  case "claim":
-    runClaim(parseClaimArgs(rest));
-    break;
-  case "complete":
-    runComplete(rest[0], parseCompleteArgs(rest.slice(1)));
-    break;
-  case "block":
-    runBlock(rest[0], parseReason(rest));
-    break;
-  case "release-stale":
-    runReleaseStale();
-    break;
-  case "run":
-    runApplyBatch(parseClaimArgs(rest));
-    break;
-  default:
-    printUsage();
-    process.exit(command === "help" ? 0 : 1);
+async function main() {
+  switch (command) {
+    case "status":
+      printStatus(loadQueue());
+      break;
+    case "sync":
+      runSync();
+      break;
+    case "init":
+      runInit();
+      break;
+    case "claim":
+      runClaim(parseClaimArgs(rest));
+      break;
+    case "complete":
+      runComplete(rest[0], parseCompleteArgs(rest.slice(1)));
+      break;
+    case "block":
+      runBlock(rest[0], parseReason(rest));
+      break;
+    case "release-stale":
+      runReleaseStale();
+      break;
+    case "run":
+      runApplyBatch(parseClaimArgs(rest));
+      break;
+    case "reset-guesses":
+      runResetGuesses();
+      break;
+    case "clear-careers-hints":
+      runClearCareersHints();
+      break;
+    case "discover-careers":
+      await runDiscoverCareersOne(rest[0]);
+      break;
+    case "discover":
+      await runDiscoverOne(rest[0]);
+      break;
+    default:
+      printUsage();
+      process.exit(command === "help" ? 0 : 1);
+  }
 }
+
+main().catch((error) => {
+  console.error(error instanceof Error ? error.message : error);
+  process.exit(1);
+});
 
 function runInit() {
   const queue = loadQueueOrCreate();
@@ -244,6 +270,121 @@ function runReleaseStale() {
   printStatus(queue);
 }
 
+function runResetGuesses() {
+  const queue = loadQueue();
+  const slugs = resetPendingAtsGuesses(queue);
+  saveQueue(queue);
+  if (slugs.length === 0) {
+    console.log("No pending/blocked autoApprove rows with guessed ATS tokens.");
+  } else {
+    console.log(`Reset ${slugs.length} companies to tier=discover (no boardToken):`);
+    for (const slug of slugs) {
+      console.log(`  - ${slug}`);
+    }
+  }
+  printStatus(queue);
+}
+
+function runClearCareersHints() {
+  const queue = loadQueue();
+  const slugs = clearCareersUrlHints(queue);
+  saveQueue(queue);
+  if (slugs.length === 0) {
+    console.log("No pending/blocked rows with careersUrl hints to clear.");
+  } else {
+    console.log(`Cleared careersUrl on ${slugs.length} rows (name-only discovery):`);
+    for (const slug of slugs) {
+      console.log(`  - ${slug}`);
+    }
+  }
+  printStatus(queue);
+}
+
+async function runDiscoverCareersOne(slug: string | undefined) {
+  if (!slug) {
+    console.error("Usage: npm run integration:queue -- discover-careers <slug>");
+    process.exit(1);
+  }
+  const normalized = slug.trim().toLowerCase();
+  const queue = loadQueue();
+  const company = queue.companies.find((entry) => entry.slug === normalized);
+  if (!company) {
+    console.error(`Unknown slug: ${slug}`);
+    process.exit(1);
+  }
+
+  const savedHint = company.careersUrl;
+  company.careersUrl = undefined;
+
+  const result = await discoverCareersUrl({
+    slug: company.slug,
+    name: company.name,
+    domain: company.domain,
+  });
+
+  if (!result.ok) {
+    company.careersUrl = savedHint;
+    console.error(result.reason);
+    process.exit(1);
+  }
+
+  company.careersUrl = result.careersUrl;
+  saveQueue(queue);
+  console.log(JSON.stringify({ slug: company.slug, careersUrl: result.careersUrl, evidence: result.evidence }, null, 2));
+}
+
+async function runDiscoverOne(slug: string | undefined) {
+  if (!slug) {
+    console.error("Usage: npm run integration:queue -- discover <slug>");
+    process.exit(1);
+  }
+  const normalized = slug.trim().toLowerCase();
+  const queue = loadQueue();
+  const company = queue.companies.find((entry) => entry.slug === normalized);
+  if (!company) {
+    console.error(`Unknown slug: ${slug}`);
+    process.exit(1);
+  }
+
+  const careers = await discoverCareersUrl({
+    slug: company.slug,
+    name: company.name,
+    careersUrl: company.careersUrl,
+    domain: company.domain,
+  });
+  if (!careers.ok) {
+    console.error(careers.reason);
+    process.exit(1);
+  }
+  if (!company.careersUrl?.trim()) {
+    company.careersUrl = careers.careersUrl;
+    saveQueue(queue);
+  }
+
+  const result = await discoverAtsFromCareersPage(careers.careersUrl, company.slug);
+  if (!result.ok) {
+    console.error(result.reason);
+    process.exit(1);
+  }
+
+  applyDiscoveryToCompany(company, result.discovery);
+  saveQueue(queue);
+  console.log(
+    JSON.stringify(
+      {
+        slug: company.slug,
+        tier: result.discovery.tier,
+        boardToken: result.discovery.boardToken,
+        sourceUrl: result.discovery.sourceUrl,
+        adapterKey: result.discovery.adapterKey,
+        evidence: result.discovery.evidence,
+      },
+      null,
+      2,
+    ),
+  );
+}
+
 function loadQueueOrCreate(): IntegrationQueue {
   try {
     return loadQueue();
@@ -283,7 +424,11 @@ function printUsage() {
   console.log("  complete <slug> [--postings N] [--notes text]");
   console.log("  block <slug> --reason \"...\"");
   console.log("  release-stale     Reset stale in_progress rows");
-  console.log("  run [--count N]   Claim then apply to Supabase (no PR); use INTEGRATION_COMMIT_DEV=1 to push dev");
+  console.log("  run [--count N]   Claim, discover careers + ATS, apply to Supabase");
+  console.log("  discover-careers <slug>  Resolve careers page from company name");
+  console.log("  discover <slug>   Discover careers (if needed) + ATS (no Supabase apply)");
+  console.log("  reset-guesses     Clear guessed boardToken on pending autoApprove rows");
+  console.log("  clear-careers-hints  Remove careersUrl hints (test name-only discovery)");
   console.log("");
   console.log("Env:");
   console.log("  INTEGRATION_CLAIM_COUNT=3   Override batch size (default from queue file)");

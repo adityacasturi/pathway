@@ -9,6 +9,8 @@ export interface QueueCompany {
   slug: string;
   name: string;
   careersUrl?: string;
+  /** Optional root domain hint when careers URL is non-obvious, e.g. `block.xyz`. */
+  domain?: string;
   tier: IntegrationTier;
   status: IntegrationStatus;
   /** Lower number = claimed sooner. */
@@ -241,9 +243,9 @@ export function blockCompany(
 
 function compareClaimPriority(a: QueueCompany, b: QueueCompany): number {
   if (a.autoApprove !== b.autoApprove) return a.autoApprove ? -1 : 1;
+  if (a.priority !== b.priority) return a.priority - b.priority;
   const tierDiff = TIER_ORDER[a.tier] - TIER_ORDER[b.tier];
   if (tierDiff !== 0) return tierDiff;
-  if (a.priority !== b.priority) return a.priority - b.priority;
   return a.slug.localeCompare(b.slug);
 }
 

@@ -1,8 +1,12 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { applyCompanyFromQueue, type ApplyReport } from "../lib/scraping/integration-apply.ts";
-import { loadQueue, saveQueue, blockCompany } from "../lib/scraping/integration-queue.ts";
+import type { ApplyReport } from "../lib/scraping/integration-apply.ts";
+import {
+  discoverAndApplyCompanyFromQueue,
+  type DiscoverApplyReport,
+} from "../lib/scraping/integration-discover.ts";
+import { loadQueue } from "../lib/scraping/integration-queue.ts";
 
 loadDotEnvLocal();
 
@@ -54,20 +58,15 @@ if (commitDev && failures === 0) {
 
 process.exit(failures > 0 ? 1 : 0);
 
-async function applyOne(slug: string): Promise<ApplyReport> {
-  const report = await applyCompanyFromQueue(slug, { writeMigration: !skipMigration });
+async function applyOne(slug: string): Promise<ApplyReport | DiscoverApplyReport> {
+  const report = await discoverAndApplyCompanyFromQueue(slug, { writeMigration: !skipMigration });
   printReport(report);
-  if (!report.ok) {
-    const queue = loadQueue();
-    blockCompany(queue, slug, report.steps.find((step) => !step.ok)?.detail ?? "apply failed");
-    saveQueue(queue);
-  }
   return report;
 }
 
-function printReport(report: ApplyReport) {
+function printReport(report: ApplyReport | DiscoverApplyReport) {
   const status = report.ok ? "PASS" : "FAIL";
-  console.log(`\n[${status}] ${report.slug} (direct Supabase apply)`);
+  console.log(`\n[${status}] ${report.slug} (discover + Supabase apply)`);
   for (const step of report.steps) {
     const mark = step.ok ? "ok" : "x";
     console.log(`  ${mark} ${step.name}: ${step.detail}`);
@@ -111,8 +110,8 @@ function printUsage() {
   console.log("Usage: npm run integration:apply -- <slug> [flags]");
   console.log("       npm run integration:apply -- --claimed [flags]");
   console.log("");
-  console.log("Applies standard ATS companies (greenhouse/lever/ashby) directly to Supabase");
-  console.log("when verify checks pass. No pull request. Custom tiers still need a PR.");
+  console.log("Discovers ATS from each company careers page, then applies greenhouse/lever/ashby");
+  console.log("to Supabase when verify passes. Blocks custom ATS. No pull request.");
   console.log("");
   console.log("Flags:");
   console.log("  --claimed       Apply all in_progress queue rows");

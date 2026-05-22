@@ -6,16 +6,25 @@ Scale target: **~50 companies/day** via hourly Cursor Automations + queue. See *
 
 ### Default: direct Supabase apply (no PR)
 
-For **Greenhouse / Lever / Ashby** rows with a confirmed `boardToken`:
+Queue rows store **company name** (`tier: discover`). The apply step resolves the careers page, discovers ATS, then upserts for Greenhouse/Lever/Ashby:
 
 ```bash
 npm run integration:queue -- run --count 1
-# or: claim then apply
+# careers page only:
+npm run integration:queue -- discover-careers snowflake
+# careers + ATS (no Supabase):
+npm run integration:queue -- discover snowflake
+# claim then apply
 npm run integration:queue -- claim --count 1 --json
 npm run integration:apply -- --claimed
 ```
 
-This verifies live postings, upserts company + source + postings via `SUPABASE_SERVICE_ROLE_KEY`, marks the queue `done`, and optionally writes a migration file for the repo.
+Careers resolution uses domain heuristics, homepage “Careers” links, and a small known-URL map for non-obvious brands (Meta, Block, Spotify, …). ATS discovery reads careers HTML (not slug guesses), verifies the API, upserts via `SUPABASE_SERVICE_ROLE_KEY`, marks the queue `done`, and optionally writes a migration file.
+
+```bash
+npm run integration:queue -- reset-guesses
+npm run integration:queue -- clear-careers-hints
+```
 
 Optional: push queue/migration updates to `dev` without a PR:
 
@@ -72,7 +81,7 @@ VERIFY_MIN_FOUND=3 npm run verify:integration -- <slug>
 
 ## Implementation checklist (per slug)
 
-1. Read queue row (`tier`, `boardToken`, `careersUrl`)
+1. Read queue row (`name`, `slug`; optional `careersUrl` / `domain` hints)
 2. Discover real ATS — do not guess Greenhouse tokens
 3. Custom: `lib/scraping/adapters/<slug>.ts` + `lib/scraping/registry.ts`
 4. Standard: migration with greenhouse/lever/ashby `company_sources`
@@ -88,7 +97,7 @@ VERIFY_MIN_FOUND=3 npm run verify:integration -- <slug>
 | Greenhouse / Lever / Ashby (token known) | `true` | Auto-claimed |
 | `discover` / custom FAANG | `false` | Skipped unless `--include-custom` or you approve |
 
-Curate `autoApprove` and `boardToken` in the queue file as you learn each ATS.
+Curate `autoApprove` and `priority` in the queue file; discovered `careersUrl` / ATS fields are written back automatically.
 
 ## CI
 
