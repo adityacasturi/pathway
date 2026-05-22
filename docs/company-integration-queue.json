@@ -421,12 +421,13 @@
       "priority": 41,
       "autoApprove": true,
       "boardToken": "snowflake",
-      "status": "pending",
+      "status": "blocked",
       "claimedAt": null,
       "claimedBy": null,
       "completedAt": null,
       "lastVerifiedAt": null,
-      "postingsFound": null
+      "postingsFound": null,
+      "blockedReason": "Greenhouse returned 404 for https://boards-api.greenhouse.io/v1/boards/snowflake/jobs?content=true"
     },
     {
       "slug": "mongodb",
