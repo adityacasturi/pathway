@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { fetchFeed } from "@/lib/feed/source";
 import { normalizeUrl } from "@/lib/url";
 import { DiscoverFeed } from "@/components/discover-feed";
+import { isMissingPreferenceColumnError } from "@/lib/config/user-preferences";
 import { assertSupabaseOk } from "@/lib/supabase/errors";
 import { resolveDiscoverCutoffDate } from "@/lib/config/discover";
 
@@ -30,15 +31,17 @@ export default async function DiscoverPage({ searchParams }: DiscoverPageProps) 
     fetchFeed(),
     supabase.from("feed_interactions").select("posting_id, kind"),
     supabase.from("applications").select("posting_url").is("archived_at", null),
-    supabase.from("user_preferences").select("discover_cutoff_date").maybeSingle(),
+    supabase.from("user_preferences").select("quick_track_enabled").maybeSingle(),
   ]);
 
   if (!userResult.data.user) redirect("/");
   assertSupabaseOk(interactionsRes.error, "Load feed interactions");
   assertSupabaseOk(appsRes.error, "Load tracked applications");
-  assertSupabaseOk(preferencesRes.error, "Load preferences");
+  if (!isMissingPreferenceColumnError(preferencesRes.error, "quick_track_enabled")) {
+    assertSupabaseOk(preferencesRes.error, "Load preferences");
+  }
 
-  const cutoff = resolveDiscoverCutoffDate(preferencesRes.data?.discover_cutoff_date);
+  const cutoff = resolveDiscoverCutoffDate();
   const visiblePostings = postings.filter((posting) => posting.datePosted >= cutoff.cutoffUnix);
 
   const dismissedIds = new Set<string>();
@@ -63,10 +66,9 @@ export default async function DiscoverPage({ searchParams }: DiscoverPageProps) 
       dismissedIds={Array.from(dismissedIds)}
       savedIds={Array.from(savedIds)}
       trackedUrls={Array.from(trackedUrls)}
-      oldestAllowedCutoffDate={cutoff.oldestAllowedDate}
-      latestAllowedCutoffDate={cutoff.today}
       initialQuery={initialQuery}
       initialSavedOnly={initialSavedOnly}
+      quickTrackEnabled={preferencesRes.data?.quick_track_enabled ?? false}
     />
   );
 }

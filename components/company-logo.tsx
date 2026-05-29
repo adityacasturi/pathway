@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { logoUrl } from "@/lib/logo";
+import { logoUrl, normalizeLogoCompany } from "@/lib/logo";
 
 // Deterministic color per company name so the same company always gets the
 // same avatar color across renders.
@@ -28,7 +28,7 @@ function initial(company: string): string {
 // us from hammering logo.dev every time a known-bad logo scrolls back into
 // view, or after a navigation re-mounts the component. Seeded from
 // sessionStorage on load so a same-tab refresh doesn't retry every failure.
-const FAILED_STORAGE_KEY = "pathway:logo-failed:v2";
+const FAILED_STORAGE_KEY = "pathway:logo-failed:v4";
 const failedCompanies = new Set<string>(readFailedFromStorage());
 
 function readFailedFromStorage(): string[] {
@@ -57,7 +57,7 @@ function persistFailed() {
 }
 
 function cacheKey(company: string): string {
-  return company.trim().toLowerCase();
+  return normalizeLogoCompany(company);
 }
 
 interface Props {

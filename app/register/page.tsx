@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import Image from "next/image";
 import Link from "next/link";
 import { signup } from "@/lib/actions/auth";
 import { SIGNUPS_ENABLED } from "@/lib/auth/signup-enabled";
@@ -16,6 +15,15 @@ import { AsyncButton } from "@/components/ui/async-button";
 import { Input } from "@/components/ui/input";
 import { InlineError } from "@/components/ui/inline-error";
 import { Label } from "@/components/ui/label";
+import {
+  AUTH_FOOTER_CLASS,
+  AUTH_INPUT_CLASS,
+  AUTH_LINK_CLASS,
+  AUTH_PRIMARY_BUTTON_CLASS,
+  AuthHelpText,
+  AuthPageHeader,
+  AuthPageShell,
+} from "@/components/auth/auth-page";
 import { PasswordField } from "@/components/auth/password-field";
 import { PasswordQualityPanel } from "@/components/auth/password-quality-panel";
 import { OtpConfirmationForm } from "@/components/auth/otp-confirmation-form";
@@ -98,80 +106,44 @@ export default function RegisterPage() {
 
   if (!SIGNUPS_ENABLED) {
     return (
-      <div className="page-shell min-h-screen bg-background">
-        <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-6 py-12 sm:px-8">
-          <div className="mb-10">
-            <Link href="/" aria-label="Pathway home" className="inline-flex items-center">
-              <Image
-                src="/brand/pathway-logo-black-transparent-600w.png"
-                alt="Pathway"
-                width={600}
-                height={148}
-                priority
-                className="brand-wordmark h-[36px] w-auto sm:h-[40px]"
-              />
-            </Link>
-            <h1 className="display-serif mt-5 text-[2.25rem] text-foreground">Signups paused</h1>
-            <p className="mt-4 text-[14px] leading-relaxed text-muted-foreground">
-              Public signups are temporarily paused. Join the waitlist from the home page to be
-              notified when they reopen.
-            </p>
-            <Link
-              href="/"
-              className="mt-6 inline-flex font-medium text-foreground transition-colors duration-150 hover:text-primary"
-            >
-              Back to home
-            </Link>
-          </div>
-        </main>
-      </div>
+      <AuthPageShell>
+        <AuthPageHeader title="Signups paused">
+          <p className="mt-4 text-[14px] leading-relaxed text-muted-foreground">
+            Public signups are temporarily paused. Check back later.
+          </p>
+          <Link href="/" className={`mt-6 inline-flex ${AUTH_LINK_CLASS}`}>
+            Back to home
+          </Link>
+        </AuthPageHeader>
+      </AuthPageShell>
     );
   }
 
   return (
-    <div className="page-shell min-h-screen bg-background">
-      <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-6 py-12 sm:px-8">
-        <motion.div
-          className="w-full"
-          variants={motionVariants.riseIn}
-          initial={false}
-          animate="visible"
-        >
-          <div className="mb-10">
-            <Link href="/" aria-label="Pathway home" className="inline-flex items-center">
-              <Image
-                src="/brand/pathway-logo-black-transparent-600w.png"
-                alt="Pathway"
-                width={600}
-                height={148}
-                priority
-                className="brand-wordmark h-[36px] w-auto sm:h-[40px]"
-              />
-            </Link>
-            <h1 className="display-serif mt-5 text-[2.25rem] text-foreground">
-              {otpEmail ? "Confirm your email" : "Create account"}
-            </h1>
-            {otpEmail && (
-              <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
-                We sent a 6-digit code to{" "}
-                <span className="font-medium text-foreground">{otpEmail}</span>.
-              </p>
-            )}
-          </div>
+    <AuthPageShell>
+      <AuthPageHeader title={otpEmail ? "Confirm your email" : "Create account"}>
+        {otpEmail && (
+          <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
+            We sent a 6-digit code to{" "}
+            <span className="font-medium text-foreground">{otpEmail}</span>.
+          </p>
+        )}
+      </AuthPageHeader>
 
-          {otpEmail ? (
-            <OtpConfirmationForm
-              email={otpEmail}
-              onExit={() => {
-                setOtpEmail(null);
-                setSuccessMessage(null);
-                setError(null);
-                setState("idle");
-              }}
-              initialMessage={successMessage}
-            />
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-5">
+      {otpEmail ? (
+        <OtpConfirmationForm
+          email={otpEmail}
+          onExit={() => {
+            setOtpEmail(null);
+            setSuccessMessage(null);
+            setError(null);
+            setState("idle");
+          }}
+          initialMessage={successMessage}
+        />
+      ) : (
+        <>
+          <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
                 <Label htmlFor="email" className="label-meta">
                   Email
@@ -194,16 +166,14 @@ export default function RegisterPage() {
                   aria-invalid={Boolean(signupEmailError)}
                   aria-describedby="signup-email-help"
                   placeholder="you@school.edu"
-                  className="h-11 rounded-lg bg-card px-3 text-[15px] placeholder:text-muted-foreground/40 focus-visible:border-foreground/30"
+                  className={AUTH_INPUT_CLASS}
                 />
-                <p
+                <AuthHelpText
                   id="signup-email-help"
-                  className={`text-[12px] leading-relaxed ${
-                    signupEmailError ? "text-destructive" : "text-muted-foreground"
-                  }`}
+                  tone={signupEmailError ? "error" : "muted"}
                 >
                   {signupEmailError ?? "Use your school .edu email."}
-                </p>
+                </AuthHelpText>
               </div>
 
               <div className="space-y-2">
@@ -252,22 +222,22 @@ export default function RegisterPage() {
                   ariaInvalid={passwordsDoNotMatch}
                   ariaDescribedBy="signup-password-confirmation-help"
                 />
-                <p
+                <AuthHelpText
                   id="signup-password-confirmation-help"
-                  className={`text-[12px] leading-relaxed ${
+                  tone={
                     passwordsDoNotMatch
-                      ? "text-destructive"
+                      ? "error"
                       : passwordConfirmation.length > 0 && password === passwordConfirmation
-                        ? "text-[color-mix(in_oklab,#2f7d5b_88%,var(--foreground))]"
-                        : "text-muted-foreground"
-                  }`}
+                        ? "success"
+                        : "muted"
+                  }
                 >
                   {passwordsDoNotMatch
                     ? "Passwords do not match."
                     : passwordConfirmation.length > 0 && password === passwordConfirmation
                       ? "Passwords match."
                       : "Type your password again."}
-                </p>
+                </AuthHelpText>
               </div>
 
               <AnimatePresence mode="wait">
@@ -291,24 +261,18 @@ export default function RegisterPage() {
                 pendingLabel="Creating account"
                 successLabel="Redirecting"
                 errorLabel="Try again"
-                className="primary-surface h-11 w-full rounded-lg text-[14px]"
+                className={AUTH_PRIMARY_BUTTON_CLASS}
               />
             </form>
-          )}
 
-          {!otpEmail && (
-            <p className="mt-7 text-center text-[13px] leading-relaxed text-muted-foreground">
+            <p className={AUTH_FOOTER_CLASS}>
               Already have an account?{" "}
-              <Link
-                href="/login"
-                className="font-medium text-foreground transition-colors duration-150 hover:text-primary"
-              >
+              <Link href="/login" className={AUTH_LINK_CLASS}>
                 Sign in instead
               </Link>
             </p>
-          )}
-        </motion.div>
-      </main>
-    </div>
+        </>
+      )}
+    </AuthPageShell>
   );
 }

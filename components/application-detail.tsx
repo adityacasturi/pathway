@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
-import { Application, APPLICATION_SEASONS, ApplicationEvent, ApplicationSeason, EventType, Status } from "@/types/application";
-import { ADDABLE_EVENT_TYPES, EVENT_CONFIG } from "@/lib/config/events";
+import { Application, ApplicationEvent, ApplicationSeason, EventType, Status } from "@/types/application";
 import {
   createEvent,
   deleteEvent,
@@ -23,17 +22,14 @@ import {
   removeEvent,
   replaceEvent,
 } from "@/lib/config/application-state";
+import { AddEventPanel } from "@/components/application-detail/add-event-panel";
+import { LocationField, PostingUrlField, SeasonField } from "@/components/application-detail/detail-fields";
+import { FloatingSyncToast, SyncState } from "@/components/application-detail/sync-toast";
 import { CompanyLogo } from "@/components/company-logo";
-import { EventDot } from "@/components/status-badge";
 import { EventTimeline } from "@/components/event-timeline";
-import { AsyncButton } from "@/components/ui/async-button";
 import { InlineEdit } from "@/components/ui/inline-edit";
-import { InlineError } from "@/components/ui/inline-error";
-import { InlineSpinner } from "@/components/ui/loading-indicator";
-import { Label } from "@/components/ui/label";
 import { motionVariants, transitions } from "@/lib/ui/motion";
-import { displayUrl, normalizeUrl, safeExternalHref } from "@/lib/url";
-import { CalendarDays, CalendarRange, Check, Link as LinkIcon, MapPin, X } from "lucide-react";
+import { CalendarRange, Link as LinkIcon, MapPin, X } from "lucide-react";
 
 function todayISO(): string {
   return format(new Date(), "yyyy-MM-dd");
@@ -43,10 +39,6 @@ interface Props {
   application: Application | null;
   onClose: () => void;
 }
-
-type SyncState =
-  | { status: "idle"; label: null }
-  | { status: "pending" | "success" | "error"; label: string };
 
 /**
  * Builds an optimistic event with a `temp-` id so the UI can render the new
@@ -62,6 +54,7 @@ function buildTempEvent(
 ): ApplicationEvent {
   return {
     id: `temp-${crypto.randomUUID()}`,
+    clientKey: crypto.randomUUID(),
     application_id: application.id,
     event_type: eventType,
     event_date: eventDate,
@@ -118,7 +111,15 @@ export function ApplicationDetail({ application, onClose }: Props) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setOptimisticApplication((current) => {
       if (!current || current.id !== application.id) return current;
-      return normalizeApplicationState(application);
+      // Preserve stable client keys across the server refetch so rows are not
+      // remounted (which would replay the enter animation) when revalidation
+      // delivers the same events without a clientKey.
+      const keyById = new Map(current.events.map((e) => [e.id, e.clientKey] as const));
+      const events = application.events.map((e) => {
+        const existingKey = keyById.get(e.id);
+        return e.clientKey || !existingKey ? e : { ...e, clientKey: existingKey };
+      });
+      return normalizeApplicationState({ ...application, events });
     });
   }, [application]);
 
@@ -382,7 +383,7 @@ export function ApplicationDetail({ application, onClose }: Props) {
             animate="visible"
             exit="exit"
             transition={transitions.spring}
-            className="relative z-10 flex h-[min(85vh,840px)] min-h-[480px] w-full max-w-3xl flex-col overflow-hidden rounded-lg border bg-card shadow-[0_35px_110px_-65px_color-mix(in_oklab,var(--ink)_85%,transparent)]"
+            className="relative z-10 flex h-[min(85vh,840px)] min-h-[480px] w-full max-w-4xl flex-col overflow-hidden rounded-lg border bg-card shadow-[0_35px_110px_-65px_color-mix(in_oklab,var(--ink)_85%,transparent)]"
             style={{ borderColor: "var(--rule-strong)" }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -398,18 +399,20 @@ export function ApplicationDetail({ application, onClose }: Props) {
                 className="relative flex-1 overflow-y-auto px-6 py-7 md:border-r sm:px-8"
                 style={{ borderColor: "var(--rule)" }}
               >
-                <div className="mb-6 flex items-baseline gap-3">
-                  <span className="label-micro">Timeline</span>
-                  <span className="h-px flex-1" style={{ background: "var(--rule)" }} />
+                <div className="w-full min-w-0">
+                  <div className="mb-6 flex items-baseline gap-3">
+                    <span className="label-micro">Timeline</span>
+                    <span className="h-px flex-1" style={{ background: "var(--rule)" }} />
+                  </div>
+                  <EventTimeline
+                    events={optimisticApplication.events}
+                    onDeleteEvent={handleDeleteEvent}
+                    onUpdateEventDate={handleUpdateEventDate}
+                    onUpdateEventNotes={handleUpdateEventNotes}
+                    onUpdateEventDeadline={handleUpdateEventDeadline}
+                    onUpdateEventDeadlineCompletion={handleUpdateEventDeadlineCompletion}
+                  />
                 </div>
-                <EventTimeline
-                  events={optimisticApplication.events}
-                  onDeleteEvent={handleDeleteEvent}
-                  onUpdateEventDate={handleUpdateEventDate}
-                  onUpdateEventNotes={handleUpdateEventNotes}
-                  onUpdateEventDeadline={handleUpdateEventDeadline}
-                  onUpdateEventDeadlineCompletion={handleUpdateEventDeadlineCompletion}
-                />
                 <FloatingSyncToast
                   state={syncState}
                   onDismiss={() => setSyncState({ status: "idle", label: null })}
@@ -539,7 +542,7 @@ function DetailSidebar({
       className="w-full shrink-0 overflow-y-auto border-t bg-[color-mix(in_oklab,var(--paper-sunk)_70%,var(--paper)_30%)] md:w-[21rem] md:border-t-0"
       style={{ borderColor: "var(--rule)" }}
     >
-      <div className="space-y-6 px-5 py-5 sm:px-6">
+      <div className="px-5 py-5 sm:px-6">
         <section className="space-y-3">
           <SectionHeading>Details</SectionHeading>
           <div className="space-y-2">
@@ -564,60 +567,25 @@ function DetailSidebar({
           </div>
         </section>
 
-        <section className="space-y-3">
+        <section
+          className="space-y-3 border-t pt-8 mt-10"
+          style={{ borderColor: "var(--rule)" }}
+        >
           <SectionHeading>Add event</SectionHeading>
-          <form
-            onSubmit={onSubmitEvent}
-            className="space-y-3"
-          >
-            <EventTypePicker value={eventType} onChange={onEventTypeChange} />
-            <div className={eventType === "oa" ? "grid grid-cols-2 gap-2" : undefined}>
-              <EventDateField value={eventDate} onChange={onEventDateChange} />
-              {eventType === "oa" && (
-                <EventDateField
-                  label="Deadline"
-                  value={deadlineDate}
-                  onChange={onDeadlineDateChange}
-                  optional
-                />
-              )}
-            </div>
-
-            <label className="block space-y-1.5">
-              <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                Notes <span className="normal-case tracking-normal text-muted-foreground/45">(optional)</span>
-              </span>
-              <textarea
-                value={notes}
-                onChange={(e) => onNotesChange(e.target.value)}
-                placeholder="Add notes or next steps..."
-                rows={3}
-                className="min-h-20 w-full resize-none rounded-lg border border-border/70 bg-background/80 px-3 py-2 text-sm text-foreground outline-none transition-colors duration-150 placeholder:text-muted-foreground/45 focus:border-foreground/30 focus:bg-background"
-              />
-            </label>
-
-            <AnimatePresence>
-              {error && (
-                <motion.div
-                  variants={motionVariants.fadeIn}
-                  initial="hidden"
-                  animate="visible"
-                  exit="hidden"
-                >
-                  <InlineError message={error} onRetry={onClearError} />
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <AsyncButton
-              type="submit"
-              state={addingEvent ? "pending" : "idle"}
-              disabled={!eventDate}
-              idleLabel="Add event"
-              pendingLabel="Saving event"
-              className="h-9 w-full rounded-lg text-xs font-medium uppercase tracking-wider"
-            />
-          </form>
+          <AddEventPanel
+            eventType={eventType}
+            eventDate={eventDate}
+            deadlineDate={deadlineDate}
+            notes={notes}
+            addingEvent={addingEvent}
+            error={error}
+            onEventTypeChange={onEventTypeChange}
+            onEventDateChange={onEventDateChange}
+            onDeadlineDateChange={onDeadlineDateChange}
+            onNotesChange={onNotesChange}
+            onSubmitEvent={onSubmitEvent}
+            onClearError={onClearError}
+          />
         </section>
       </div>
     </aside>
@@ -658,369 +626,5 @@ function DetailItem({
         {children}
       </div>
     </div>
-  );
-}
-
-function FloatingSyncToast({
-  state,
-  onDismiss,
-}: {
-  state: SyncState;
-  onDismiss: () => void;
-}) {
-  return (
-    <AnimatePresence initial={false} mode="wait">
-      {state.status !== "idle" && (
-        <motion.div
-          key={`${state.status}-${state.label}`}
-          initial={{ opacity: 0, y: 12, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 12, scale: 0.98 }}
-          transition={transitions.spring}
-          className="pointer-events-none absolute inset-x-0 bottom-6 z-10 flex justify-center px-6 sm:px-8"
-          aria-live="polite"
-        >
-          <div
-            className={`pointer-events-auto flex min-h-10 max-w-[min(28rem,100%)] items-center justify-between gap-3 rounded-full border px-4 py-2 text-xs shadow-sm backdrop-blur-sm ${
-              state.status === "error"
-                ? "border-destructive/25 bg-[color-mix(in_oklab,var(--destructive)_12%,var(--background))] text-destructive"
-                : "border-border/70 bg-[color-mix(in_oklab,var(--background)_88%,var(--paper-sunk))] text-muted-foreground"
-            }`}
-            role={state.status === "error" ? "alert" : "status"}
-          >
-            <span className="inline-flex min-w-0 items-center gap-2">
-              <span className="inline-flex size-3.5 shrink-0 items-center justify-center" aria-hidden>
-                {state.status === "pending" && <InlineSpinner />}
-                {state.status === "success" && <Check className="size-3.5 text-emerald-500" />}
-              </span>
-              <span className="truncate">{state.label}</span>
-            </span>
-            {state.status === "error" && (
-              <button
-                type="button"
-                onClick={onDismiss}
-                className="inline-flex size-7 shrink-0 items-center justify-center rounded-full text-destructive/70 transition-colors duration-150 hover:bg-destructive/10 hover:text-destructive"
-                aria-label="Dismiss error"
-              >
-                <X className="size-3.5" />
-              </button>
-            )}
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
-
-function LocationField({
-  value,
-  onSave,
-}: {
-  value: string | null;
-  onSave: (next: string | null) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value ?? "");
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setDraft(value ?? "");
-  }, [value]);
-
-  function save() {
-    const trimmed = draft.trim();
-    setEditing(false);
-    if (trimmed !== (value ?? "")) onSave(trimmed || null);
-  }
-
-  if (editing) {
-    return (
-      <div className="flex min-w-0 items-center gap-1.5">
-        <input
-          autoFocus
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") save();
-            if (e.key === "Escape") {
-              setDraft(value ?? "");
-              setEditing(false);
-            }
-          }}
-          placeholder="Add location..."
-          className="h-8 min-w-0 flex-1 rounded-lg border border-border/70 bg-background/80 px-2.5 text-xs text-foreground outline-none transition-colors duration-150 focus:border-foreground/30 focus:bg-background"
-        />
-        <button
-          type="button"
-          onClick={save}
-          className="h-8 rounded-lg px-2 text-[10px] uppercase tracking-wider text-foreground hover:bg-muted"
-        >
-          Save
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setDraft(value ?? "");
-            setEditing(false);
-          }}
-          className="inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-          aria-label="Cancel location edit"
-        >
-          <X className="size-3.5" />
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="group/location flex min-w-0 items-center justify-between gap-2 text-xs text-muted-foreground">
-      <button
-        type="button"
-        onClick={() => setEditing(true)}
-        className={`min-w-0 truncate text-left transition-colors duration-150 hover:text-foreground ${
-          value ? "" : "text-muted-foreground/50"
-        }`}
-      >
-        {value || "Add location"}
-      </button>
-      <button
-        type="button"
-        onClick={() => setEditing(true)}
-        className="shrink-0 text-[10px] uppercase tracking-widest text-muted-foreground/45 opacity-0 transition-colors duration-150 hover:text-foreground group-hover/location:opacity-100 focus:opacity-100"
-      >
-        Edit
-      </button>
-    </div>
-  );
-}
-
-/**
- * Pill toggle that mirrors the dashboard season filter. Clicking the active
- * pill clears the season (tri-state) so a "remove" button is unnecessary.
- */
-function SeasonField({
-  value,
-  onSave,
-}: {
-  value: ApplicationSeason | null;
-  onSave: (next: ApplicationSeason | null) => void;
-}) {
-  return (
-    <div
-      className="inline-flex items-center border"
-      style={{ borderColor: "var(--rule)" }}
-    >
-      {APPLICATION_SEASONS.map((option, idx) => {
-        const active = value === option;
-        return (
-          <button
-            key={option}
-            type="button"
-            onClick={() => onSave(active ? null : option)}
-            aria-pressed={active}
-            className={`px-3 py-1 font-mono text-[10px] uppercase tracking-[0.14em] transition-colors duration-150 ${
-              idx > 0 ? "border-l" : ""
-            } ${
-              active
-                ? "bg-[color-mix(in_oklab,var(--ink)_7%,transparent)] text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-            style={idx > 0 ? { borderColor: "var(--rule)" } : undefined}
-          >
-            {option}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-/**
- * Shows the application's posting URL as a clickable host (e.g. "acme.com")
- * with an external-link icon. Clicking the host opens the link in a new tab;
- * an "edit" affordance flips it into a small inline input. When no URL is set,
- * a faint "+ Add posting link" prompt is rendered instead.
- */
-function PostingUrlField({
-  value,
-  onSave,
-}: {
-  value: string | null;
-  onSave: (next: string | null) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value ?? "");
-
-  // Re-sync draft when the parent value updates (server reconciliation, etc.).
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setDraft(value ?? "");
-  }, [value]);
-
-  function save() {
-    const normalized = normalizeUrl(draft);
-    setEditing(false);
-    if (normalized !== value) onSave(normalized);
-  }
-
-  if (editing) {
-    return (
-      <div className="flex min-w-0 items-center gap-1.5">
-        <LinkIcon className="size-3 text-muted-foreground/60 shrink-0" />
-        <input
-          autoFocus
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              save();
-            }
-            if (e.key === "Escape") {
-              setDraft(value ?? "");
-              setEditing(false);
-            }
-          }}
-          placeholder="https://..."
-          className="h-8 min-w-0 flex-1 rounded-lg border border-border/70 bg-background/80 px-2.5 text-xs text-foreground outline-none transition-colors duration-150 focus:border-foreground/30 focus:bg-background"
-        />
-        <button
-          type="button"
-          onClick={save}
-          className="h-8 rounded-lg px-2 text-[10px] uppercase tracking-wider text-foreground hover:bg-muted"
-        >
-          Save
-        </button>
-        {value && (
-          <button
-            type="button"
-            onClick={() => {
-              setDraft("");
-              setEditing(false);
-              onSave(null);
-            }}
-            title="Remove link"
-            className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground/50 transition-colors duration-150 hover:bg-destructive/10 hover:text-destructive"
-          >
-            <X className="size-3.5" />
-          </button>
-        )}
-      </div>
-    );
-  }
-
-  if (!value) {
-    return (
-      <button
-        type="button"
-        onClick={() => setEditing(true)}
-        className="inline-flex min-w-0 items-center gap-1 text-[11px] text-muted-foreground/50 transition-colors duration-150 hover:text-foreground"
-      >
-        <LinkIcon className="size-3" />
-        Add posting link
-      </button>
-    );
-  }
-  const safeHref = safeExternalHref(value);
-
-  return (
-    <div className="group/link flex min-w-0 items-center justify-between gap-3 text-xs text-muted-foreground">
-      {safeHref ? (
-        <a
-          href={safeHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="truncate hover:text-foreground transition-colors duration-150 min-w-0"
-          title={value}
-        >
-          {displayUrl(value)}
-        </a>
-      ) : (
-        <span className="truncate text-muted-foreground/60 min-w-0" title={value}>
-          Invalid posting URL
-        </span>
-      )}
-      <button
-        type="button"
-        onClick={() => setEditing(true)}
-        className="shrink-0 text-[10px] uppercase tracking-widest text-muted-foreground/45 opacity-0 transition-colors duration-150 hover:text-foreground group-hover/link:opacity-100 focus:opacity-100"
-      >
-        Edit
-      </button>
-    </div>
-  );
-}
-
-function EventTypePicker({
-  value,
-  onChange,
-}: {
-  value: EventType;
-  onChange: (type: EventType) => void;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">Type</Label>
-      <div className="grid grid-cols-2 gap-1.5">
-        {ADDABLE_EVENT_TYPES.map((type) => {
-          const active = value === type;
-          return (
-            <button
-              key={type}
-              type="button"
-              onClick={() => onChange(type)}
-              className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-md border px-2 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors duration-150 ${
-                active
-                  ? "border-foreground bg-foreground text-background"
-                  : "bg-background text-muted-foreground hover:text-foreground"
-              }`}
-              style={
-                active
-                  ? undefined
-                  : { borderColor: "var(--rule)" }
-              }
-            >
-              <EventDot type={type} />
-              {EVENT_CONFIG[type].label}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function EventDateField({
-  label = "Date",
-  value,
-  onChange,
-  optional = false,
-}: {
-  label?: string;
-  value: string;
-  onChange: (next: string) => void;
-  optional?: boolean;
-}) {
-  const selected = value ? parseISO(value) : undefined;
-
-  return (
-    <label className="block space-y-1.5">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
-          {label}
-          {optional && <span className="sr-only"> optional</span>}
-        </span>
-        <span className="inline-flex items-center gap-1 text-muted-foreground/55" aria-hidden>
-          <CalendarDays className="size-3" />
-        </span>
-      </div>
-      <input
-        type="date"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        title={selected ? format(selected, "MMM d, yyyy") : undefined}
-        className="h-9 w-full min-w-0 rounded-lg border border-border/70 bg-background/80 px-2.5 text-xs text-foreground outline-none transition-colors duration-150 focus:border-foreground/30 focus:bg-background"
-      />
-    </label>
   );
 }

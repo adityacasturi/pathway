@@ -7,9 +7,7 @@ import { motion, type Variants } from "framer-motion";
 type ProductShot = {
   src: string;
   alt: string;
-  eyebrow: string;
   title: string;
-  body: string;
   width: number;
   height: number;
 };
@@ -142,13 +140,9 @@ export function LandingProductStory({ shots }: { shots: readonly ProductShot[] }
             />
           </motion.div>
           <motion.div className="landing-feature-copy" variants={copyVariantsForIndex}>
-            <span className="label-micro">{shot.eyebrow}</span>
-            <h2 className="mt-3 display-serif text-[2.1rem] leading-none text-foreground sm:text-[2.75rem]">
+            <h2 className="display-serif text-[2.1rem] leading-none text-foreground sm:text-[2.75rem]">
               {shot.title}
             </h2>
-            <p className="mt-4 text-[15px] leading-7 text-muted-foreground">
-              {shot.body}
-            </p>
           </motion.div>
         </motion.section>
         );

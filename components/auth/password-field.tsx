@@ -1,6 +1,7 @@
 "use client";
 
 import { Eye, EyeOff } from "lucide-react";
+import { AUTH_ICON_BUTTON_CLASS, AUTH_PASSWORD_INPUT_CLASS } from "@/components/auth/auth-page";
 import { Input } from "@/components/ui/input";
 
 export function PasswordField({
@@ -49,14 +50,14 @@ export function PasswordField({
         aria-invalid={ariaInvalid}
         aria-describedby={ariaDescribedBy}
         placeholder="Password"
-        className="h-11 rounded-lg bg-card px-3 pr-11 text-[15px] placeholder:text-muted-foreground/40 focus-visible:border-foreground/30"
+        className={AUTH_PASSWORD_INPUT_CLASS}
       />
       <button
         type="button"
         onClick={onToggleVisible}
         disabled={disabled}
         aria-label={visible ? "Hide password" : "Show password"}
-        className="absolute right-2 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-45"
+        className={AUTH_ICON_BUTTON_CLASS}
       >
         {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
       </button>

@@ -12,7 +12,13 @@ function getPasswordQualityLabel(metCount: number, total: number) {
   return "Needs work";
 }
 
-export function PasswordQualityPanel({ rules }: { rules: PasswordRule[] }) {
+export function PasswordQualityPanel({
+  rules,
+  id = "signup-password-rules",
+}: {
+  rules: PasswordRule[];
+  id?: string;
+}) {
   const visibleRules = rules.filter((rule) => rule.id !== "email" || !rule.met);
   const metCount = visibleRules.filter((rule) => rule.met).length;
   const quality = Math.round((metCount / visibleRules.length) * 100);
@@ -22,7 +28,7 @@ export function PasswordQualityPanel({ rules }: { rules: PasswordRule[] }) {
 
   return (
     <motion.div
-      id="signup-password-rules"
+      id={id}
       layout
       className="rounded-lg border bg-background/70 p-3"
       style={{ borderColor: quality === 100 ? "color-mix(in oklab, var(--primary) 28%, var(--rule))" : "var(--rule)" }}

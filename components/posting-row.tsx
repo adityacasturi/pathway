@@ -4,7 +4,7 @@ import { memo, useCallback, useMemo } from "react";
 import { Bookmark, Check, Plus, RotateCcw, X } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
 import { CompanyLogo } from "@/components/company-logo";
-import { SeasonPill } from "@/components/season-pill";
+import { MetaSeparator, PostingMetaLine } from "@/components/posting-meta-line";
 import { safeExternalHref } from "@/lib/url";
 import type { FeedPosting } from "@/lib/feed/source";
 
@@ -16,7 +16,8 @@ interface RowProps {
   isNew: boolean;
   pending?: boolean;
   savePending?: boolean;
-  onTrack: (posting: FeedPosting) => void;
+  trackPending?: boolean;
+  onTrack: (posting: FeedPosting) => void | Promise<void>;
   onToggleSaved: (posting: FeedPosting, next: boolean) => void;
   onToggleDismiss: (posting: FeedPosting, next: boolean) => void;
 }
@@ -29,6 +30,7 @@ export const PostingRow = memo(function PostingRow({
   isNew,
   pending,
   savePending,
+  trackPending,
   onTrack,
   onToggleSaved,
   onToggleDismiss,
@@ -68,18 +70,19 @@ export const PostingRow = memo(function PostingRow({
         <CompanyLogo company={posting.company} size={30} />
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2.5 text-[11px] text-muted-foreground">
-            <span className="truncate font-medium text-foreground/80">{posting.company}</span>
-            <SeasonPill season={posting.season} />
-            {isNew && !tracked && (
-              <span
-                className="inline-flex items-center font-mono text-[9px] font-medium uppercase tracking-[0.16em]"
-                style={{ color: "var(--primary)" }}
-              >
-                · New
-              </span>
-            )}
-          </div>
+          <PostingMetaLine company={posting.company} season={posting.season}>
+            {isNew && !tracked ? (
+              <>
+                <MetaSeparator />
+                <span
+                  className="inline-flex shrink-0 items-center font-mono text-[9px] font-medium uppercase tracking-[0.16em]"
+                  style={{ color: "var(--primary)" }}
+                >
+                  New
+                </span>
+              </>
+            ) : null}
+          </PostingMetaLine>
           <div className="mt-1 flex items-center gap-2">
             {postingHref ? (
               <a
@@ -120,7 +123,12 @@ export const PostingRow = memo(function PostingRow({
               <Check size={13} strokeWidth={2.5} />
             </span>
           ) : (
-            <IconButton label="Track" onClick={handleTrack} tone="positive">
+            <IconButton
+              label="Track"
+              onClick={handleTrack}
+              disabled={trackPending}
+              tone="positive"
+            >
               <Plus size={14} strokeWidth={1.85} />
             </IconButton>
           )}

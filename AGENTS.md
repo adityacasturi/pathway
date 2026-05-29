@@ -14,7 +14,6 @@ Pathway is a Next.js 16, React 19, Supabase-backed internship tracker. Treat thi
 - Use Node.js 22.x. The production target and Supabase platform guidance assume Node 22.
 - Prefer existing patterns in `app/`, `components/`, `lib/actions/`, `lib/config/`, and `lib/supabase/`.
 - Run focused checks while working and `npm run verify` before claiming production readiness when feasible.
-- **Company sources:** add via SQL migrations + `npm run verify:integration` + `npm run scrape`. See `docs/agent-company-integration.md`.
 - For e2e, run `npm run test:e2e`; set `E2E_USER_EMAIL` and `E2E_USER_PASSWORD` for authenticated coverage, and `E2E_ALLOW_MUTATION=1` for mutation smoke tests.
 
 ## Supabase Migration Rules
@@ -31,14 +30,14 @@ Formal migrations are mandatory.
 ## Security And Data Rules
 
 - Keep privileged database logic in narrow private-schema RPCs or server-only modules.
-- Never expose Resend keys or other secrets through `NEXT_PUBLIC_` variables.
+- Never expose secrets through `NEXT_PUBLIC_` variables.
 - RLS is part of the product contract. Do not broaden grants or policies without a migration and a clear reason.
 - Authenticated user data must remain scoped by `auth.uid()` or trusted server-side user lookup.
-- Signup and dormant waitlist writes require a school `.edu` email, durable anti-abuse checks, and hashed identifiers for IP/email rate-limit metadata. The app calls only `public.join_waitlist`; table writes and HMAC hashing happen inside `app_private.join_waitlist`.
+- Signup requires a school `.edu` email and durable anti-abuse checks.
 
 ## Product State
 
-- Public account creation is enabled for students with `.edu` email addresses. The waitlist code is preserved but not mounted on the landing page.
+- Public account creation is enabled for students with `.edu` email addresses.
 - Default accent theme is midnight.
 - Discover hides applied postings by default.
 - Dashboard rows should stay simple and consistent with Discover rather than adding page-row animation flourishes.

@@ -48,7 +48,7 @@ export function PageMain({ children, className, width = "lg" }: PageMainProps) {
   return (
     <main
       className={cn(
-        "mx-auto px-6 pb-24 pt-18 sm:px-10 sm:pt-20 lg:px-16 lg:pt-24",
+        "mx-auto px-6 pb-24 pt-20 sm:px-10 sm:pt-21 lg:px-16 lg:pt-26",
         pageWidths[width],
         className,
       )}

@@ -8,7 +8,6 @@ import {
   useRef,
   useState,
   useTransition,
-  type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
@@ -20,6 +19,7 @@ import { SkeletonBlock } from "@/components/ui/loading-indicator";
 import { motionVariants } from "@/lib/ui/motion";
 import { SearchInput } from "@/components/search-input";
 import { normalizeUrl } from "@/lib/url";
+import { createApplication } from "@/lib/actions/applications";
 import {
   dismissPosting,
   refreshFeed,
@@ -27,9 +27,10 @@ import {
   undismissPosting,
   unsavePosting,
 } from "@/lib/actions/feed";
+import { buildTrackApplicationFormData } from "@/lib/feed/build-track-form-data";
 import type { FeedPosting, FeedSeason } from "@/lib/feed/source";
-
-type SeasonFilter = "all" | FeedSeason;
+import { SEASON_FILTER_OPTIONS, type SeasonFilter } from "@/lib/config/season-filter";
+import { FilterSection, FilterToggle, SegmentedControl } from "@/components/ui/filter-menu";
 
 const SHOW_DISMISSED_STORAGE_KEY = "pathway:discover-show-dismissed";
 const HIDE_APPLIED_STORAGE_KEY = "pathway:discover-hide-applied";
@@ -37,13 +38,7 @@ const SEASON_STORAGE_KEY = "pathway:discover-season";
 const LAST_SEEN_STORAGE_KEY = "pathway:feed-last-seen-at";
 const SEARCH_TOKEN_PATTERN = /"[^"]*"|'[^']*'|\S+/g;
 
-const SEASON_OPTIONS: { value: SeasonFilter; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "Summer", label: "Summer" },
-  { value: "Fall", label: "Fall" },
-];
-
-const VALID_SEASONS = new Set<SeasonFilter>(["all", "Summer", "Fall"]);
+const VALID_SEASONS = new Set<SeasonFilter>(SEASON_FILTER_OPTIONS.map((option) => option.value));
 
 // Progressive render window. The filter/search still runs over the full list
 // (cheap), but we only paint a chunk at a time. The IntersectionObserver
@@ -57,10 +52,9 @@ interface Props {
   dismissedIds: string[];
   savedIds: string[];
   trackedUrls: string[];
-  oldestAllowedCutoffDate: string;
-  latestAllowedCutoffDate: string;
   initialQuery?: string;
   initialSavedOnly?: boolean;
+  quickTrackEnabled?: boolean;
 }
 
 interface Prefill {
@@ -101,6 +95,7 @@ export function DiscoverFeed({
   trackedUrls,
   initialQuery = "",
   initialSavedOnly = false,
+  quickTrackEnabled = false,
 }: Props) {
   const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
@@ -113,6 +108,7 @@ export function DiscoverFeed({
   const [hideApplied, setHideApplied] = useState(true);
   const [preferencesReady, setPreferencesReady] = useState(false);
   const [dialogPrefill, setDialogPrefill] = useState<Prefill | null>(null);
+  const [trackPendingId, setTrackPendingId] = useState<string | null>(null);
   const [trackedUrlOverrides, setTrackedUrlOverrides] = useState<Set<string>>(() => new Set());
   const [isRefreshing, startRefresh] = useTransition();
   const [actionError, setActionError] = useState<string | null>(null);
@@ -428,16 +424,6 @@ export function DiscoverFeed({
     Number(hideApplied) +
     Number(showDismissed);
 
-  const openTrack = useCallback((posting: FeedPosting) => {
-    setDialogPrefill({
-      company: posting.company,
-      role: posting.title,
-      posting_url: posting.url,
-      location: posting.locations.join(" · "),
-      season: posting.season,
-    });
-  }, []);
-
   const onApplicationCreated = useCallback((application: { postingUrl: string | null }) => {
     const normalized = normalizeUrl(application.postingUrl);
     if (!normalized) return;
@@ -447,6 +433,33 @@ export function DiscoverFeed({
       return next;
     });
   }, []);
+
+  const openTrack = useCallback(
+    async (posting: FeedPosting) => {
+      if (quickTrackEnabled) {
+        setTrackPendingId(posting.id);
+        setActionError(null);
+        const result = await createApplication(buildTrackApplicationFormData(posting));
+        setTrackPendingId(null);
+        if ("error" in result) {
+          setActionError(result.error ?? "Unable to add application.");
+          return;
+        }
+        onApplicationCreated({ postingUrl: posting.url });
+        router.refresh();
+        return;
+      }
+
+      setDialogPrefill({
+        company: posting.company,
+        role: posting.title,
+        posting_url: posting.url,
+        location: posting.locations.join(" · "),
+        season: posting.season,
+      });
+    },
+    [quickTrackEnabled, onApplicationCreated, router],
+  );
 
   // "Mark all seen" simply pushes the lastSeen baseline forward to now,
   // which is what would happen on next visit anyway. Persist immediately so
@@ -459,7 +472,7 @@ export function DiscoverFeed({
 
   return (
     <div className="page-shell min-h-screen bg-background">
-      <main className="max-w-6xl mx-auto px-6 sm:px-10 lg:px-16 pt-18 sm:pt-20 lg:pt-24 pb-24">
+      <main className="max-w-6xl mx-auto px-6 sm:px-10 lg:px-16 pt-20 sm:pt-21 lg:pt-26 pb-24">
         <motion.header
           className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
           variants={motionVariants.riseIn}
@@ -543,7 +556,7 @@ export function DiscoverFeed({
                     <FilterSection title="Season">
                       <SegmentedControl
                         value={seasonFilter}
-                        options={SEASON_OPTIONS}
+                        options={SEASON_FILTER_OPTIONS}
                         onChange={setSeasonFilter}
                       />
                     </FilterSection>
@@ -633,6 +646,7 @@ export function DiscoverFeed({
                     isNew={isPostingNew(posting)}
                     pending={pendingIds.has(posting.id)}
                     savePending={pendingSavedIds.has(posting.id)}
+                    trackPending={trackPendingId === posting.id}
                     onTrack={openTrack}
                     onToggleSaved={onToggleSaved}
                     onToggleDismiss={onToggleDismiss}
@@ -654,99 +668,5 @@ export function DiscoverFeed({
         onCreated={onApplicationCreated}
       />
     </div>
-  );
-}
-
-function FilterSection({
-  title,
-  action,
-  children,
-}: {
-  title: string;
-  action?: { label: string; onClick: () => void };
-  children: ReactNode;
-}) {
-  return (
-    <section
-      className="px-4 py-4 [&+section]:border-t"
-      style={{ borderColor: "var(--rule)" }}
-    >
-      <header className="mb-4 flex items-center justify-between">
-        <h3 className="font-mono text-[11px] font-medium text-foreground">
-          {title}
-        </h3>
-        {action && (
-          <button
-            type="button"
-            onClick={action.onClick}
-            className="font-mono text-[10px] text-muted-foreground transition-colors hover:text-foreground"
-          >
-            {action.label}
-          </button>
-        )}
-      </header>
-      {children}
-    </section>
-  );
-}
-
-function SegmentedControl<T extends string>({
-  value,
-  options,
-  onChange,
-}: {
-  value: T;
-  options: { value: T; label: string }[];
-  onChange: (next: T) => void;
-}) {
-  return (
-    <div
-      role="radiogroup"
-      className="inline-flex w-full items-center gap-0.5 rounded-lg border p-0.5"
-      style={{ borderColor: "var(--rule)" }}
-    >
-      {options.map((option) => {
-        const active = value === option.value;
-        return (
-          <button
-            key={option.value}
-            type="button"
-            role="radio"
-            aria-checked={active}
-            onClick={() => onChange(option.value)}
-            className={
-              "flex-1 rounded-md px-2.5 py-1.5 text-[12px] font-medium transition-colors duration-150 " +
-              (active
-                ? "bg-foreground/10 text-foreground"
-                : "text-muted-foreground hover:text-foreground")
-            }
-          >
-            {option.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function FilterToggle({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}) {
-  return (
-    <label className="flex cursor-pointer select-none items-center justify-between gap-4 rounded-sm px-1 py-1.5 text-[12px] text-foreground transition-colors hover:bg-[color-mix(in_oklab,var(--ink)_5%,transparent)]">
-      <span>{label}</span>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-        className="size-3 rounded-[2px] accent-foreground cursor-pointer"
-      />
-    </label>
   );
 }

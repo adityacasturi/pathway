@@ -1,6 +1,6 @@
 # Architecture
 
-Pathway is a Next.js 16 App Router application backed by Supabase Auth and Postgres. Public signup is enabled for students with `.edu` email addresses; the waitlist implementation is preserved for future use but is not mounted on the landing page.
+Pathway is a Next.js 16 App Router application backed by Supabase Auth and Postgres. Public signup is enabled for students with `.edu` email addresses.
 
 ## Runtime And Framework
 
@@ -25,7 +25,7 @@ Agents changing Next.js behavior must read the relevant guide in `node_modules/n
 | `/discover` | Live internship posting feed |
 | `/stats` | Application metrics and funnel visualization |
 | `/settings` | Account display and user preferences |
-| `/api/logo` | Server-side company logo proxy/cache boundary |
+| `/api/logo` | Authenticated company logo proxy to logo.dev (not public) |
 
 `proxy.ts` performs auth gating. Unauthenticated users are sent to `/`; authenticated users are sent away from `/login`.
 
@@ -36,12 +36,10 @@ Core public tables:
 - `applications`: user-owned application records, archived state, posting URL, season/location, and derived status snapshot
 - `application_events`: user-owned timeline events for application progress and OA deadlines
 - `feed_interactions`: saved/dismissed Discover posting ids
-- `user_preferences`: accent color and discover cutoff date
-- `waitlist`: raw waitlist email records
-- `waitlist_attempts`: hashed anti-abuse records for waitlist submissions
+- `user_preferences`: accent color and quick-track preference
 - `rate_limits`: private backing table for database-side write throttles
 
-RLS policies scope user data by `auth.uid()`. Waitlist tables deny direct anon/authenticated writes; the app calls a narrow `public.join_waitlist` RPC, which delegates to private database logic for validation, hashing, rate limiting, and inserts.
+RLS policies scope user data by `auth.uid()`.
 
 ## Application Status
 
@@ -58,13 +56,12 @@ Mutations live in `lib/actions/`:
 - `events.ts`: create/update/delete events and OA deadline fields
 - `feed.ts`: save, unsave, dismiss, restore, and refresh Discover postings
 - `settings.ts`: user preferences
-- `waitlist.ts`: dormant `.edu` waitlist writes and anti-abuse enforcement
 
 Actions validate inputs, use Supabase server clients or narrow RPCs, and revalidate affected paths.
 
 ## Discover Feed
 
-`lib/feed/source.ts` fetches upstream JSON feeds, normalizes rows into `FeedPosting`, filters inactive/invisible postings, keeps Summer/Fall seasons, dedupes equivalent roles, and memoizes work with Next caching. Postings are not copied into the database.
+`lib/feed/source.ts` fetches upstream GitHub JSON feeds, normalizes rows into `FeedPosting`, filters inactive/invisible postings, keeps Summer/Fall seasons, dedupes equivalent roles, and memoizes work with Next caching. Postings are not copied into the database, and there is no separate scraper or company-board store.
 
 User-specific state is stored separately:
 
@@ -72,17 +69,14 @@ User-specific state is stored separately:
 - Applied/tracked state: derived from normalized application posting URLs
 - Applied postings are hidden by default
 
-## Waitlist And Signup State
+## Signup State
 
 `SIGNUPS_ENABLED` is true. Signup UI is available from `/register` and `/login?mode=signup`.
 
-Signup and dormant waitlist protections:
+Signup protections:
 
 - Email must normalize to a `.edu` domain
-- Server-side durable limits check hashed email/IP identifiers
-- Hashing uses HMAC-SHA256 with a database-owned secret in `app_private.waitlist_config`
 - Raw emails are not logged
-- Optional Resend audience sync is best-effort and does not block the local database write
 
 ## Theme
 

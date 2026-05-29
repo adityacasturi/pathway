@@ -1,12 +1,10 @@
 "use client";
 
 import { Check } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
 import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { InlineSpinner } from "@/components/ui/loading-indicator";
 import { cn } from "@/lib/utils";
-import { motionVariants } from "@/lib/ui/motion";
 
 type AsyncState = "idle" | "pending" | "success" | "error";
 
@@ -33,52 +31,25 @@ export function AsyncButton({
     return idleLabel;
   }, [errorLabel, idleLabel, pendingLabel, state, successLabel]);
 
+  const isPending = state === "pending";
+  const isSuccess = state === "success";
+
   return (
     <Button
       {...props}
-      className={cn("inline-flex items-center justify-center", className)}
-      disabled={disabled || state === "pending"}
+      aria-busy={isPending}
+      className={cn(
+        "inline-flex min-w-[4.75rem] items-center justify-center gap-1.5 overflow-hidden",
+        className,
+      )}
+      disabled={disabled || isPending}
     >
-      <AnimatePresence mode="popLayout" initial={false}>
-        {state === "pending" && (
-          <motion.span
-            key="pending-icon"
-            variants={motionVariants.step}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            className="inline-flex"
-          >
-            <InlineSpinner className="shrink-0" />
-          </motion.span>
-        )}
-        {state === "success" && (
-          <motion.span
-            key="success-icon"
-            variants={motionVariants.step}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            className="inline-flex"
-          >
-            <Check className="size-3.5 shrink-0" strokeWidth={2} aria-hidden />
-          </motion.span>
-        )}
-      </AnimatePresence>
-      <span className="relative inline-flex min-w-0 overflow-visible">
-        <AnimatePresence mode="popLayout" initial={false}>
-          <motion.span
-            key={label}
-            variants={motionVariants.step}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            className="shrink-0 text-center leading-[1.2] whitespace-nowrap"
-          >
-            {label}
-          </motion.span>
-        </AnimatePresence>
-      </span>
+      {isPending ? (
+        <InlineSpinner className="shrink-0" />
+      ) : isSuccess ? (
+        <Check className="size-3.5 shrink-0" strokeWidth={2} aria-hidden />
+      ) : null}
+      <span className="shrink-0 whitespace-nowrap">{label}</span>
     </Button>
   );
 }

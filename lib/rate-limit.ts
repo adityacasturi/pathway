@@ -43,7 +43,7 @@ function consumeBucket(key: string, limit: number, windowMs: number): RateLimitR
   return { ok: true };
 }
 
-export function clientKeyFromHeaders(source: Headers): string {
+function clientKeyFromHeaders(source: Headers): string {
   const forwardedFor = source.get("x-forwarded-for")?.split(",")[0]?.trim();
   return (
     source.get("cf-connecting-ip") ??

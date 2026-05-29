@@ -33,6 +33,16 @@ const motionTransitions = {
     damping: 38,
     mass: 0.72,
   } satisfies Transition,
+  timelineLayout: {
+    type: "spring",
+    stiffness: 260,
+    damping: 32,
+    mass: 0.85,
+  } satisfies Transition,
+  timelineFade: {
+    duration: 0.22,
+    ease: motionEasing.smooth,
+  } satisfies Transition,
 } as const;
 
 export const motionVariants = {

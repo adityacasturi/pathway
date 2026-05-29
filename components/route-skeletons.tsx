@@ -9,7 +9,7 @@ import { SkeletonBlock } from "@/components/ui/loading-indicator";
 export function HomeSkeleton() {
   return (
     <div className="min-h-screen bg-background">
-      <main className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 pt-18 sm:pt-20 lg:pt-24 pb-20">
+      <main className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 pt-20 sm:pt-21 lg:pt-26 pb-20">
         <div className="mb-10 flex items-center justify-between">
           <SkeletonBlock className="h-10 w-28" />
           <SkeletonBlock className="h-10 w-10 rounded-md" />
@@ -40,7 +40,7 @@ export function HomeSkeleton() {
 export function DashboardSkeleton() {
   return (
     <div className="min-h-screen bg-background">
-      <main className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 pt-18 sm:pt-20 lg:pt-24 pb-20">
+      <main className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 pt-20 sm:pt-21 lg:pt-26 pb-20">
         <div className="flex items-center justify-between mb-8">
           <SkeletonBlock className="h-10 w-56" />
           <div className="flex items-center gap-3">
@@ -69,7 +69,7 @@ export function DashboardSkeleton() {
 export function StatsSkeleton() {
   return (
     <div className="min-h-screen bg-background">
-      <main className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 pt-18 sm:pt-20 lg:pt-24 pb-20">
+      <main className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 pt-20 sm:pt-21 lg:pt-26 pb-20">
         <div className="mb-10 flex items-center justify-between">
           <SkeletonBlock className="h-10 w-32" />
           <SkeletonBlock className="h-11 w-28 rounded-sm" />
@@ -95,7 +95,7 @@ export function StatsSkeleton() {
 export function SettingsSkeleton() {
   return (
     <div className="min-h-screen bg-background">
-      <main className="max-w-3xl mx-auto px-6 sm:px-8 lg:px-12 pt-18 sm:pt-20 lg:pt-24 pb-20">
+      <main className="max-w-3xl mx-auto px-6 sm:px-8 lg:px-12 pt-20 sm:pt-21 lg:pt-26 pb-20">
         <div className="mb-10">
           <SkeletonBlock className="h-10 w-40" />
         </div>
@@ -120,7 +120,7 @@ export function SettingsSkeleton() {
 export function DiscoverSkeleton() {
   return (
     <div className="min-h-screen bg-background">
-      <main className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 pt-18 sm:pt-20 lg:pt-24 pb-20">
+      <main className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 pt-20 sm:pt-21 lg:pt-26 pb-20">
         <div className="mb-8 flex items-center justify-between">
           <SkeletonBlock className="h-10 w-40" />
           <SkeletonBlock className="h-10 w-24 rounded-md" />

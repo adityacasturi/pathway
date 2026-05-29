@@ -4,6 +4,7 @@ import { fetchFeed } from "@/lib/feed/source";
 import { normalizeUrl } from "@/lib/url";
 import { Home } from "@/components/home";
 import { normalizeApplicationState } from "@/lib/config/application-state";
+import { isMissingPreferenceColumnError } from "@/lib/config/user-preferences";
 import { assertSupabaseOk } from "@/lib/supabase/errors";
 import type { FeedPosting } from "@/lib/feed/source";
 import type { Application } from "@/types/application";
@@ -31,18 +32,22 @@ export default async function HomePage() {
   // One parallel fan-out for everything Home needs. RLS means we can fire
   // user-scoped Supabase calls without waiting on auth first — the auth check
   // happens inline below once all four responses are back.
-  const [userResult, postings, appsRes, interactionsRes] = await Promise.all([
+  const [userResult, postings, appsRes, interactionsRes, preferencesRes] = await Promise.all([
     supabase.auth.getUser(),
     fetchFeed(),
     supabase
       .from("applications")
       .select("*, application_events(*)"),
     supabase.from("feed_interactions").select("posting_id, kind, created_at"),
+    supabase.from("user_preferences").select("quick_track_enabled").maybeSingle(),
   ]);
 
   if (!userResult.data.user) redirect("/");
   assertSupabaseOk(appsRes.error, "Load applications");
   assertSupabaseOk(interactionsRes.error, "Load feed interactions");
+  if (!isMissingPreferenceColumnError(preferencesRes.error, "quick_track_enabled")) {
+    assertSupabaseOk(preferencesRes.error, "Load preferences");
+  }
 
   const activeApplications: Application[] = (appsRes.data ?? [])
     .filter((app) => !app.archived_at)
@@ -94,6 +99,7 @@ export default async function HomePage() {
       savedIds={Array.from(savedAtById.keys())}
       savedPostings={savedPostings}
       trackedUrls={Array.from(trackedUrls)}
+      quickTrackEnabled={preferencesRes.data?.quick_track_enabled ?? false}
     />
   );
 }

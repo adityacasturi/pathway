@@ -14,6 +14,8 @@ export interface ApplicationEvent {
   deadline_date: string | null;
   deadline_completed_at: string | null;
   created_at: string;
+  /** Stable React key for optimistic add → server reconcile without remounting. */
+  clientKey?: string;
 }
 
 export interface Application {

@@ -2,14 +2,14 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SettingsPage } from "@/components/settings-page";
 import { resolveAccentColor } from "@/lib/config/accent";
-import { resolveDiscoverCutoffDate } from "@/lib/config/discover";
+import { isMissingPreferenceColumnError } from "@/lib/config/user-preferences";
 import { assertSupabaseOk } from "@/lib/supabase/errors";
 
 export const dynamic = "force-dynamic";
 
 type PreferencesRow = {
-  discover_cutoff_date?: string | null;
   accent_color?: string | null;
+  quick_track_enabled?: boolean | null;
 };
 
 function isMissingAccentColumnError(error: { code?: string; message?: string } | null): boolean {
@@ -29,28 +29,32 @@ export default async function Settings() {
 
   let preferencesRes = await supabase
     .from("user_preferences")
-    .select("discover_cutoff_date, accent_color")
+    .select("accent_color, quick_track_enabled")
     .maybeSingle<PreferencesRow>();
+
+  if (isMissingPreferenceColumnError(preferencesRes.error, "quick_track_enabled")) {
+    preferencesRes = await supabase
+      .from("user_preferences")
+      .select("accent_color")
+      .maybeSingle<PreferencesRow>();
+  }
 
   if (isMissingAccentColumnError(preferencesRes.error)) {
     preferencesRes = await supabase
       .from("user_preferences")
-      .select("discover_cutoff_date")
+      .select("quick_track_enabled")
       .maybeSingle<PreferencesRow>();
   }
 
   assertSupabaseOk(preferencesRes.error, "Load preferences");
 
-  const cutoff = resolveDiscoverCutoffDate(preferencesRes.data?.discover_cutoff_date);
   const accentColor = resolveAccentColor(preferencesRes.data?.accent_color);
 
   return (
     <SettingsPage
       userEmail={data.user.email ?? null}
-      discoverCutoffDate={cutoff.cutoffDate}
       accentColor={accentColor}
-      oldestAllowedDiscoverCutoffDate={cutoff.oldestAllowedDate}
-      latestAllowedDiscoverCutoffDate={cutoff.today}
+      quickTrackEnabled={preferencesRes.data?.quick_track_enabled ?? false}
     />
   );
 }

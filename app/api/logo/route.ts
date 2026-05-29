@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { limitRequestByIp } from "@/lib/rate-limit";
-
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getAuthenticatedUser } from "@/lib/supabase/auth";
 
 const LOGO_DEV_TOKEN = process.env.LOGO_DEV_TOKEN;
 const CANONICAL_SIZE = 128;
@@ -13,29 +12,8 @@ const RATE_LIMIT_REQUESTS = 60;
 
 export const dynamic = "force-dynamic";
 
-const COMMON_DOMAINS: Record<string, string> = {
-  "palantir": "palantir.com",
-  "stripe": "stripe.com",
-  "figma": "figma.com",
-  "airbnb": "airbnb.com",
-  "notion": "notion.so",
-  "ramp": "ramp.com",
-  "vercel": "vercel.com",
-  "google": "google.com",
-  "apple": "apple.com",
-  "meta": "meta.com",
-  "amazon": "amazon.com",
-  "netflix": "netflix.com",
-  "microsoft": "microsoft.com",
-  "tesla": "tesla.com",
-  "nvidia": "nvidia.com",
-  "roblox": "roblox.com",
-  "databricks": "databricks.com",
-  "robinhood": "robinhood.com",
-};
-
 function cleanCompany(raw: string | null): string | null {
-  const value = (raw ?? "").trim().toLowerCase();
+  const value = (raw ?? "").trim().replace(/\s+/g, " ");
   if (!value || value.length > 120) return null;
   return value;
 }
@@ -54,6 +32,14 @@ async function fetchWithTimeout(url: string): Promise<Response> {
 }
 
 export async function GET(request: NextRequest) {
+  const { user } = await getAuthenticatedUser();
+  if (!user) {
+    return new Response(null, {
+      status: 401,
+      headers: { "Cache-Control": "no-store" },
+    });
+  }
+
   const rateLimit = limitRequestByIp(
     request,
     "api:logo",
@@ -82,35 +68,8 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  let domain = "";
-  if (company.includes(".")) {
-    domain = company;
-  } else {
-    domain = COMMON_DOMAINS[company] || "";
-
-    if (!domain) {
-      try {
-        const supabase = createAdminClient();
-        const { data } = await supabase
-          .from("companies")
-          .select("website_url")
-          .or(`slug.eq.${company},name.ilike.${company}`)
-          .limit(1)
-          .maybeSingle();
-
-        if (data?.website_url) {
-          const u = new URL(data.website_url);
-          domain = u.host.replace(/^www\./i, "");
-        }
-      } catch {
-        // ignore and fallback to name search
-      }
-    }
-  }
-
-  const path = domain ? encodeURIComponent(domain) : `name/${encodeURIComponent(company)}`;
   const upstreamUrl =
-    `https://img.logo.dev/${path}` +
+    `https://img.logo.dev/name/${encodeURIComponent(company)}` +
     `?token=${encodeURIComponent(LOGO_DEV_TOKEN)}` +
     `&size=${CANONICAL_SIZE}&format=png`;
 

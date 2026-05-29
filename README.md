@@ -28,9 +28,6 @@ Built with Next.js 16 App Router, React 19, Server Actions, Supabase Auth/Postgr
    # Optional: cached company logos via https://logo.dev.
    LOGO_DEV_TOKEN=...
 
-   # Optional: sync waitlist signups to a Resend Audience.
-   RESEND_API_KEY=...
-   RESEND_AUDIENCE_ID=...
    ```
 
 3. Apply database migrations through the Supabase connector/CLI migration flow. Do not paste durable DDL into the SQL editor as an ad hoc change; see [Agent And Migration Rules](#agent-and-migration-rules).
@@ -79,7 +76,7 @@ npm run test:e2e
 app/                  Next.js routes, layouts, loading/error states, logo API
 components/           Product UI for landing, app shell, dashboard, discover, stats
 components/ui/        Reusable primitives
-lib/actions/          Server Actions for auth, apps, events, feed, settings, waitlist
+lib/actions/          Server Actions for auth, apps, events, feed, settings
 lib/auth/             Signup state and auth validation rules
 lib/config/           Event/status, deadlines, accent theme, application state helpers
 lib/feed/             Upstream internship feed ingestion and normalization
@@ -101,7 +98,6 @@ See [docs/architecture.md](./docs/architecture.md) for the system walkthrough an
 
 ## Production Notes
 
-- Public signup requires a `.edu` email. The preserved waitlist RPC enforces the same `.edu` rule, stores raw emails only in `public.waitlist`, and stores HMAC-hashed anti-abuse identifiers in `public.waitlist_attempts`.
-- Waitlist hashing uses a database-owned secret in `app_private.waitlist_config`; no app env secret is required for this path.
+- Public signup requires a `.edu` email.
 - Default UI accent is midnight. User preferences are stored in `public.user_preferences`.
 - Supabase dashboard checks that are not fully automatable from this repo still matter: Auth password policy, email confirmation, SMTP, redirect allow-list, leaked password protection, backups/PITR, and advisor review.

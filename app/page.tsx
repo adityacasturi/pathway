@@ -3,7 +3,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { HeroCompanyCardFan } from "@/components/hero-company-card-fan";
 import { LandingProductStory } from "@/components/landing-product-story";
 import { LandingScrollCue } from "@/components/landing-scroll-cue";
 import { SchoolLogoCarousel } from "@/components/school-logo-carousel";
@@ -14,45 +13,35 @@ const PRODUCT_SHOTS = [
   {
     src: "/product-screenshots/landing-home.png",
     alt: "Pathway home page with new internships, OA deadlines, and saved postings",
-    eyebrow: "01 / Daily search",
-    title: "Start each day with the roles that need attention.",
-    body: "New postings, upcoming OA deadlines, and saved roles sit together so the next move is obvious.",
+    title: "Home",
     width: 3456,
     height: 1988,
   },
   {
     src: "/product-screenshots/landing-applications.png",
     alt: "Pathway applications table with filters, application counts, and internship rows",
-    eyebrow: "02 / Pipeline",
-    title: "Track every role without losing the thread.",
-    body: "Applications, statuses, deadlines, filters, and notes live in one calm pipeline built for repeated daily scanning.",
+    title: "Applications",
     width: 3450,
     height: 1976,
   },
   {
     src: "/product-screenshots/landing-discover.png",
     alt: "Pathway discover page with internship postings and save controls",
-    eyebrow: "03 / Discovery",
-    title: "Find relevant internships from the same workspace.",
-    body: "Browse fresh roles, save promising postings, and keep the search connected to the applications you are already tracking.",
+    title: "Discover",
     width: 3456,
     height: 1988,
   },
   {
     src: "/product-screenshots/landing-stats.png",
     alt: "Pathway stats page showing recruiting metrics and Sankey flow",
-    eyebrow: "04 / Progress",
-    title: "See where your search is moving.",
-    body: "Stats turn your pipeline into a quick read on signal, timing, conversion, and where applications are getting stuck.",
+    title: "Stats",
     width: 3456,
     height: 1988,
   },
   {
     src: "/product-screenshots/landing-detail.png",
     alt: "Pathway application detail panel with timeline, details, and event controls",
-    eyebrow: "05 / Details",
-    title: "Keep every application's story in one place.",
-    body: "Capture timeline events, interview rounds, deadlines, notes, location, and season without digging through scattered docs.",
+    title: "Application detail",
     width: 1526,
     height: 1670,
   },
@@ -103,15 +92,12 @@ function LandingPage() {
         <span aria-hidden className="landing-header-rule block h-px w-full" />
       </header>
 
-      <section className="landing-hero mx-auto grid w-full max-w-7xl gap-8 px-5 pb-12 pt-14 sm:px-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(22rem,0.75fr)] lg:px-12">
+      <section className="landing-hero mx-auto w-full max-w-7xl px-5 pb-12 pt-14 sm:px-8 lg:px-12">
         <div className="flex min-w-0 flex-col justify-center">
           <h1 className="landing-hero-title max-w-6xl text-[3.65rem] text-foreground sm:text-[5.15rem] lg:text-[7.35rem]">
             <span>Find roles faster.</span>
             <span>Track every application.</span>
           </h1>
-          <p className="landing-hero-copy mt-6 max-w-2xl text-[17px] leading-7 text-muted-foreground">
-            Discover the roles worth chasing, stay organized, and give yourself a clearer path to landing your dream internship.
-          </p>
           <div className="landing-offer mt-6 max-w-xl">
             <p className="landing-offer-title">
               <span>
@@ -123,7 +109,6 @@ function LandingPage() {
             <SchoolLogoCarousel />
           </div>
         </div>
-        <HeroCompanyCardFan />
         <LandingScrollCue />
       </section>
 

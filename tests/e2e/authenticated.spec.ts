@@ -25,13 +25,6 @@ test("authenticated user can navigate core app surfaces", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Discover" })).toBeVisible();
   await expect(page.getByPlaceholder(/Search company, role, or location/)).toBeVisible();
 
-  await page.goto("/scout");
-  await expect(page.getByRole("heading", { name: "Scout" })).toBeVisible();
-  await expect(page.getByPlaceholder(/Search company, role, or location/)).toBeVisible();
-
-  await page.goto("/sources");
-  await expect(page.getByRole("heading", { name: "Boards" })).toBeVisible();
-
   await page.goto("/stats");
   await expect(page.getByRole("heading", { name: "Stats" })).toBeVisible();
 

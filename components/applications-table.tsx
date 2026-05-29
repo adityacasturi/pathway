@@ -3,17 +3,20 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Application } from "@/types/application";
 import { AnimatePresence, motion } from "framer-motion";
-import { Archive, ArchiveRestore, CircleDot, ExternalLink, ListFilter, SlidersHorizontal } from "lucide-react";
+import { Archive, ArchiveRestore, CircleDot, ListFilter, SlidersHorizontal } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { safeExternalHref } from "@/lib/url";
 import { deleteApplication } from "@/lib/actions/applications";
 import { CompanyLogo } from "@/components/company-logo";
-import { SeasonPill } from "@/components/season-pill";
+import { MetaSeparator, PostingMetaLine } from "@/components/posting-meta-line";
 import { StatusBadge } from "@/components/status-badge";
 import { AsyncButton } from "@/components/ui/async-button";
 import { Button } from "@/components/ui/button";
 import { InlineError } from "@/components/ui/inline-error";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { SEASON_FILTER_OPTIONS, type SeasonFilter } from "@/lib/config/season-filter";
+import { FilterSection, FilterToggle, SegmentedControl } from "@/components/ui/filter-menu";
+import { ToolbarPill } from "@/components/ui/toolbar-pill";
 import { motionVariants, transitions } from "@/lib/ui/motion";
 
 type SortKey = "company" | "role" | "status" | "last_activity" | "deadline";
@@ -35,6 +38,8 @@ interface Props {
   onHideRejectedChange: (next: boolean) => void;
   hideArchived: boolean;
   onHideArchivedChange: (next: boolean) => void;
+  seasonFilter: SeasonFilter;
+  onSeasonFilterChange: (next: SeasonFilter) => void;
   archivedIds: Set<string>;
   onArchiveChange: (applicationId: string, archived: boolean) => void;
 }
@@ -58,6 +63,8 @@ function SortToolbar({
   onHideRejectedChange,
   hideArchived,
   onHideArchivedChange,
+  seasonFilter,
+  onSeasonFilterChange,
 }: {
   matchingCount: number;
   activeCount: number;
@@ -69,10 +76,13 @@ function SortToolbar({
   onHideRejectedChange: (next: boolean) => void;
   hideArchived: boolean;
   onHideArchivedChange: (next: boolean) => void;
+  seasonFilter: SeasonFilter;
+  onSeasonFilterChange: (next: SeasonFilter) => void;
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filtersRef = useRef<HTMLDivElement | null>(null);
-  const activeFilterCount = Number(hideRejected) + Number(hideArchived);
+  const activeFilterCount =
+    Number(hideRejected) + Number(hideArchived) + Number(seasonFilter !== "all");
 
   useEffect(() => {
     function onPointerDown(event: PointerEvent) {
@@ -88,7 +98,7 @@ function SortToolbar({
 
   return (
     <div
-      className="flex flex-col gap-3 border-y py-3 md:flex-row md:items-center md:justify-between"
+      className="flex flex-col gap-3 border-b pb-5 md:flex-row md:items-center md:justify-between"
       style={{ borderColor: "var(--rule)" }}
     >
       <div className="flex flex-wrap items-center gap-2" aria-label="Application counts">
@@ -96,9 +106,9 @@ function SortToolbar({
         <SummaryPill value={activeCount} label="Active" icon={<CircleDot size={12} strokeWidth={1.75} />} />
         <SummaryPill value={archivedCount} label="Archived" icon={<Archive size={12} strokeWidth={1.75} />} />
       </div>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-        <div className="inline-flex w-fit items-center rounded-md border bg-background p-1" style={{ borderColor: "var(--rule)" }}>
-          <span className="hidden px-2 text-[11px] text-muted-foreground sm:inline">Sort</span>
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="toolbar-control-group" role="group" aria-label="Sort applications">
+          <span className="toolbar-control-group__label">Sort</span>
           {SORT_OPTIONS.map((opt) => {
             const active = sortKey === opt.key;
             return (
@@ -106,9 +116,8 @@ function SortToolbar({
                 key={opt.key}
                 type="button"
                 onClick={() => onSortChange(opt.key)}
-                className={`relative inline-flex h-7 items-center gap-1 rounded-sm px-2.5 text-[12px] transition-colors duration-200 ${
-                  active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-                }`}
+                aria-pressed={active}
+                className={`toolbar-control-group__item ${active ? "toolbar-control-group__item--active" : ""}`}
               >
                 {active && (
                   <motion.span
@@ -128,21 +137,22 @@ function SortToolbar({
           })}
         </div>
         <div ref={filtersRef} className="relative">
-          <button
-            type="button"
-            onClick={() => setFiltersOpen((open) => !open)}
-            aria-expanded={filtersOpen}
-            className="inline-flex h-9 items-center gap-2 rounded-full border px-3 text-[12px] text-muted-foreground transition-colors duration-150 hover:text-foreground aria-expanded:text-foreground"
-            style={{ borderColor: activeFilterCount > 0 || filtersOpen ? "var(--rule-strong)" : "var(--rule)" }}
-          >
-            <SlidersHorizontal size={13} strokeWidth={1.75} />
-            Filters
-            {activeFilterCount > 0 && (
-              <span className="inline-flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
+          <div className="toolbar-control-group">
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((open) => !open)}
+              aria-expanded={filtersOpen}
+              className={`toolbar-control-group__item ${filtersOpen || activeFilterCount > 0 ? "toolbar-control-group__item--active" : ""}`}
+            >
+              <SlidersHorizontal size={12} strokeWidth={1.75} />
+              Filters
+              {activeFilterCount > 0 && (
+                <span className="inline-flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+          </div>
           <AnimatePresence>
             {filtersOpen && (
               <motion.div
@@ -150,19 +160,28 @@ function SortToolbar({
                 initial="hidden"
                 animate="visible"
                 exit="exit"
-                className="absolute right-0 top-[calc(100%+8px)] z-[90] w-56 origin-top-right rounded-md border bg-popover p-2 shadow-[0_18px_40px_-28px_color-mix(in_oklab,var(--ink)_45%,transparent)]"
+                className="absolute right-0 top-[calc(100%+8px)] z-[90] w-[320px] origin-top-right rounded-xl border bg-popover shadow-[0_24px_48px_-28px_color-mix(in_oklab,var(--ink)_55%,transparent)]"
                 style={{ borderColor: "var(--rule-strong)" }}
               >
-                <FilterMenuToggle
-                  label="Hide rejected"
-                  checked={hideRejected}
-                  onChange={onHideRejectedChange}
-                />
-                <FilterMenuToggle
-                  label="Hide archived"
-                  checked={hideArchived}
-                  onChange={onHideArchivedChange}
-                />
+                <FilterSection title="Season">
+                  <SegmentedControl
+                    value={seasonFilter}
+                    options={SEASON_FILTER_OPTIONS}
+                    onChange={onSeasonFilterChange}
+                  />
+                </FilterSection>
+                <FilterSection title="Visibility">
+                  <FilterToggle
+                    label="Hide rejected"
+                    checked={hideRejected}
+                    onChange={onHideRejectedChange}
+                  />
+                  <FilterToggle
+                    label="Hide archived"
+                    checked={hideArchived}
+                    onChange={onHideArchivedChange}
+                  />
+                </FilterSection>
               </motion.div>
             )}
           </AnimatePresence>
@@ -182,15 +201,7 @@ function SummaryPill({
   icon?: ReactNode;
 }) {
   return (
-    <span
-      className="inline-flex h-8 items-center justify-center gap-1.5 rounded-full border px-3 text-[12px] text-muted-foreground"
-      style={{ borderColor: "var(--rule)" }}
-    >
-      {icon ? (
-        <span className="inline-flex size-3.5 items-center justify-center" aria-hidden>
-          {icon}
-        </span>
-      ) : null}
+    <ToolbarPill as="span" icon={icon}>
       <span className="relative inline-flex justify-end overflow-hidden font-mono text-[12px] text-foreground tabular">
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.span
@@ -205,29 +216,7 @@ function SummaryPill({
         </AnimatePresence>
       </span>
       {label}
-    </span>
-  );
-}
-
-function FilterMenuToggle({
-  checked,
-  onChange,
-  label,
-}: {
-  checked: boolean;
-  onChange: (next: boolean) => void;
-  label: string;
-}) {
-  return (
-    <label className="flex cursor-pointer select-none items-center justify-between gap-4 rounded-sm px-2 py-2 text-[12px] text-foreground transition-colors hover:bg-[color-mix(in_oklab,var(--ink)_5%,transparent)]">
-      <span>{label}</span>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-        className="size-3 rounded-[2px] accent-foreground cursor-pointer"
-      />
-    </label>
+    </ToolbarPill>
   );
 }
 
@@ -247,6 +236,8 @@ export function ApplicationsTable({
   onHideRejectedChange,
   hideArchived,
   onHideArchivedChange,
+  seasonFilter,
+  onSeasonFilterChange,
   archivedIds,
   onArchiveChange,
 }: Props) {
@@ -297,6 +288,8 @@ export function ApplicationsTable({
         onHideRejectedChange={onHideRejectedChange}
         hideArchived={hideArchived}
         onHideArchivedChange={onHideArchivedChange}
+        seasonFilter={seasonFilter}
+        onSeasonFilterChange={onSeasonFilterChange}
       />
 
       {applications.length === 0 && (
@@ -339,18 +332,32 @@ export function ApplicationsTable({
                   <CompanyLogo company={app.company} size={34} />
 
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2.5 text-[11px] text-muted-foreground">
-                      <span className="truncate font-medium text-foreground/80">{app.company}</span>
-                      {app.season && <SeasonPill season={app.season} />}
-                      {archived && (
-                        <span className="inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">
-                          <Archive size={9} strokeWidth={1.75} />
-                          Archived
-                        </span>
-                      )}
-                    </div>
+                    <PostingMetaLine company={app.company} season={app.season}>
+                      {archived ? (
+                        <>
+                          <MetaSeparator />
+                          <span className="inline-flex shrink-0 items-center gap-1 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">
+                            <Archive size={9} strokeWidth={1.75} />
+                            Archived
+                          </span>
+                        </>
+                      ) : null}
+                    </PostingMetaLine>
                     <div className="mt-1 flex items-center gap-2 min-w-0">
-                      <span className="truncate text-[15px] font-medium text-foreground">{app.role}</span>
+                      {postingHref ? (
+                        <a
+                          href={postingHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          title={`Open posting: ${app.posting_url}`}
+                          className="truncate text-[15px] font-medium text-foreground decoration-muted-foreground/40 underline-offset-4 transition-colors duration-150 hover:text-primary hover:underline"
+                        >
+                          {app.role}
+                        </a>
+                      ) : (
+                        <span className="truncate text-[15px] font-medium text-foreground">{app.role}</span>
+                      )}
                       {deadlineLabel && (
                         <span
                           title={`OA deadline: ${deadlineLabel}`}
@@ -359,18 +366,6 @@ export function ApplicationsTable({
                         >
                           {deadlineLabel}
                         </span>
-                      )}
-                      {postingHref && (
-                        <a
-                          href={postingHref}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          title={`Open posting: ${app.posting_url}`}
-                          className="shrink-0 text-muted-foreground/40 opacity-0 transition-opacity duration-150 group-hover:opacity-100 hover:text-foreground focus:opacity-100"
-                        >
-                          <ExternalLink size={13} strokeWidth={1.75} />
-                        </a>
                       )}
                     </div>
                   </div>

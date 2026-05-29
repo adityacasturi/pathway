@@ -22,12 +22,12 @@ This project uses Next.js 16. Read the relevant local guide in `node_modules/nex
 
 ## Architecture Snapshot
 
-Pathway is an internship tracker and discover feed for UW students. Public signups are paused; the waitlist accepts `@uw.edu` emails only. Authenticated users sign in with Supabase Auth and manage applications through event timelines.
+Pathway is an internship tracker and discover feed for students with `.edu` email addresses. Authenticated users sign in with Supabase Auth and manage applications through event timelines.
 
 Core surfaces:
 
-- `/` public landing page and waitlist
-- `/login` sign in and paused signup UI
+- `/` public landing page
+- `/login` sign in and signup UI
 - `/home` authenticated overview
 - `/applications` tracker table and detail modal
 - `/discover` live internship feed
@@ -41,9 +41,7 @@ Important Supabase tables:
 - `applications`: per-user application rows, archived state, posting URL, status snapshot
 - `application_events`: per-application timeline events and OA deadlines
 - `feed_interactions`: per-user saved/dismissed discover posting ids
-- `user_preferences`: accent color and discover cutoff preferences
-- `waitlist`: raw waitlist email rows, written only by the narrow waitlist RPC
-- `waitlist_attempts`: hashed email/IP anti-abuse records for waitlist submissions
+- `user_preferences`: accent color and quick-track preferences
 - `rate_limits`: private backing table for database-side write throttles
 
 Application status is derived from events. Client helpers live in `lib/config/application-state.ts`; canonical event/status config is in `lib/config/events.ts`. Database triggers also protect status consistency for direct Supabase calls.
@@ -64,18 +62,6 @@ Supabase clients:
 `lib/feed/source.ts` fetches upstream internship feeds, filters active visible Summer/Fall roles, dedupes postings, and returns normalized `FeedPosting` objects. Postings are not mirrored into Supabase. User-specific state is stored in `feed_interactions`.
 
 Discover hides applied postings by default. A posting is considered applied/tracked when its normalized URL matches an active application posting URL.
-
-## Waitlist
-
-Signup is disabled in `lib/auth/signup-enabled.ts`. The waitlist path lives in `components/waitlist-dialog.tsx` and `lib/actions/waitlist.ts`.
-
-Rules:
-
-- Only `@uw.edu` email addresses are accepted.
-- Raw emails are stored in `public.waitlist`.
-- Anti-abuse records store HMAC hashes of normalized email and client IP.
-- The HMAC secret is generated and stored in `app_private.waitlist_config`, never in app env.
-- The app calls `public.join_waitlist`; the private `app_private.join_waitlist` function owns validation, rate limiting, hashing, and table writes.
 
 ## UI Conventions
 

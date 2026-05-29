@@ -1,13 +1,10 @@
 /**
- * Lowercased & trimmed company slug used in the URL path. logo.dev is
- * case-insensitive at lookup time, but the browser cache is not — normalising
- * here means "Google" and "google" share one cache entry instead of two.
+ * Lowercased company key for client-side failed-logo caching.
  */
-function slugify(company: string): string {
-  return company.trim().toLowerCase();
+export function normalizeLogoCompany(company: string): string {
+  return company.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 export function logoUrl(company: string): string {
-  const slug = encodeURIComponent(slugify(company));
-  return `/api/logo?company=${slug}&v=2`;
+  return `/api/logo?company=${encodeURIComponent(company.trim())}&v=4`;
 }

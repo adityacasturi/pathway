@@ -55,6 +55,16 @@ test("landing page renders for anonymous users", async ({ page }) => {
   ).resolves.toBe(true);
 });
 
+test("logo proxy is not available to anonymous users", async ({ request }) => {
+  const response = await request.get("/api/logo?company=Stripe", {
+    maxRedirects: 0,
+  });
+
+  expect(response.status()).toBeGreaterThanOrEqual(300);
+  expect(response.status()).toBeLessThan(400);
+  expect(response.headers().location).toMatch(/\/$/);
+});
+
 test("protected pages redirect anonymous users to landing", async ({ page }) => {
   await page.goto("/applications");
 

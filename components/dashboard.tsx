@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Plus } from "lucide-react";
-import { Application, ApplicationSeason } from "@/types/application";
+import { Application } from "@/types/application";
+import { type SeasonFilter } from "@/lib/config/season-filter";
 import { STATUSES, STATUS_LABELS } from "@/lib/config/events";
 import { deadlineStatusLabel, getNextActiveOaDeadline } from "@/lib/config/deadlines";
 import { ApplicationsTable } from "@/components/applications-table";
@@ -12,7 +13,6 @@ import { ApplicationDialog, type CreatedApplicationSummary } from "@/components/
 import { ApplicationDetail } from "@/components/application-detail";
 import { StatusDot } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
-import { FilterChip, FilterOption } from "@/components/ui/filter-chip";
 import { PageHeader, PageMain, PageShell } from "@/components/ui/page";
 import { motionVariants } from "@/lib/ui/motion";
 import { SearchInput } from "@/components/search-input";
@@ -20,19 +20,12 @@ import { updateApplicationArchive } from "@/lib/actions/applications";
 import { normalizeApplicationState } from "@/lib/config/application-state";
 
 type StatusFilter = "all" | (typeof STATUSES)[number];
-type SeasonFilter = "all" | ApplicationSeason;
 type SortKey = "company" | "role" | "status" | "last_activity" | "deadline";
 type SortDirection = "asc" | "desc";
 
 const HIDE_REJECTED_STORAGE_KEY = "pathway:hide-rejected";
 const HIDE_ARCHIVED_STORAGE_KEY = "pathway:hide-archived";
 const SEARCH_TOKEN_PATTERN = /"[^"]*"|'[^']*'|\S+/g;
-
-const SEASON_FILTER_OPTIONS: FilterOption<SeasonFilter>[] = [
-  { value: "all", label: "All" },
-  { value: "Summer", label: "Summer" },
-  { value: "Fall", label: "Fall" },
-];
 
 interface Props {
   applications: Application[];
@@ -313,7 +306,7 @@ export function Dashboard({ applications: initialApplications }: Props) {
         </motion.div>
 
         <motion.div
-          className={`relative mb-6 ${searchFocused ? "z-[200]" : "z-20"}`}
+          className={`relative ${searchFocused ? "z-[200]" : "z-20"}`}
           variants={motionVariants.fadeIn}
           initial={false}
           animate="visible"
@@ -371,22 +364,13 @@ export function Dashboard({ applications: initialApplications }: Props) {
           </motion.div>
           <span className="rule" />
 
-          <div className="mt-6 flex flex-col gap-3 md:flex-row md:items-center">
-            <div ref={searchInputRef} className="relative z-[210] flex-1">
+          <div className="mt-6 mb-4">
+            <div ref={searchInputRef} className="relative z-[210]">
               <SearchInput
                 value={query}
                 onChange={setQuery}
                 placeholder="Search company, role, or location…"
                 onFocusChange={setSearchFocused}
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <FilterChip
-                label="Season"
-                value={seasonFilter}
-                onChange={setSeasonFilter}
-                defaultValue="all"
-                options={SEASON_FILTER_OPTIONS}
               />
             </div>
           </div>
@@ -412,6 +396,8 @@ export function Dashboard({ applications: initialApplications }: Props) {
           onHideRejectedChange={setHideRejected}
           hideArchived={hideArchived}
           onHideArchivedChange={setHideArchived}
+          seasonFilter={seasonFilter}
+          onSeasonFilterChange={setSeasonFilter}
           archivedIds={archivedIds}
           onArchiveChange={setApplicationArchived}
         />

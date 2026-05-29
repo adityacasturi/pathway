@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
@@ -14,6 +15,38 @@ import { Label } from "@/components/ui/label";
 import { motionVariants, transitions } from "@/lib/ui/motion";
 import { APPLICATION_SEASONS, ApplicationEvent, ApplicationSeason } from "@/types/application";
 import { validateExternalHttpUrl } from "@/lib/url";
+import { cn } from "@/lib/utils";
+
+const DIALOG_LABEL_CLASS = "text-[11px] uppercase tracking-widest text-muted-foreground font-medium";
+const DIALOG_INPUT_CLASS = "h-11 rounded-lg text-sm bg-background/80 border-border/70";
+const DIALOG_TEXT_INPUT_CLASS = `${DIALOG_INPUT_CLASS} placeholder:text-muted-foreground/40`;
+const DIALOG_ACTION_CLASS = "h-9 px-4 text-xs uppercase tracking-wider transition-colors duration-200";
+
+function ApplicationField({
+  id,
+  label,
+  optional,
+  children,
+  className,
+}: {
+  id?: string;
+  label: string;
+  optional?: boolean;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <motion.div layout className={cn("space-y-2", className)} transition={transitions.layout}>
+      <Label htmlFor={id} className={DIALOG_LABEL_CLASS}>
+        {label}{" "}
+        {optional ? (
+          <span className="normal-case tracking-normal text-muted-foreground/40">(optional)</span>
+        ) : null}
+      </Label>
+      {children}
+    </motion.div>
+  );
+}
 
 interface InitialValues {
   company?: string;
@@ -50,8 +83,6 @@ export function ApplicationDialog({ open, onClose, initialValues, onCreated }: P
         style={{ borderColor: "var(--rule-strong)" }}
       >
         <DialogHeader className="mb-7">
-          <span className="label-micro mb-3 block">New entry</span>
-          <span className="rule-strong mb-5" />
           <DialogTitle className="display-serif text-[30px] text-foreground">
             Add application
           </DialogTitle>
@@ -165,10 +196,7 @@ function ApplicationDialogForm({
       className="space-y-5"
       transition={transitions.layout}
     >
-          <motion.div layout className="space-y-2" transition={transitions.layout}>
-            <Label htmlFor="application-company" className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium">
-              Company
-            </Label>
+          <ApplicationField id="application-company" label="Company">
             <Input
               id="application-company"
               name="company"
@@ -179,14 +207,11 @@ function ApplicationDialogForm({
                 clearErrorOnEdit();
                 setCompany(event.target.value);
               }}
-              className="h-11 rounded-lg text-sm bg-background/80 border-border/70 placeholder:text-muted-foreground/40"
+              className={DIALOG_TEXT_INPUT_CLASS}
             />
-          </motion.div>
+          </ApplicationField>
 
-          <motion.div layout className="space-y-2" transition={transitions.layout}>
-            <Label htmlFor="application-role" className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium">
-              Role
-            </Label>
+          <ApplicationField id="application-role" label="Role">
             <Input
               id="application-role"
               name="role"
@@ -197,14 +222,11 @@ function ApplicationDialogForm({
                 clearErrorOnEdit();
                 setRole(event.target.value);
               }}
-              className="h-11 rounded-lg text-sm bg-background/80 border-border/70 placeholder:text-muted-foreground/40"
+              className={DIALOG_TEXT_INPUT_CLASS}
             />
-          </motion.div>
+          </ApplicationField>
 
-          <motion.div layout className="space-y-2" transition={transitions.layout}>
-            <Label htmlFor="application-date-applied" className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium">
-              Applied date
-            </Label>
+          <ApplicationField id="application-date-applied" label="Applied date">
             <Input
               id="application-date-applied"
               name="date_applied"
@@ -215,14 +237,11 @@ function ApplicationDialogForm({
                 clearErrorOnEdit();
                 setDateApplied(event.target.value);
               }}
-              className="h-11 rounded-lg text-sm bg-background/80 border-border/70"
+              className={DIALOG_INPUT_CLASS}
             />
-          </motion.div>
+          </ApplicationField>
 
-          <motion.div layout className="space-y-2" transition={transitions.layout}>
-            <Label htmlFor="application-posting-url" className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium">
-              Posting URL <span className="normal-case tracking-normal text-muted-foreground/40">(optional)</span>
-            </Label>
+          <ApplicationField id="application-posting-url" label="Posting URL" optional>
             <Input
               id="application-posting-url"
               name="posting_url"
@@ -233,15 +252,12 @@ function ApplicationDialogForm({
                 clearErrorOnEdit();
                 setPostingUrl(event.target.value);
               }}
-              className="h-11 rounded-lg text-sm bg-background/80 border-border/70 placeholder:text-muted-foreground/40"
+              className={DIALOG_TEXT_INPUT_CLASS}
             />
-          </motion.div>
+          </ApplicationField>
 
           <motion.div layout className="grid grid-cols-[1fr_auto] gap-4" transition={transitions.layout}>
-            <div className="space-y-2 min-w-0">
-              <Label htmlFor="application-location" className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium">
-                Location <span className="normal-case tracking-normal text-muted-foreground/40">(optional)</span>
-              </Label>
+            <ApplicationField id="application-location" label="Location" optional className="min-w-0">
               <Input
                 id="application-location"
                 name="location"
@@ -251,11 +267,11 @@ function ApplicationDialogForm({
                   clearErrorOnEdit();
                   setLocation(event.target.value);
                 }}
-                className="h-11 rounded-lg text-sm bg-background/80 border-border/70 placeholder:text-muted-foreground/40"
+                className={DIALOG_TEXT_INPUT_CLASS}
               />
-            </div>
+            </ApplicationField>
             <div className="space-y-2">
-              <Label className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium">
+              <Label className={DIALOG_LABEL_CLASS}>
                 Season
               </Label>
               {/* Tri-state segmented control: none / summer / fall. Clicking
@@ -317,7 +333,7 @@ function ApplicationDialogForm({
               variant="ghost"
               onClick={onClose}
               disabled={state === "pending"}
-              className="h-9 px-4 text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors duration-200"
+              className={`${DIALOG_ACTION_CLASS} text-muted-foreground hover:text-foreground`}
             >
               Cancel
             </Button>
@@ -329,7 +345,7 @@ function ApplicationDialogForm({
               successLabel="Saved"
               errorLabel="Try again"
               disabled={!canSubmit}
-              className="h-9 px-5 text-xs uppercase tracking-wider font-medium bg-primary text-primary-foreground hover:bg-primary/80 transition-colors duration-200"
+              className={`${DIALOG_ACTION_CLASS} px-5 font-medium bg-primary text-primary-foreground hover:bg-primary/80`}
             />
           </div>
     </motion.form>

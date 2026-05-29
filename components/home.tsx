@@ -17,6 +17,7 @@ import {
   deadlineStatusLabel,
   getActiveOaDeadlines,
 } from "@/lib/config/deadlines";
+import { createApplication } from "@/lib/actions/applications";
 import {
   dismissPosting,
   refreshFeed,
@@ -24,6 +25,7 @@ import {
   undismissPosting,
   unsavePosting,
 } from "@/lib/actions/feed";
+import { buildTrackApplicationFormData } from "@/lib/feed/build-track-form-data";
 import type { FeedPosting, FeedSeason } from "@/lib/feed/source";
 import type { Application } from "@/types/application";
 
@@ -57,6 +59,7 @@ interface Props {
   savedIds: string[];
   savedPostings: FeedPosting[];
   trackedUrls: string[];
+  quickTrackEnabled?: boolean;
 }
 
 interface Prefill {
@@ -91,9 +94,11 @@ export function Home({
   savedIds,
   savedPostings,
   trackedUrls,
+  quickTrackEnabled = false,
 }: Props) {
   const router = useRouter();
   const [dialogPrefill, setDialogPrefill] = useState<Prefill | null>(null);
+  const [trackPendingId, setTrackPendingId] = useState<string | null>(null);
   const [detail, setDetail] = useState<Application | null>(null);
   const [trackedUrlOverrides, setTrackedUrlOverrides] = useState<Set<string>>(() => new Set());
   const [isRefreshing, startRefresh] = useTransition();
@@ -240,16 +245,6 @@ export function Home({
     [applications],
   );
 
-  const openTrack = useCallback((posting: FeedPosting) => {
-    setDialogPrefill({
-      company: posting.company,
-      role: posting.title,
-      posting_url: posting.url,
-      location: posting.locations.join(" · "),
-      season: posting.season,
-    });
-  }, []);
-
   const onApplicationCreated = useCallback((application: { postingUrl: string | null }) => {
     const normalized = normalizeUrl(application.postingUrl);
     if (!normalized) return;
@@ -260,9 +255,36 @@ export function Home({
     });
   }, []);
 
+  const openTrack = useCallback(
+    async (posting: FeedPosting) => {
+      if (quickTrackEnabled) {
+        setTrackPendingId(posting.id);
+        setActionError(null);
+        const result = await createApplication(buildTrackApplicationFormData(posting));
+        setTrackPendingId(null);
+        if ("error" in result) {
+          setActionError(result.error ?? "Unable to add application.");
+          return;
+        }
+        onApplicationCreated({ postingUrl: posting.url });
+        router.refresh();
+        return;
+      }
+
+      setDialogPrefill({
+        company: posting.company,
+        role: posting.title,
+        posting_url: posting.url,
+        location: posting.locations.join(" · "),
+        season: posting.season,
+      });
+    },
+    [quickTrackEnabled, onApplicationCreated, router],
+  );
+
   return (
     <div className="page-shell min-h-screen bg-background">
-      <main className="max-w-6xl mx-auto px-6 sm:px-10 lg:px-16 pt-18 sm:pt-20 lg:pt-24 pb-24">
+      <main className="max-w-6xl mx-auto px-6 sm:px-10 lg:px-16 pt-20 sm:pt-21 lg:pt-26 pb-24">
         <motion.header
           className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
           variants={motionVariants.riseIn}
@@ -349,6 +371,7 @@ export function Home({
                       isNew
                       pending={pendingIds.has(posting.id)}
                       savePending={pendingSavedIds.has(posting.id)}
+                      trackPending={trackPendingId === posting.id}
                       onTrack={openTrack}
                       onToggleSaved={onToggleSaved}
                       onToggleDismiss={onToggleDismiss}
@@ -509,6 +532,7 @@ export function Home({
                     isNew={false}
                     pending={pendingIds.has(posting.id)}
                     savePending={pendingSavedIds.has(posting.id)}
+                    trackPending={trackPendingId === posting.id}
                     onTrack={openTrack}
                     onToggleSaved={onToggleSaved}
                     onToggleDismiss={onToggleDismiss}

@@ -8,8 +8,6 @@ import {
   Compass,
   Home as HomeIcon,
   LayoutGrid,
-  Navigation,
-  Rows3,
   Settings,
 } from "lucide-react";
 import { NavLink } from "@/components/nav-link";
@@ -20,14 +18,13 @@ import {
   SettingsSkeleton,
   StatsSkeleton,
 } from "@/components/route-skeletons";
+import { getActiveNavHref, isActiveNavHref } from "@/lib/config/nav";
 
 const NAV_ITEMS = [
   { href: "/home", label: "Home", icon: HomeIcon, skeleton: <HomeSkeleton /> },
   { href: "/applications", label: "Applications", icon: LayoutGrid, skeleton: <DashboardSkeleton /> },
-  { href: "/stats", label: "Stats", icon: ChartNoAxesCombined, skeleton: <StatsSkeleton /> },
   { href: "/discover", label: "Discover", icon: Compass, skeleton: <DiscoverSkeleton /> },
-  { href: "/scout", label: "Scout", icon: Navigation, skeleton: <DiscoverSkeleton /> },
-  { href: "/sources", label: "Boards", icon: Rows3, skeleton: <DiscoverSkeleton /> },
+  { href: "/stats", label: "Stats", icon: ChartNoAxesCombined, skeleton: <StatsSkeleton /> },
   { href: "/settings", label: "Settings", icon: Settings, skeleton: <SettingsSkeleton /> },
 ] as const;
 
@@ -36,11 +33,6 @@ type PillPosition = {
   width: number;
   ready: boolean;
 };
-
-function getActiveNavHref(pathname: string) {
-  if (pathname === "/home") return "/home";
-  return NAV_ITEMS.find((item) => item.href !== "/home" && pathname.startsWith(item.href))?.href ?? "/home";
-}
 
 function getNavToneClass(active: boolean, pillReady: boolean) {
   if (!active) return "text-muted-foreground hover:text-foreground";
@@ -152,9 +144,6 @@ export function Sidebar() {
       {NAV_ITEMS.map(({ href, label, icon: Icon, skeleton }) => {
         const active = activeNavHref === href;
         const toneClass = getNavToneClass(active, pillPosition.ready);
-        const iconClass =
-          href === "/scout" ? "relative shrink-0 rotate-[35deg]" : "relative shrink-0";
-
         return (
           <span
             key={href}
@@ -166,7 +155,12 @@ export function Sidebar() {
             <NavLink
               href={href}
               pendingSkeleton={skeleton}
-              onClick={() => {
+              onClick={(event) => {
+                if (isActiveNavHref(pathname, href)) {
+                  event.preventDefault();
+                  return;
+                }
+
                 setIntendedHref(href);
                 router.prefetch(href);
               }}
@@ -175,7 +169,7 @@ export function Sidebar() {
               ariaLabel={label}
               className={`relative inline-flex h-8 items-center justify-center gap-1.5 rounded-full px-2.5 text-[12px] font-medium transition-colors duration-200 sm:px-3 sm:text-[13px] ${toneClass}`}
             >
-              <Icon size={13} strokeWidth={1.8} className={iconClass} />
+              <Icon size={13} strokeWidth={1.8} className="relative shrink-0" />
               <span className="sr-only sm:not-sr-only sm:relative sm:tracking-tight">{label}</span>
             </NavLink>
           </span>

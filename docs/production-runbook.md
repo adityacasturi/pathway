@@ -45,29 +45,42 @@ Optional variables:
 
 ```bash
 LOGO_DEV_TOKEN=...
-RESEND_API_KEY=...
-RESEND_AUDIENCE_ID=...
 ```
 
 Rules:
 
-- Resend keys are server-only.
 - Never expose secrets with `NEXT_PUBLIC_`.
-- Waitlist anti-abuse hashing uses a generated database secret in `app_private.waitlist_config`; do not truncate or replace that row during normal operations.
 
 ## Supabase Dashboard Checks
 
 The connector can run migrations, SQL checks, migration listing, and advisors. The dashboard still needs manual review for product/auth settings:
 
-- Auth signups enabled for `.edu` email addresses.
+### Auth and signup (defense in depth)
+
+Pathway validates `.edu` emails in server actions (`lib/actions/auth.ts`). That does **not** stop a client from calling `supabase.auth.signUp()` directly with the public anon key unless Auth enforces the same rule.
+
+Before production launch, confirm at least one of:
+
+- A Supabase **Auth Hook** (e.g. `before-user-created`) that rejects signups whose email domain does not end with `.edu`, or
+- An equivalent **signup restriction** configured in the Supabase dashboard for your project.
+
+Treat app-side validation as defense in depth, not the only gate.
+
+Also confirm:
+
+- Auth signups enabled only for the intended student population (`.edu` policy above).
 - Email confirmation enabled for public signup.
 - Password policy: minimum 8 characters plus lowercase, uppercase, digit, and symbol requirements.
 - Leaked password protection enabled when the project plan supports it.
 - Custom SMTP configured for production email.
 - Site URL and redirect allow-list limited to real production/preview domains.
+
+### Database and platform
+
+- Migration `078_drop_dormant_waitlist` removed the stale waitlist tables/RPC/data after the waitlist UI was removed and public `.edu` signup became the supported path.
+- Migration `077_drop_discover_cutoff_preference` dropped unused `user_preferences.discover_cutoff_date`; Discover cutoff is fixed in app code (March 31 default).
 - Backups/PITR enabled for the project plan, with a restore drill documented.
 - API grants and RLS reviewed after every migration.
-- `public.waitlist` and `public.waitlist_attempts` not writable by `anon` or `authenticated`.
 - Project runtime/platform posture checked for Supabase 2026 changes: supported Postgres version after July 1, 2026, and Node.js 22+ before Node.js 20 support ends on June 30, 2026.
 
 Proposal for recurring checks: automate what the connector exposes in a release checklist (`_list_migrations`, integrity SQL, advisors), and keep dashboard-only items as a short manual launch gate. Do not block deploys on expected advisor noise such as unused indexes on brand-new zero-row tables; document why the warning is accepted.
@@ -96,8 +109,8 @@ Use a dedicated QA account. Do not run mutation tests with a personal user.
 ## Incident Checks
 
 - Check app logs for structured `launchpad` events: `server.boot`, `supabase.query_error`, `supabase.mutation_error`, and `feed.*`.
+- Discover postings come from upstream GitHub feeds at request/cache time; there is no scraper job or board sync to inspect.
 - Check Supabase Auth logs for spikes in failed sign-ins/signups.
 - Check `public.rate_limits` for hot buckets.
-- Check `public.waitlist_attempts` for abusive repeated hashed identifiers.
 - Run the production integrity SQL after any manual database fix.
 - If a manual SQL fix was durable, add a migration that records the intended final state.

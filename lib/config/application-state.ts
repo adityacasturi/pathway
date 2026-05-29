@@ -58,9 +58,15 @@ export function applyEventPatch(application: Application, eventId: string, patch
 }
 
 export function replaceEvent(application: Application, oldEventId: string, replacement: ApplicationEvent): Application {
+  const oldEvent = application.events.find((event) => event.id === oldEventId);
+  const nextReplacement =
+    oldEvent?.clientKey && !replacement.clientKey
+      ? { ...replacement, clientKey: oldEvent.clientKey }
+      : replacement;
+
   return normalizeApplicationState({
     ...application,
-    events: application.events.map((e) => (e.id === oldEventId ? replacement : e)),
+    events: application.events.map((event) => (event.id === oldEventId ? nextReplacement : event)),
   });
 }
 

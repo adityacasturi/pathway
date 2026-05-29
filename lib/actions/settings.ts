@@ -1,13 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import {
-  isValidDiscoverCutoffDate,
-  resolveDiscoverCutoffDate,
-} from "@/lib/config/discover";
 import { isAccentColor } from "@/lib/config/accent";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { limitServerActionByIp } from "@/lib/rate-limit";
+import { isMissingPreferenceColumnError } from "@/lib/config/user-preferences";
 import { formatSupabaseMutationError } from "@/lib/supabase/errors";
 
 const SETTINGS_RATE_LIMIT_REQUESTS = 30;
@@ -27,33 +24,6 @@ async function limitSettingsWrite() {
     SETTINGS_RATE_LIMIT_REQUESTS,
     SETTINGS_RATE_LIMIT_WINDOW_MS,
   );
-}
-
-export async function updateDiscoverCutoffDate(cutoffDate: string) {
-  const rateLimit = await limitSettingsWrite();
-  if (!rateLimit.ok) return { error: rateLimit.error };
-
-  const { supabase, user } = await getAuthenticatedUser();
-  if (!user) return { error: "Not authenticated" };
-  if (!isValidDiscoverCutoffDate(cutoffDate)) return { error: "Invalid cutoff date." };
-
-  const resolved = resolveDiscoverCutoffDate(cutoffDate);
-  const { error } = await supabase
-    .from("user_preferences")
-    .upsert(
-      {
-        user_id: user.id,
-        discover_cutoff_date: resolved.cutoffDate,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id" },
-    );
-
-  if (error) return { error: formatSupabaseMutationError(error, "Unable to save settings.") };
-  revalidatePath("/discover");
-  revalidatePath("/settings");
-
-  return { ok: true, cutoffDate: resolved.cutoffDate };
 }
 
 export async function updateAccentColor(accentColor: string) {
@@ -87,4 +57,38 @@ export async function updateAccentColor(accentColor: string) {
   revalidatePath("/settings");
 
   return { ok: true, accentColor };
+}
+
+export async function updateQuickTrackEnabled(enabled: boolean) {
+  const rateLimit = await limitSettingsWrite();
+  if (!rateLimit.ok) return { error: rateLimit.error };
+
+  const { supabase, user } = await getAuthenticatedUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { error } = await supabase
+    .from("user_preferences")
+    .upsert(
+      {
+        user_id: user.id,
+        quick_track_enabled: enabled,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" },
+    );
+
+  if (isMissingPreferenceColumnError(error, "quick_track_enabled")) {
+    return {
+      error: "Quick track is unavailable until the latest database migration is applied.",
+    };
+  }
+  if (error) {
+    return { error: formatSupabaseMutationError(error, "Unable to save quick track setting.") };
+  }
+
+  revalidatePath("/settings");
+  revalidatePath("/home");
+  revalidatePath("/discover");
+
+  return { ok: true, quickTrackEnabled: enabled };
 }

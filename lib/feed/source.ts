@@ -19,9 +19,9 @@ import {
   detectCountriesAcross,
   hasRemoteLocation,
 } from "@/lib/feed/location";
+import { isTargetEngineeringInternshipRole } from "@/lib/feed/roles";
 import { errorMessage, logServerEvent } from "@/lib/observability";
 import { isUsOnlyInternship } from "@/lib/postings/us-only";
-import { isTargetEngineeringInternshipRole } from "@/lib/scraping/normalize";
 
 /** How long (in seconds) to cache a fetched source before re-pulling. */
 const FEED_REVALIDATE_SECONDS = 60 * 60; // 1h

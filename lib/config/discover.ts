@@ -46,13 +46,26 @@ function getDiscoverCutoffBounds(now = new Date()) {
   };
 }
 
+/** Most recent March 31 on or before today (recruiting-season default). */
+export function getDefaultDiscoverCutoffDate(now = new Date()): string {
+  const todayDate = startOfUtcDay(now);
+  const year = todayDate.getUTCFullYear();
+  const mar31ThisYear = parseIsoDate(`${year}-03-31`);
+  if (mar31ThisYear && todayDate >= mar31ThisYear) {
+    return toIsoDate(mar31ThisYear);
+  }
+  const mar31PriorYear = parseIsoDate(`${year - 1}-03-31`);
+  return mar31PriorYear ? toIsoDate(mar31PriorYear) : toIsoDate(todayDate);
+}
+
 export function resolveDiscoverCutoffDate(raw?: string | null, now = new Date()): DiscoverCutoff {
   const bounds = getDiscoverCutoffBounds(now);
   const requestedDate = raw ? parseIsoDate(raw) : null;
   const oldestDate = parseIsoDate(bounds.oldestAllowedDate) as Date;
   const todayDate = parseIsoDate(bounds.today) as Date;
+  const defaultDate = parseIsoDate(getDefaultDiscoverCutoffDate(now)) as Date;
 
-  let cutoffDate = requestedDate ?? oldestDate;
+  let cutoffDate = requestedDate ?? defaultDate;
   if (cutoffDate < oldestDate) cutoffDate = oldestDate;
   if (cutoffDate > todayDate) cutoffDate = todayDate;
 

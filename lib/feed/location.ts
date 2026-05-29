@@ -8,8 +8,8 @@
  * and produces ISO 3166-1 alpha-2 codes.
  *
  * Outputs:
- *   - `detectCountries(raw)` / `detectCountriesAcross(locations)` — ordered,
- *     deduped list of ISO 3166-1 alpha-2 codes the string(s) mention.
+ *   - `detectCountriesAcross(locations)` — ordered, deduped list of ISO
+ *     3166-1 alpha-2 codes the strings mention.
  *   - `hasRemoteLocation(locations)` — true if any location reads as remote.
  *     The UI uses this to surface a separate "Remote" pill for postings
  *     that *only* say "Remote" with no country qualifier.
@@ -379,7 +379,7 @@ export function hasRemoteLocation(locations: readonly string[]): boolean {
  * Multi-location strings (slash- or pipe-separated) fan out so each segment
  * contributes independently.
  */
-export function detectCountries(raw: string): string[] {
+function detectCountries(raw: string): string[] {
   if (!raw) return [];
 
   // Split on slashes, pipes, semicolons, or " or " between segments. We do
@@ -411,74 +411,4 @@ export function detectCountriesAcross(locations: readonly string[]): string[] {
     for (const code of detectCountries(loc)) out.add(code);
   }
   return Array.from(out);
-}
-
-/**
- * Human-readable country name for a code. Used by the filter UI so the
- * codes don't leak into the visual.
- */
-export const COUNTRY_LABELS: Record<string, string> = {
-  US: "United States",
-  CA: "Canada",
-  MX: "Mexico",
-  GB: "United Kingdom",
-  IE: "Ireland",
-  DE: "Germany",
-  FR: "France",
-  ES: "Spain",
-  PT: "Portugal",
-  IT: "Italy",
-  NL: "Netherlands",
-  BE: "Belgium",
-  LU: "Luxembourg",
-  CH: "Switzerland",
-  AT: "Austria",
-  SE: "Sweden",
-  NO: "Norway",
-  DK: "Denmark",
-  FI: "Finland",
-  IS: "Iceland",
-  PL: "Poland",
-  CZ: "Czechia",
-  HU: "Hungary",
-  RO: "Romania",
-  GR: "Greece",
-  TR: "Turkey",
-  UA: "Ukraine",
-  EE: "Estonia",
-  LV: "Latvia",
-  LT: "Lithuania",
-  IN: "India",
-  CN: "China",
-  HK: "Hong Kong",
-  TW: "Taiwan",
-  JP: "Japan",
-  KR: "South Korea",
-  SG: "Singapore",
-  MY: "Malaysia",
-  ID: "Indonesia",
-  PH: "Philippines",
-  TH: "Thailand",
-  VN: "Vietnam",
-  AU: "Australia",
-  NZ: "New Zealand",
-  IL: "Israel",
-  AE: "United Arab Emirates",
-  SA: "Saudi Arabia",
-  QA: "Qatar",
-  EG: "Egypt",
-  ZA: "South Africa",
-  NG: "Nigeria",
-  KE: "Kenya",
-  BR: "Brazil",
-  AR: "Argentina",
-  CL: "Chile",
-  CO: "Colombia",
-  PE: "Peru",
-  UY: "Uruguay",
-  CR: "Costa Rica",
-};
-
-export function countryLabel(code: string): string {
-  return COUNTRY_LABELS[code] ?? code;
 }

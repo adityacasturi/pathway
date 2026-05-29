@@ -1,427 +1,40 @@
 "use client";
 
 import Link from "next/link";
+import { sankey, sankeyJustify } from "d3-sankey";
 import { motion } from "framer-motion";
 import { ArrowRight, ChartNoAxesCombined, Clock3, Percent, TimerReset, Trophy } from "lucide-react";
 import { STATUS_LABELS } from "@/lib/config/events";
+import {
+  computeStats,
+  FLOW_COLORS,
+  FlowLink,
+  FlowNode,
+  formatDays,
+  formatDecimal,
+  formatPercent,
+  MonthlyCount,
+  pluralize,
+  sampleDetail,
+  StageCount,
+} from "@/lib/stats/applications";
 import { motionVariants } from "@/lib/ui/motion";
 import { PageHeader, PageMain, PageSection, PageShell } from "@/components/ui/page";
-import type { Application, EventType, Status } from "@/types/application";
+import type { Application, Status } from "@/types/application";
 
-type FlowNode = {
-  id: string;
-  label: string;
-  count: number;
-  x: number;
-  cy: number;
-  color: string;
+const SANKEY_HEIGHT = 760;
+const SANKEY_NODE_WIDTH = 14;
+const SANKEY_NODE_PADDING = 64;
+
+type PositionedSankeyNode = FlowNode & {
+  x0: number;
+  x1: number;
+  y0: number;
+  y1: number;
 };
-
-type FlowLink = {
-  id: string;
-  source: string;
-  target: string;
-  value: number;
-  color: string;
-};
-
-type MonthlyCount = {
-  key: string;
-  label: string;
-  count: number;
-};
-
-type StageCount = Record<Status, number>;
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-const BAR_WIDTH = 12;
-const LINK_GAP = 16;
-
-const FLOW_COLORS = {
-  applied: "#9b9993",
-  oa: "#4e83bf",
-  interview: "#8067c9",
-  offer: "#3f9d65",
-  rejected: "#c6684a",
-  pending: "#b5b3aa",
-} as const;
 
 interface Props {
   applications: Application[];
-}
-
-function hasEvent(application: Application, eventType: EventType) {
-  return application.events.some((event) => event.event_type === eventType);
-}
-
-function firstEventDate(application: Application, eventType: EventType) {
-  return (
-    application.events
-      .filter((event) => event.event_type === eventType)
-      .sort((a, b) => {
-        const byDate = a.event_date.localeCompare(b.event_date);
-        if (byDate !== 0) return byDate;
-        return a.created_at.localeCompare(b.created_at);
-      })[0]?.event_date ?? null
-  );
-}
-
-function applicationStartDate(application: Application) {
-  return firstEventDate(application, "applied") ?? application.created_at.slice(0, 10);
-}
-
-function dateToMs(date: string) {
-  return new Date(`${date}T00:00:00.000Z`).getTime();
-}
-
-function daysBetween(start: string, end: string) {
-  return Math.max(0, Math.round(((dateToMs(end) - dateToMs(start)) / MS_PER_DAY) * 10) / 10);
-}
-
-function average(values: number[]) {
-  if (values.length === 0) return null;
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
-}
-
-function pluralize(count: number, singular: string, plural = `${singular}s`) {
-  return count === 1 ? singular : plural;
-}
-
-function sampleDetail(count: number) {
-  return `${count} ${pluralize(count, "application")} sample`;
-}
-
-function formatDays(days: number | null) {
-  if (days == null) return "n/a";
-  const rounded = days < 10 ? Math.round(days * 10) / 10 : Math.round(days);
-  return `${rounded}d`;
-}
-
-function formatDecimal(value: number | null) {
-  if (value == null) return "n/a";
-  return Number.isInteger(value) ? value.toString() : value.toFixed(1);
-}
-
-function formatPercent(numerator: number, denominator: number) {
-  if (denominator === 0) return "0%";
-  return `${Math.round((numerator / denominator) * 100)}%`;
-}
-
-function monthKey(date: string) {
-  return date.slice(0, 7);
-}
-
-function addMonth(key: string) {
-  const [year, month] = key.split("-").map(Number);
-  const next = new Date(Date.UTC(year, month, 1));
-  return `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, "0")}`;
-}
-
-function monthLabel(key: string) {
-  const [year, month] = key.split("-").map(Number);
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    year: "2-digit",
-    timeZone: "UTC",
-  }).format(new Date(Date.UTC(year, month - 1, 1)));
-}
-
-function buildMonthlyCounts(applications: Application[]): MonthlyCount[] {
-  const counts = new Map<string, number>();
-  for (const application of applications) {
-    const key = monthKey(applicationStartDate(application));
-    counts.set(key, (counts.get(key) ?? 0) + 1);
-  }
-
-  const keys = [...counts.keys()].sort();
-  if (keys.length === 0) return [];
-
-  const months: MonthlyCount[] = [];
-  let cursor = keys[0];
-  const last = keys[keys.length - 1];
-  while (cursor <= last) {
-    months.push({ key: cursor, label: monthLabel(cursor), count: counts.get(cursor) ?? 0 });
-    cursor = addMonth(cursor);
-  }
-
-  return months.slice(-12);
-}
-
-function firstProgressDate(application: Application) {
-  return (
-    application.events
-      .filter((event) => event.event_type !== "applied" && event.event_type !== "note")
-      .sort((a, b) => {
-        const byDate = a.event_date.localeCompare(b.event_date);
-        if (byDate !== 0) return byDate;
-        return a.created_at.localeCompare(b.created_at);
-      })[0]?.event_date ?? null
-  );
-}
-
-function hasProgress(application: Application) {
-  return firstProgressDate(application) != null;
-}
-
-function hasTerminalDecision(application: Application) {
-  return hasEvent(application, "offer") || hasEvent(application, "rejected");
-}
-
-function buildStageCounts(applications: Application[]): StageCount {
-  return {
-    applied: applications.length,
-    oa: applications.filter((application) => hasEvent(application, "oa")).length,
-    interview: applications.filter((application) => hasEvent(application, "interview")).length,
-    offer: applications.filter((application) => hasEvent(application, "offer")).length,
-    rejected: applications.filter((application) => hasEvent(application, "rejected")).length,
-  };
-}
-
-function getOrderedInterviewEvents(application: Application) {
-  return application.events
-    .filter((event) => event.event_type === "interview")
-    .sort((a, b) => {
-      if (a.round_number != null && b.round_number != null) {
-        const byRound = a.round_number - b.round_number;
-        if (byRound !== 0) return byRound;
-      }
-
-      const byDate = a.event_date.localeCompare(b.event_date);
-      if (byDate !== 0) return byDate;
-      return a.created_at.localeCompare(b.created_at);
-    });
-}
-
-function buildSankey(applications: Application[]) {
-  const nodeCounts = new Map<string, number>([
-    ["applications", applications.length],
-  ]);
-  const linkValues = new Map<string, FlowLink>();
-  let maxInterviewRounds = 0;
-
-  function addNodeVisit(id: string) {
-    nodeCounts.set(id, (nodeCounts.get(id) ?? 0) + 1);
-  }
-
-  function addLink(source: string, target: string, color: string) {
-    const id = `${source}_${target}`;
-    const existing = linkValues.get(id);
-    if (existing) {
-      existing.value += 1;
-      return;
-    }
-
-    linkValues.set(id, { id, source, target, value: 1, color });
-  }
-
-  for (const application of applications) {
-    const hasOa = hasEvent(application, "oa");
-    const interviewEvents = getOrderedInterviewEvents(application);
-    const hasInterview = interviewEvents.length > 0;
-    const hasOffer = hasEvent(application, "offer");
-    const hasRejected = hasEvent(application, "rejected");
-
-    maxInterviewRounds = Math.max(maxInterviewRounds, interviewEvents.length);
-
-    if (!hasOa && !hasInterview && !hasOffer && !hasRejected) {
-      addNodeVisit("no_response");
-      addLink("applications", "no_response", FLOW_COLORS.pending);
-      continue;
-    }
-
-    if (hasOa) {
-      addNodeVisit("oa");
-      addLink("applications", "oa", FLOW_COLORS.oa);
-    }
-
-    if (hasInterview) {
-      let source = hasOa ? "oa" : "applications";
-      for (let index = 0; index < interviewEvents.length; index += 1) {
-        const roundId = `interview_${index + 1}`;
-        addNodeVisit(roundId);
-        addLink(source, roundId, FLOW_COLORS.interview);
-        source = roundId;
-      }
-
-      if (hasOffer) {
-        addNodeVisit("offers");
-        addLink(source, "offers", FLOW_COLORS.offer);
-      } else if (hasRejected) {
-        addNodeVisit("rejected");
-        addLink(source, "rejected", FLOW_COLORS.rejected);
-      }
-
-      continue;
-    }
-
-    if (hasOa) {
-      if (hasOffer) {
-        addNodeVisit("offers");
-        addLink("oa", "offers", FLOW_COLORS.offer);
-      } else if (hasRejected) {
-        addNodeVisit("rejected");
-        addLink("oa", "rejected", FLOW_COLORS.rejected);
-      }
-
-      continue;
-    }
-
-    if (hasOffer) {
-      addNodeVisit("offers");
-      addLink("applications", "offers", FLOW_COLORS.offer);
-      continue;
-    }
-
-    if (hasRejected) {
-      addNodeVisit("rejected");
-      addLink("applications", "rejected", FLOW_COLORS.rejected);
-    }
-  }
-
-  const terminalX = 650 + Math.max(1, maxInterviewRounds) * 170;
-  const allNodes: FlowNode[] = [];
-
-  allNodes.push({
-    id: "applications",
-    label: "Applications",
-    count: applications.length,
-    x: 64,
-    cy: 348,
-    color: FLOW_COLORS.applied,
-  });
-
-  allNodes.push({
-    id: "no_response",
-    label: "No response",
-    count: nodeCounts.get("no_response") ?? 0,
-    x: terminalX,
-    cy: 112,
-    color: FLOW_COLORS.pending,
-  });
-
-  allNodes.push({
-    id: "oa",
-    label: "OA",
-    count: nodeCounts.get("oa") ?? 0,
-    x: 286,
-    cy: 348,
-    color: FLOW_COLORS.oa,
-  });
-
-  for (let round = 1; round <= maxInterviewRounds; round += 1) {
-    allNodes.push({
-      id: `interview_${round}`,
-      label: `Round ${round}`,
-      count: nodeCounts.get(`interview_${round}`) ?? 0,
-      x: 480 + (round - 1) * 170,
-      cy: 348,
-      color: FLOW_COLORS.interview,
-    });
-  }
-
-  allNodes.push({
-    id: "offers",
-    label: "Offers",
-    count: nodeCounts.get("offers") ?? 0,
-    x: terminalX,
-    cy: 348,
-    color: FLOW_COLORS.offer,
-  });
-
-  allNodes.push({
-    id: "rejected",
-    label: "Rejected",
-    count: nodeCounts.get("rejected") ?? 0,
-    x: terminalX,
-    cy: 570,
-    color: FLOW_COLORS.rejected,
-  });
-
-  const links = [...linkValues.values()].filter((link) => link.value > 0);
-  const nodes = allNodes.filter((node) => node.count > 0);
-
-  return { nodes, links };
-}
-
-function computeStats(applications: Application[]) {
-  const active = applications.filter((application) => !application.archived_at);
-  const archivedCount = applications.length - active.length;
-  const stageCounts = buildStageCounts(active);
-  const monthlyCounts = buildMonthlyCounts(active);
-  const positiveSignals = active.filter(
-    (application) =>
-      hasEvent(application, "oa") ||
-      hasEvent(application, "interview") ||
-      hasEvent(application, "offer"),
-  ).length;
-  const daysToOa = active
-    .map((application) => {
-      const appliedDate = applicationStartDate(application);
-      const oaDate = firstEventDate(application, "oa");
-      return oaDate ? daysBetween(appliedDate, oaDate) : null;
-    })
-    .filter((value): value is number => value != null);
-  const daysToInterview = active
-    .map((application) => {
-      const appliedDate = applicationStartDate(application);
-      const interviewDate = firstEventDate(application, "interview");
-      return interviewDate ? daysBetween(appliedDate, interviewDate) : null;
-    })
-    .filter((value): value is number => value != null);
-  const daysToFirstProgress = active
-    .map((application) => {
-      const appliedDate = applicationStartDate(application);
-      const progressDate = firstProgressDate(application);
-      return progressDate ? daysBetween(appliedDate, progressDate) : null;
-    })
-    .filter((value): value is number => value != null);
-  const daysToOffer = active
-    .map((application) => {
-      const appliedDate = applicationStartDate(application);
-      const offerDate = firstEventDate(application, "offer");
-      return offerDate ? daysBetween(appliedDate, offerDate) : null;
-    })
-    .filter((value): value is number => value != null);
-  const daysToRejection = active
-    .map((application) => {
-      const appliedDate = applicationStartDate(application);
-      const rejectionDate = firstEventDate(application, "rejected");
-      return rejectionDate ? daysBetween(appliedDate, rejectionDate) : null;
-    })
-    .filter((value): value is number => value != null);
-  const interviewRoundCounts = active
-    .map((application) => getOrderedInterviewEvents(application).length)
-    .filter((count) => count > 0);
-  const peakMonth = monthlyCounts.reduce<MonthlyCount | null>(
-    (peak, month) => (!peak || month.count > peak.count ? month : peak),
-    null,
-  );
-
-  return {
-    active,
-    archivedCount,
-    stageCounts,
-    monthlyCounts,
-    positiveSignals,
-    noResponseCount: active.filter((application) => !hasProgress(application)).length,
-    inProcessCount: active.filter((application) => hasProgress(application) && !hasTerminalDecision(application)).length,
-    avgDaysToOa: average(daysToOa),
-    avgDaysToInterview: average(daysToInterview),
-    avgDaysToFirstProgress: average(daysToFirstProgress),
-    avgDaysToOffer: average(daysToOffer),
-    avgDaysToRejection: average(daysToRejection),
-    avgInterviewRounds: average(interviewRoundCounts),
-    maxInterviewRounds: interviewRoundCounts.length > 0 ? Math.max(...interviewRoundCounts) : 0,
-    avgApplicationsPerMonth: monthlyCounts.length > 0 ? average(monthlyCounts.map((month) => month.count)) : null,
-    peakMonth,
-    oaSampleSize: daysToOa.length,
-    interviewSampleSize: daysToInterview.length,
-    firstProgressSampleSize: daysToFirstProgress.length,
-    offerSampleSize: daysToOffer.length,
-    rejectionSampleSize: daysToRejection.length,
-    interviewRoundSampleSize: interviewRoundCounts.length,
-    sankey: buildSankey(active),
-  };
 }
 
 function KpiGrid({
@@ -447,7 +60,7 @@ function KpiGrid({
     {
       label: "Active apps",
       value: total.toString(),
-      detail: archivedCount > 0 ? `${archivedCount} archived` : "Tracking current search",
+      detail: archivedCount > 0 ? `${archivedCount} archived` : "—",
       icon: ChartNoAxesCombined,
     },
     {
@@ -502,135 +115,141 @@ function sankeyNodeLabel(node: FlowNode) {
   return node.label;
 }
 
+function sankeyNodeOrder(id: string) {
+  if (id === "no_response") return 0;
+  if (id === "applications") return 1;
+  if (id === "oa") return 2;
+  if (id.startsWith("interview_")) return 2 + Number(id.replace("interview_", ""));
+  if (id === "offers") return 100;
+  if (id === "rejected") return 101;
+  return 50;
+}
+
+function isTerminalSankeyNode(id: string) {
+  return id === "no_response" || id === "offers" || id === "rejected";
+}
+
+function isStageSankeyNode(id: string) {
+  return id === "oa" || id.startsWith("interview_");
+}
+
 function SankeyDiagram({ nodes, links, total }: { nodes: FlowNode[]; links: FlowLink[]; total: number }) {
   if (total === 0) {
     return (
       <div className="paper-card flex min-h-[320px] items-center justify-center p-8 text-center">
-        <p className="max-w-sm text-[14px] leading-relaxed text-muted-foreground">
-          Add applications to build your search flow.
-        </p>
+        <p className="text-[14px] text-muted-foreground">No applications yet.</p>
       </div>
     );
   }
 
-  const chartWidth = Math.max(1080, Math.max(...nodes.map((node) => node.x)) + 220);
-  const nodeUnit = Math.min(15, 220 / total);
-  const linkWidth = (value: number) => Math.max(18, Math.min(82, Math.sqrt(value) * 14));
-  const nodeById = new Map(
-    nodes.map((node) => [
-      node.id,
-      {
-        ...node,
-        height: Math.max(36, node.count * nodeUnit),
-      },
-    ]),
-  );
-  const linksBySource = new Map<string, FlowLink[]>();
-  const linksByTarget = new Map<string, FlowLink[]>();
+  const chartWidth = Math.max(920, Math.max(...nodes.map((node) => node.x), 0) + 220);
+  const graph = sankey<FlowNode, FlowLink>()
+    .nodeId((node) => node.id)
+    .nodeAlign(sankeyJustify)
+    .nodeWidth(SANKEY_NODE_WIDTH)
+    .nodePadding(SANKEY_NODE_PADDING)
+    .nodeSort((a, b) => sankeyNodeOrder(a.id) - sankeyNodeOrder(b.id))
+    .extent([[160, 56], [chartWidth - 200, SANKEY_HEIGHT - 76]])({
+      nodes: nodes.map((node) => ({ ...node })),
+      links: links.map((link) => ({ ...link })),
+    });
+  const outgoingCounts = new Map<string, number>();
 
-  for (const link of links) {
-    linksBySource.set(link.source, [...(linksBySource.get(link.source) ?? []), link]);
-    linksByTarget.set(link.target, [...(linksByTarget.get(link.target) ?? []), link]);
+  for (const link of graph.links) {
+    const sourceId = typeof link.source === "string" ? link.source : (link.source as FlowNode).id;
+    outgoingCounts.set(sourceId, (outgoingCounts.get(sourceId) ?? 0) + 1);
   }
 
-  for (const [source, sourceLinks] of linksBySource) {
-    linksBySource.set(
-      source,
-      sourceLinks.toSorted((a, b) => {
-        const aTarget = nodeById.get(a.target);
-        const bTarget = nodeById.get(b.target);
-        return (aTarget?.cy ?? 0) - (bTarget?.cy ?? 0);
-      }),
-    );
-  }
+  function ribbonPath(link: (typeof graph.links)[number]) {
+    const source = link.source as unknown as PositionedSankeyNode;
+    const target = link.target as unknown as PositionedSankeyNode;
+    const sourceHeight = Math.max(1, source.y1 - source.y0);
+    const baseWidth = Math.max(1, link.width ?? 1);
+    const shouldTaperFromSource =
+      isStageSankeyNode(source.id) &&
+      (outgoingCounts.get(source.id) ?? 0) === 1 &&
+      sourceHeight > baseWidth + 1;
+    const x0 = source.x1;
+    const x1 = target.x0;
+    const y0 = shouldTaperFromSource
+      ? (source.y0 + source.y1) / 2
+      : link.y0 ?? 0;
+    const y1 = link.y1 ?? 0;
+    const w0 = shouldTaperFromSource ? sourceHeight : baseWidth;
+    const w1 = baseWidth;
+    const curve = Math.max(80, Math.abs(x1 - x0) * 0.48);
 
-  for (const [target, targetLinks] of linksByTarget) {
-    linksByTarget.set(
-      target,
-      targetLinks.toSorted((a, b) => {
-        const aSource = nodeById.get(a.source);
-        const bSource = nodeById.get(b.source);
-        return (aSource?.cy ?? 0) - (bSource?.cy ?? 0);
-      }),
-    );
-  }
-
-  function stackY(link: FlowLink, side: "source" | "target") {
-    const nodeId = side === "source" ? link.source : link.target;
-    const node = nodeById.get(nodeId);
-    const siblings = side === "source" ? linksBySource.get(nodeId) : linksByTarget.get(nodeId);
-    if (!node || !siblings) return 0;
-
-    const stackHeight = siblings.reduce((sum, item) => sum + linkWidth(item.value), 0) +
-      Math.max(0, siblings.length - 1) * LINK_GAP;
-    let offset = 0;
-    for (const item of siblings) {
-      if (item.id === link.id) break;
-      offset += linkWidth(item.value) + LINK_GAP;
-    }
-    return node.cy - stackHeight / 2 + offset + linkWidth(link.value) / 2;
-  }
-
-  function pathFor(link: FlowLink) {
-    const source = nodeById.get(link.source);
-    const target = nodeById.get(link.target);
-    if (!source || !target) return "";
-
-    const sx = source.x + BAR_WIDTH;
-    const tx = target.x;
-    const sy = stackY(link, "source");
-    const ty = stackY(link, "target");
-    const curve = Math.max(80, Math.abs(tx - sx) * 0.48);
-    return `M ${sx} ${sy} C ${sx + curve} ${sy}, ${tx - curve} ${ty}, ${tx} ${ty}`;
+    return [
+      `M ${x0} ${y0 - w0 / 2}`,
+      `C ${x0 + curve} ${y0 - w0 / 2}, ${x1 - curve} ${y1 - w1 / 2}, ${x1} ${y1 - w1 / 2}`,
+      `L ${x1} ${y1 + w1 / 2}`,
+      `C ${x1 - curve} ${y1 + w1 / 2}, ${x0 + curve} ${y0 + w0 / 2}, ${x0} ${y0 + w0 / 2}`,
+      "Z",
+    ].join(" ");
   }
 
   return (
-    <div className="paper-card overflow-x-auto p-4 sm:p-6">
+    <div className="paper-card overflow-hidden p-4 sm:p-6">
       <svg
         role="img"
         aria-label="Internship search Sankey diagram"
-        viewBox={`0 0 ${chartWidth} 700`}
-        className="h-[560px] w-full"
-        style={{ minWidth: chartWidth }}
+        viewBox={`0 0 ${chartWidth} ${SANKEY_HEIGHT}`}
+        preserveAspectRatio="xMidYMid meet"
+        className="mx-auto block h-auto max-h-[min(640px,72vh)] w-full"
       >
         <g fill="none">
-          {links.map((link) => (
-            <path
-              key={link.id}
-              d={pathFor(link)}
-              stroke={link.color}
-              strokeLinecap="butt"
-              strokeWidth={linkWidth(link.value)}
-              opacity={link.target === "no_response" ? 0.18 : 0.34}
-            />
-          ))}
+          {graph.links.map((link) => {
+            const target = typeof link.target === "string" ? link.target : (link.target as FlowNode).id;
+            return (
+              <path
+                key={link.id}
+                d={ribbonPath(link)}
+                fill={link.color}
+                opacity={target === "no_response" ? 0.14 : target === "rejected" ? 0.28 : 0.38}
+              />
+            );
+          })}
         </g>
         <g>
-          {[...nodeById.values()].map((node) => {
-            const labelX = node.x + BAR_WIDTH / 2;
-            const labelY = node.cy + node.height / 2 + 24;
+          {graph.nodes.map((node) => {
+            const x0 = node.x0 ?? 0;
+            const x1 = node.x1 ?? x0 + SANKEY_NODE_WIDTH;
+            const y0 = node.y0 ?? 0;
+            const y1 = node.y1 ?? y0;
+            const centerX = x0 + (x1 - x0) / 2;
+            const centerY = y0 + (y1 - y0) / 2;
+            const start = node.id === "applications";
+            const terminal = isTerminalSankeyNode(node.id);
+            const labelX = start ? x0 - 18 : terminal ? x1 + 18 : centerX;
+            const labelY = start || terminal ? centerY - 10 : Math.max(24, y0 - 24);
+            const textAnchor = start ? "end" : terminal ? "start" : "middle";
             return (
               <g key={node.id}>
                 <rect
-                  x={node.x}
-                  y={node.cy - node.height / 2}
-                  width={BAR_WIDTH}
-                  height={node.height}
+                  x={x0}
+                  y={y0}
+                  width={x1 - x0}
+                  height={Math.max(1, y1 - y0)}
                   rx={3}
                   fill={node.color}
                 />
                 <text
                   x={labelX}
                   y={labelY}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                  style={{ fontFamily: "var(--font-sans)" }}
+                  textAnchor={textAnchor}
+                  style={{
+                    fontFamily: "var(--font-sans)",
+                    paintOrder: "stroke",
+                    stroke: "var(--background)",
+                    strokeLinejoin: "round",
+                    strokeWidth: 5,
+                  }}
                 >
                   <tspan
                     x={labelX}
                     style={{
                       fill: "var(--ink)",
-                      fontSize: 15,
+                      fontSize: 16,
                       fontWeight: 650,
                       letterSpacing: 0,
                     }}
@@ -639,10 +258,10 @@ function SankeyDiagram({ nodes, links, total }: { nodes: FlowNode[]; links: Flow
                   </tspan>
                   <tspan
                     x={labelX}
-                    dy="1.45em"
+                    dy="1.35em"
                     style={{
                       fill: "var(--ink)",
-                      fontSize: 12,
+                      fontSize: 12.5,
                       fontWeight: 600,
                       letterSpacing: 0,
                       opacity: 0.68,
@@ -667,8 +286,7 @@ function MonthlyApplicationsChart({ months }: { months: MonthlyCount[] }) {
     <section className="paper-card p-5 sm:p-6">
       <div className="mb-6 flex items-baseline justify-between gap-4">
         <div>
-          <span className="label-micro">02 / Volume</span>
-          <h2 className="mt-3 display-serif text-[24px] text-foreground">Applications / Month</h2>
+          <h2 className="display-serif text-[24px] text-foreground">Applications / month</h2>
         </div>
         <span className="label-meta">Last 12 months</span>
       </div>
@@ -707,8 +325,7 @@ function StageConversion({ stageCounts, total }: { stageCounts: StageCount; tota
   return (
     <section className="paper-card p-5 sm:p-6">
       <div className="mb-6">
-        <span className="label-micro">03 / Conversion</span>
-        <h2 className="mt-3 display-serif text-[24px] text-foreground">Stage Rates</h2>
+        <h2 className="display-serif text-[24px] text-foreground">Stage rates</h2>
       </div>
       <ul className="divide-y" style={{ borderColor: "var(--rule)" }}>
         {stages.map((stage) => (
@@ -770,7 +387,7 @@ function SearchSnapshot({
     {
       label: "In process",
       value: inProcessCount.toString(),
-      detail: "Progress signal, no final decision",
+      detail: "No final outcome yet",
     },
     {
       label: "Avg first response",
@@ -807,8 +424,7 @@ function SearchSnapshot({
   return (
     <section className="paper-card p-5 sm:p-6">
       <div className="mb-2">
-        <span className="label-micro">04 / Snapshot</span>
-        <h2 className="mt-3 display-serif text-[24px] text-foreground">Search Snapshot</h2>
+        <h2 className="display-serif text-[24px] text-foreground">Snapshot</h2>
       </div>
       <ul className="grid grid-cols-1 gap-x-8 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
@@ -887,9 +503,8 @@ export function StatsPage({ applications }: Props) {
           />
 
           <PageSection
-            label="01 / Flow"
-            title="Search Sankey"
-            meta={`${active.length} active applications`}
+            title="Pipeline flow"
+            meta={`${active.length} active`}
             className="mb-12"
             contentClassName="pt-1"
             rule={false}
