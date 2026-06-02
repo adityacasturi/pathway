@@ -1,0 +1,183 @@
+import { formatUsAtsPostalAddress, type AtsPostalAddress } from "../ats-postal-address.ts";
+import { atsPublishWithModified } from "../posted-date.ts";
+import { classifyForSource } from "../adapter-parse.ts";
+import { buildScrapedRole } from "../scraped-role-build.ts";
+import { buildRoleParseResult } from "../role-parse-result.ts";
+import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
+import {
+  fetchJsonWithTimeout,
+  isHttpUrl,
+  parseLeadingPathToken,
+  resolveBoardToken,
+  safeToIsoDate,
+} from "./shared.ts";
+
+interface AshbyJob {
+  id: string | number;
+  title?: string;
+  jobUrl?: string;
+  location?: string;
+  secondaryLocations?: (string | { location?: string; name?: string })[];
+  description?: string;
+  descriptionHtml?: string;
+  descriptionPlain?: string;
+  publishedAt?: string;
+  publishedDate?: string;
+  updatedAt?: string;
+  employmentType?: string;
+  team?: string;
+  department?: string;
+  isListed?: boolean;
+  isRemote?: boolean | null;
+  workplaceType?: string | null;
+  address?: {
+    postalAddress?: AtsPostalAddress;
+  };
+}
+
+export function createAshbyAdapter(source: CompanySourceConfig): ScrapeAdapter {
+  const boardToken = resolveBoardToken(source, (sourceUrl) =>
+    parseLeadingPathToken(sourceUrl, ["jobs.ashbyhq.com"]),
+  );
+  const resolvedSource = source.boardToken === boardToken ? source : { ...source, boardToken };
+
+  return {
+    source: resolvedSource,
+    async fetchRoles() {
+      const url = `https://api.ashbyhq.com/posting-api/job-board/${boardToken}`;
+      const res = await fetchJsonWithTimeout(url);
+      if (!res.ok) {
+        throw new Error(`Ashby returned ${res.status} for ${url}`);
+      }
+      const payload = (await res.json()) as unknown;
+      const jobs = parseAshbyResponse(payload, url);
+      return parseAshbyJobs(jobs, resolvedSource);
+    },
+  };
+}
+
+export function parseAshbyJobs(jobs: AshbyJob[], source: CompanySourceConfig): RoleParseResult {
+  const roles: ReturnType<typeof buildScrapedRole>[] = [];
+  const rejected: RoleParseResult["stats"]["rejected"] = [];
+
+  for (const job of jobs) {
+    if (job.isListed === false) {
+      continue;
+    }
+
+    const roleName = job.title?.trim() || "";
+    const postingUrl =
+      job.jobUrl?.trim() ||
+      `https://jobs.ashbyhq.com/${source.boardToken || source.companySlug}/${job.id}`;
+    const description =
+      job.descriptionPlain?.trim() ||
+      job.description?.trim() ||
+      job.descriptionHtml ||
+      "";
+    const locations = collectAshbyLocations(job);
+    const departments = [job.department?.trim(), job.team?.trim()].filter(Boolean) as string[];
+
+    const classification = classifyForSource(source, {
+      title: roleName,
+      description,
+      employmentType: normalizeAshbyEmploymentType(job.employmentType, job.workplaceType),
+      team: job.team ?? null,
+      departments,
+      locations,
+    });
+
+    if (!classification.include) {
+      if (roleName) {
+        rejected.push({ title: roleName, reason: classification.reason });
+      }
+      continue;
+    }
+
+    if (!isHttpUrl(postingUrl)) {
+      rejected.push({ title: roleName, reason: "invalid_url" });
+      continue;
+    }
+
+    roles.push(
+      buildScrapedRole({
+        postingUrl,
+        roleName,
+        companyName: source.companyName,
+        companySlug: source.companySlug,
+        classification,
+        description,
+        dates: atsPublishWithModified(
+          safeToIsoDate(job.publishedAt || job.publishedDate || null),
+          safeToIsoDate(job.updatedAt ?? null),
+        ),
+        seasonHints: {
+          employmentType: job.employmentType ?? null,
+          departments,
+        },
+      }),
+    );
+  }
+
+  return buildRoleParseResult(jobs.length, roles, rejected);
+}
+
+/** Map Ashby enums to strings classify-role understands. */
+export function normalizeAshbyEmploymentType(
+  employmentType: string | null | undefined,
+  workplaceType: string | null | undefined,
+): string | null {
+  const parts: string[] = [];
+  if (employmentType?.trim()) {
+    const normalized = employmentType.trim();
+    if (/^intern$/i.test(normalized)) {
+      parts.push("Internship");
+    } else if (/^part[-\s]?time$/i.test(normalized) && /intern/i.test(normalized)) {
+      parts.push(normalized);
+    } else {
+      parts.push(normalized);
+    }
+  }
+  if (workplaceType?.trim()) {
+    parts.push(workplaceType.trim());
+  }
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+export function formatAshbyLocation(job: AshbyJob): string | null {
+  const locations = collectAshbyLocations(job);
+  return locations.length > 0 ? locations.join(" · ") : null;
+}
+
+export function collectAshbyLocations(job: AshbyJob): string[] {
+  const parts: string[] = [];
+  const primary = job.location?.trim();
+  if (primary) parts.push(primary);
+
+  for (const sec of job.secondaryLocations ?? []) {
+    if (typeof sec === "string") {
+      const trimmed = sec.trim();
+      if (trimmed) parts.push(trimmed);
+    } else if (sec && typeof sec === "object") {
+      const val = (sec.location || sec.name || "").trim();
+      if (val) parts.push(val);
+    }
+  }
+
+  const fromAddress = formatUsAtsPostalAddress(job.address?.postalAddress);
+  if (fromAddress) {
+    parts.push(fromAddress);
+  }
+
+  if (job.isRemote === true) {
+    parts.push("Remote");
+  }
+
+  return Array.from(new Set(parts));
+}
+
+function parseAshbyResponse(payload: unknown, url: string): AshbyJob[] {
+  if (!payload || typeof payload !== "object" || !Array.isArray((payload as { jobs?: unknown }).jobs)) {
+    throw new Error(`Ashby response was not in expected format for ${url}`);
+  }
+  return (payload as { jobs: AshbyJob[] }).jobs;
+}
