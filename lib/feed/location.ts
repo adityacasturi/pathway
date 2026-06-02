@@ -126,6 +126,24 @@ const COUNTRY_ALIASES: Record<string, string> = {
   "costa rica": "CR",
 };
 
+/** ISO alpha-2 codes from {@link COUNTRY_ALIASES} for City, Region, CC parsing (e.g. PCSX boards). */
+const ISO_ALPHA2_COUNTRIES = new Set(Object.values(COUNTRY_ALIASES));
+
+function twoLetterToken(raw: string): string {
+  return raw.replace(/[^A-Za-z]/g, "").toUpperCase();
+}
+
+function countryFromIsoAlpha2(code: string): string | null {
+  const upper = twoLetterToken(code);
+  if (upper.length !== 2) {
+    return null;
+  }
+  if (upper === "US") {
+    return "US";
+  }
+  return ISO_ALPHA2_COUNTRIES.has(upper) ? upper : null;
+}
+
 // US states + DC. Codes and full names both map to US. The "CA" code is
 // resolved contextually below — California in this dataset, not Canada.
 const US_STATE_CODES = new Set([
@@ -289,16 +307,28 @@ function classifySegment(segment: string): string[] {
   const trimmed = segment.trim();
   if (!trimmed) return [];
 
-  // Ashby / enterprise boards: US-CA-Menlo Park, US-WA-Bellevue
+  const normalizedSegment = normalizeToken(trimmed);
+  if (
+    /\bany spacex site\b/.test(normalizedSegment) ||
+    (/\bflexible\b/.test(normalizedSegment) && /\bspacex\b/.test(normalizedSegment))
+  ) {
+    return ["US"];
+  }
+
+  // Ashby / enterprise boards: US-CA-Menlo Park, US-WA-Bellevue; PCSX: IN-KA-Hyderabad
   const hyphenParts = trimmed.split("-").map((part) => part.trim()).filter(Boolean);
   if (hyphenParts.length >= 2) {
-    const countryToken = hyphenParts[0].replace(/[^A-Za-z]/g, "").toUpperCase();
+    const countryToken = twoLetterToken(hyphenParts[0]);
     if (countryToken === "US" || countryToken === "USA") {
-      const stateToken = hyphenParts[1].replace(/[^A-Za-z]/g, "").toUpperCase();
+      const stateToken = twoLetterToken(hyphenParts[1]);
       if (stateToken.length === 2 && US_STATE_CODES.has(stateToken)) {
         return ["US"];
       }
       return ["US"];
+    }
+    const hyphenCountry = countryFromIsoAlpha2(countryToken);
+    if (hyphenCountry && hyphenCountry !== "US") {
+      return [hyphenCountry];
     }
   }
 
@@ -308,11 +338,35 @@ function classifySegment(segment: string): string[] {
     .filter(Boolean);
   if (subTokens.length === 0) return [];
 
+  // Greenhouse often omits the comma between state and country ("San Mateo, CA United States").
+  for (const raw of subTokens) {
+    const glued = classifyRegionCountryGlue(raw);
+    if (glued.length > 0) {
+      return glued;
+    }
+  }
+
+  // PCSX / Microsoft: "City, Region, CC" — final token is ISO country, not a US state.
+  if (subTokens.length >= 3) {
+    const trailingCountry = countryFromIsoAlpha2(subTokens[subTokens.length - 1]);
+    if (trailingCountry) {
+      return [trailingCountry];
+    }
+  }
+
+  // "Munich, DE" — city hint before US state codes (DE = Germany, not Delaware).
+  if (subTokens.length === 2) {
+    const cityHint = CITY_COUNTRY_HINTS[normalizeToken(subTokens[0])];
+    if (cityHint) {
+      return [cityHint];
+    }
+  }
+
   // Pass 1: 2-letter US state / CA province code in *any* sub-token. This
   // wins outright — "Holland, MI" and "Berlin, NH" are US, not NL/DE; and
   // "London, ON" is Canada, not the UK.
   for (const raw of subTokens) {
-    const upper = raw.replace(/[^A-Za-z]/g, "").toUpperCase();
+    const upper = twoLetterToken(raw);
     if (upper.length === 2) {
       if (US_STATE_CODES.has(upper)) return ["US"];
       if (CA_PROVINCE_CODES.has(upper)) return ["CA"];
@@ -354,6 +408,29 @@ function classifySegment(segment: string): string[] {
     const normalized = normalizeToken(raw);
     const hint = CITY_COUNTRY_HINTS[normalized];
     if (hint) return [hint];
+  }
+
+  return [];
+}
+
+/** "CA United States", "NY United States of America", "ON Canada" without a comma glue. */
+function classifyRegionCountryGlue(raw: string): string[] {
+  const match = /^([A-Za-z]{2})\s+(.+)$/.exec(raw.trim());
+  if (!match) {
+    return [];
+  }
+
+  const regionCode = twoLetterToken(match[1]);
+  const country = COUNTRY_ALIASES[normalizeToken(match[2])];
+  if (!country) {
+    return [];
+  }
+
+  if (US_STATE_CODES.has(regionCode) && country === "US") {
+    return ["US"];
+  }
+  if (CA_PROVINCE_CODES.has(regionCode) && country === "CA") {
+    return ["CA"];
   }
 
   return [];
