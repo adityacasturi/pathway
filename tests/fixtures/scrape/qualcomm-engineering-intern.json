@@ -1,0 +1,22 @@
+{
+  "summary": {
+    "id": 446718800001,
+    "displayJobId": "3092001",
+    "name": "FY27 Intern - Software Engineering Intern - San Diego",
+    "locations": ["San Diego, California, United States of America"],
+    "standardizedLocations": ["San Diego, CA, US"],
+    "postedTs": 1779408000,
+    "department": "Engineering Intern",
+    "atsJobId": "3092001",
+    "positionUrl": "/careers/job/446718800001"
+  },
+  "detail": {
+    "id": 446718800001,
+    "name": "FY27 Intern - Software Engineering Intern - San Diego",
+    "department": "Engineering Intern",
+    "locations": ["San Diego, California, United States of America"],
+    "t_update": 1779408000,
+    "canonicalPositionUrl": "https://careers.qualcomm.com/careers/job/446718800001",
+    "job_description": "<p>Qualcomm Engineering Internship program for students pursuing BS or MS in Computer Engineering, Electrical Engineering, or Computer Science.</p><p>Work on embedded software, wireless systems, and machine learning projects with mentorship from senior engineers.</p>"
+  }
+}

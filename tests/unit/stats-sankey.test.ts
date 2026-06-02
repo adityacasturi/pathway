@@ -11,8 +11,6 @@ function event(applicationId: string, eventType: EventType, index: number): Appl
     event_date: `2026-01-${String(index + 1).padStart(2, "0")}`,
     notes: null,
     round_number: eventType === "interview" ? index : null,
-    deadline_date: null,
-    deadline_completed_at: null,
     created_at: `2026-01-${String(index + 1).padStart(2, "0")}T00:00:00.000Z`,
   };
 }

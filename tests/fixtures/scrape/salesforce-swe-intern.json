@@ -1,0 +1,26 @@
+{
+  "jobs": [
+    {
+      "title": "Summer 2027 Intern - Software Engineer",
+      "url": "https://careers.salesforce.com/en/jobs/jr340771/summer-2027-intern-software-engineer/",
+      "description": "<p>The <strong>Futureforce Tech Accelerator</strong> is Salesforce's premier early hiring event providing a fast track to interviews for Summer 2027 Software Engineering Internships.</p><p>Enrolled and currently pursuing a BS in Computer Science or related technical field. Enrolled in a college or university in North America.</p>",
+      "city": "San Francisco",
+      "state": "California",
+      "country": "United States of America",
+      "date": "Thu, 14 May 2026 00:00:00 GMT",
+      "jobtype": "Full time",
+      "category": "Fixed Term & Temporary"
+    },
+    {
+      "title": "Sales Intern (SMB Team)",
+      "url": "https://careers.salesforce.com/en/jobs/jr340000/sales-intern-smb-team/",
+      "description": "<p>Sales internship supporting SMB account executives.</p>",
+      "city": "Chicago",
+      "state": "Illinois",
+      "country": "United States of America",
+      "date": "Thu, 14 May 2026 00:00:00 GMT",
+      "jobtype": "Intern",
+      "category": "Sales"
+    }
+  ]
+}

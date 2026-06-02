@@ -1,0 +1,80 @@
+{
+  "job": {
+    "data": {
+      "slug": "86072",
+      "language": "en-us",
+      "languages": [
+        "en-us"
+      ],
+      "client_code": "amd",
+      "req_id": "86072",
+      "title": "Short Term 2026 Software Engineering Intern/Co-Op",
+      "description": "<p>Join AMD as a software engineering intern working on GPU software.</p>",
+      "location_name": "CA,BC,Vancouver",
+      "street_address": "2930 Virtual Way\nSte. 300",
+      "city": "Austin",
+      "state": "Texas",
+      "country": "United States",
+      "country_code": "US",
+      "postal_code": "V5M 4X6",
+      "location_type": "LAT_LNG",
+      "latitude": 49.24966,
+      "longitude": -123.11934,
+      "categories": [
+        {
+          "name": "Student / Intern / Temp"
+        }
+      ],
+      "tags1": [
+        "No"
+      ],
+      "tags2": [
+        "CAD $0.00/Yr."
+      ],
+      "tags3": [
+        "CAD $0.00/Yr."
+      ],
+      "tags4": [
+        "Campus Canada"
+      ],
+      "tags5": [
+        "CAD $44,500.00/Yr."
+      ],
+      "tags6": [
+        "CAD $71,000.00/Yr."
+      ],
+      "tags7": [
+        "44500"
+      ],
+      "tags8": [
+        "71000"
+      ],
+      "department": "",
+      "salary_value": 0,
+      "salary_min_value": 0,
+      "salary_max_value": 0,
+      "qualifications": "<p>Join AMD as a software engineering intern working on GPU software.</p>",
+      "hiring_organization": "Advanced Micro Devices, Inc",
+      "hiring_organization_logo": "https://www.amd.com/content/dam/code/images/header/amd-header-logo.svg",
+      "responsibilities": "<p>Join AMD as a software engineering intern working on GPU software.</p>",
+      "posted_date": "2026-05-08T13:18:00+0000",
+      "apply_url": "https://careers-amd.icims.com/jobs/86072/login",
+      "internal": false,
+      "external": false,
+      "searchable": true,
+      "applyable": true,
+      "li_easy_applyable": true,
+      "ats_code": "icims",
+      "hiring_flow_name": "iCIMS ATS Hiring Flow",
+      "meta_data": {},
+      "update_date": "2026-05-09T01:48:58+0000",
+      "create_date": "2026-05-08T13:19:42+0000",
+      "category": [
+        " Student / Intern / Temp"
+      ],
+      "full_location": "Austin, TX, United States",
+      "short_location": "Austin, TX",
+      "multipleLocations": false
+    }
+  }
+}

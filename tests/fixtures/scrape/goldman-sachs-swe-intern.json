@@ -1,0 +1,24 @@
+{
+  "summary": {
+    "Id": "164510",
+    "Title": "2027 | Americas | New York | Engineering | Software Engineer Intern",
+    "PostedDate": "2026-05-20",
+    "PrimaryLocation": "New York, New York, United States",
+    "PrimaryLocationCountry": "US",
+    "JobFamily": "Engineering",
+    "ShortDescriptionStr": "Summer analyst internship on the Engineering division campus program."
+  },
+  "detail": {
+    "Id": "164510",
+    "Title": "2027 | Americas | New York | Engineering | Software Engineer Intern",
+    "Category": "Summer Analyst",
+    "JobFunction": "Campus Apply",
+    "ExternalPostedStartDate": "2026-05-20T12:00:00+00:00",
+    "PrimaryLocation": "New York, New York, United States",
+    "PrimaryLocationCountry": "US",
+    "ExternalDescriptionStr": "<p>Engineering Summer Analysts build software and platforms used across the firm. You will work with engineers on distributed systems, data pipelines, and production services in Java, Python, and C++.</p><p>We are looking for students pursuing a BS or MS in Computer Science with strong fundamentals in algorithms and systems programming.</p>",
+    "ExternalQualificationsStr": "<p>Computer Science or related technical degree.</p>",
+    "ExternalResponsibilitiesStr": "<p>Design, implement, and test software with mentorship from senior engineers.</p>",
+    "ShortDescriptionStr": "Campus engineering summer analyst role in New York."
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "summary": {
+    "Id": "334325",
+    "Title": "OCI Software Engineer Intern - OVIP",
+    "PostedDate": "2026-05-22",
+    "PrimaryLocation": "Seattle, WA, United States",
+    "PrimaryLocationCountry": "US",
+    "JobFamily": "Software Engineering",
+    "ShortDescriptionStr": "Oracle Veteran Internship Program (OVIP) - US Veteran transitioning from active service or active-duty Military Spouse new to corporate experience preferred"
+  },
+  "detail": {
+    "Id": "334325",
+    "Title": "OCI Software Engineer Intern - OVIP",
+    "Category": "All Roles",
+    "JobFunction": "Software Engineering",
+    "ExternalPostedStartDate": "2026-05-22T22:21:02+00:00",
+    "PrimaryLocation": "Seattle, WA, United States",
+    "PrimaryLocationCountry": "US",
+    "ExternalDescriptionStr": "<p>As a Software Engineer Intern on Oracle Cloud Infrastructure (OCI), you will design, build, and test production software in Java, Python, and Go. You will collaborate with engineers on distributed systems, APIs, and cloud infrastructure supporting networking and load balancing services.</p>",
+    "ExternalQualificationsStr": "<p>Pursuing a BS or MS in Computer Science or related field. Strong data structures, algorithms, and distributed systems fundamentals.</p>",
+    "ExternalResponsibilitiesStr": "<p>Develop and deploy software components with mentorship from senior engineers on the Network Load Balancer team.</p>",
+    "ShortDescriptionStr": "Software engineering internship on Oracle Cloud Infrastructure."
+  }
+}

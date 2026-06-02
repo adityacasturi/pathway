@@ -1,0 +1,60 @@
+[
+  {
+    "portalJobPost": {
+      "portalId": 17,
+      "portalUrl": "https://globalcareers-atlassian.icims.com/jobs/99901/software-engineer-intern-2026-summer-us/job",
+      "id": 99901,
+      "updatedDate": "2026-05-01 10:00 AM"
+    },
+    "id": 99901,
+    "portalId": 17,
+    "title": "Software Engineer Intern, 2026 Summer U.S.",
+    "type": "Intern",
+    "locations": [
+      "Mountain View, California - United States - Mountain View, 94041 United States"
+    ],
+    "category": "Interns",
+    "overview": "<p>Join Atlassian as a Software Engineer intern and build features for Jira, Confluence, and Bitbucket.</p>",
+    "responsibilities": "<p>Write production software in Java or Python with mentorship from senior engineers.</p>",
+    "qualifications": "<p>Currently enrolled in a Computer Science or Software Engineering degree program.</p>"
+  },
+  {
+    "portalJobPost": {
+      "portalId": 17,
+      "portalUrl": "https://globalcareers-atlassian.icims.com/jobs/24859/product-marketing-intern---ai-trust%2c-2026-summer-australia/job",
+      "id": 24859,
+      "updatedDate": "2026-05-27 02:43 AM"
+    },
+    "id": 24859,
+    "portalId": 17,
+    "title": "Product Marketing Intern - AI Trust, 2026 Summer Australia",
+    "type": "Intern",
+    "locations": [
+      "Sydney - Australia - Sydney, 2000 Australia",
+      "Remote - Remote"
+    ],
+    "category": "Interns",
+    "overview": "<p>Product marketing internship on the Trust team for Rovo and AI messaging.</p>",
+    "responsibilities": "<p>Analyze competitor AI trust strategies and synthesize messaging recommendations.</p>",
+    "qualifications": "<p>Marketing or business student returning to studies after the internship.</p>"
+  },
+  {
+    "portalJobPost": {
+      "portalId": 242,
+      "portalUrl": "https://careers-apac-atlassian.icims.com/jobs/25020/account-executive%2c-enterprise/job",
+      "id": 25020,
+      "updatedDate": "2026-05-29 08:32 AM"
+    },
+    "id": 25020,
+    "portalId": 242,
+    "title": "Account Executive, Enterprise",
+    "type": "Full-Time",
+    "locations": [
+      "Bengaluru - India - Bengaluru, 560071 India"
+    ],
+    "category": "Sales",
+    "overview": "<p>Enterprise sales role for Atlassian cloud solutions.</p>",
+    "responsibilities": "<p>Own territory plans and close strategic deals.</p>",
+    "qualifications": "<p>15+ years of enterprise SaaS sales experience.</p>"
+  }
+]

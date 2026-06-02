@@ -12,7 +12,7 @@ async function signIn(page: Page) {
   await page.getByRole("textbox", { name: "Password", exact: true }).fill(password ?? "");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/home$/);
-  await expect(page.getByRole("link", { name: "Home" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Overview" })).toBeVisible();
 }
 
 test("authenticated user can navigate core app surfaces", async ({ page }) => {
@@ -21,12 +21,15 @@ test("authenticated user can navigate core app surfaces", async ({ page }) => {
   await page.goto("/applications");
   await expect(page.getByRole("heading", { name: "Applications" })).toBeVisible();
 
+  await page.goto("/live");
+  await expect(page.getByRole("heading", { name: "Openings" })).toBeVisible();
+
   await page.goto("/discover");
-  await expect(page.getByRole("heading", { name: "Discover" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Companies" })).toBeVisible();
   await expect(page.getByPlaceholder(/Search company, role, or location/)).toBeVisible();
 
   await page.goto("/stats");
-  await expect(page.getByRole("heading", { name: "Stats" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Insights" })).toBeVisible();
 
   await page.goto("/settings");
   await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
@@ -88,7 +91,7 @@ test("authenticated user can dismiss and restore a discover posting", async ({ p
 
   await signIn(page);
   await page.goto("/discover");
-  await expect(page.getByRole("heading", { name: "Discover" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Companies" })).toBeVisible();
 
   const firstRow = page.getByTestId("posting-row").first();
   await expect(firstRow.or(page.getByText("Nothing matches the filters."))).toBeVisible();
@@ -105,7 +108,7 @@ test("authenticated user can dismiss and restore a discover posting", async ({ p
   const dismissedRow = page.locator(`[data-posting-id="${postingId}"]`);
   await expect(dismissedRow).toBeVisible();
 
-  await page.getByRole("heading", { name: "Discover" }).click();
+  await page.getByRole("heading", { name: "Companies" }).click();
   await dismissedRow.scrollIntoViewIfNeeded();
   await expect(dismissedRow.getByRole("button", { name: "Restore" })).toBeEnabled();
   await dismissedRow.getByRole("button", { name: "Restore" }).click();

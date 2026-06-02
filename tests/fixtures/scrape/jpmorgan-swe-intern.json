@@ -1,0 +1,24 @@
+{
+  "summary": {
+    "Id": "210800001",
+    "Title": "2027 Software Engineer Intern - Global Technology",
+    "PostedDate": "2026-03-15",
+    "PrimaryLocation": "Jersey City, NJ, United States",
+    "PrimaryLocationCountry": "US",
+    "JobFamily": "Software Engineering",
+    "ShortDescriptionStr": "Join our Global Technology summer internship program and build software used across the firm."
+  },
+  "detail": {
+    "Id": "210800001",
+    "Title": "2027 Software Engineer Intern - Global Technology",
+    "Category": "Software Engineering",
+    "JobFunction": "Technology",
+    "ExternalPostedStartDate": "2026-03-15T12:00:00+00:00",
+    "PrimaryLocation": "Jersey City, NJ, United States",
+    "PrimaryLocationCountry": "US",
+    "ExternalDescriptionStr": "<p>As a Software Engineer Intern on Global Technology, you will design, build, and test production software in Java and Python. You will collaborate with engineers on distributed systems, APIs, and cloud infrastructure supporting trading, payments, and data platforms.</p><p>Required qualifications include pursuing a BS or MS in Computer Science, strong data structures and algorithms skills, and experience with object-oriented programming.</p>",
+    "ExternalQualificationsStr": "<p>Bachelor's or Master's degree in Computer Science or related field.</p>",
+    "ExternalResponsibilitiesStr": "<p>Develop and deploy software components with mentorship from senior engineers.</p>",
+    "ShortDescriptionStr": "Summer internship for software engineering students in Global Technology."
+  }
+}

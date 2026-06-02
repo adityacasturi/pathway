@@ -1,0 +1,44 @@
+{
+  "internships": [
+    {
+      "data": {
+        "id": 5731,
+        "displayName": "Proprietary Trading Intern (New York) – Summer 2027",
+        "isActive": true,
+        "validFromDate": "2026-01-15",
+        "jobDescription": {
+          "websiteDescription": "The D.&nbsp;E.&nbsp;Shaw group seeks a trading intern in New York."
+        },
+        "jobMetadata": {
+          "workStatus": "Intern",
+          "jobLocations": [{ "name": "New York", "abbreviation": "NYC" }]
+        },
+        "department": { "name": "Trading" },
+        "jobCategory": [{ "name": "Trading" }]
+      },
+      "id": 5731,
+      "displayName": "Proprietary Trading Intern (New York) – Summer 2027",
+      "office": [{ "name": "New York", "abbreviation": "NYC" }]
+    },
+    {
+      "data": {
+        "id": 5730,
+        "displayName": "Strategy and Business Development Intern (New York) - Summer 2027",
+        "isActive": true,
+        "validFromDate": "2026-01-15",
+        "jobDescription": {
+          "websiteDescription": "Strategy and business development internship in New York."
+        },
+        "jobMetadata": {
+          "workStatus": "Intern",
+          "jobLocations": [{ "name": "New York", "abbreviation": "NYC" }]
+        },
+        "department": { "name": "Strategy and Business Development" },
+        "jobCategory": [{ "name": "Strategy and Business Development" }]
+      },
+      "id": 5730,
+      "displayName": "Strategy and Business Development Intern (New York) - Summer 2027",
+      "office": [{ "name": "New York", "abbreviation": "NYC" }]
+    }
+  ]
+}

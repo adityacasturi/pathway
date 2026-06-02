@@ -1,0 +1,20 @@
+{
+  "id": 62421,
+  "eid": "14126",
+  "requisitionId": "14126",
+  "title": "Supply Chain Summer Internship",
+  "briefDescription": "<p>Supply Chain Leadership Intern</p><p>Location: Lathrop, CA</p>",
+  "description": "<p>Supply Chain Leadership Intern in Lathrop, CA for summer 2026.</p>",
+  "applyLink": "https://wayfair.avature.net/en_US/careers?folderId=14126",
+  "location": {
+    "name": "Lathrop, CA",
+    "city": "Lathrop",
+    "state": "California",
+    "country": "United States",
+    "countryId": 1
+  },
+  "createdDate": "2026-01-15T00:00:00.000Z",
+  "teamName": "Supply Chain",
+  "category": { "name": "Warehouse" },
+  "jobTypeDisplayName": "Internship"
+}

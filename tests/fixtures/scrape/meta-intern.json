@@ -1,0 +1,34 @@
+{
+  "summary": {
+    "id": "2160167211413098",
+    "title": "Research Scientist Intern, Multimodal Contextual AI (PhD)",
+    "locations": ["Redmond, WA"],
+    "teams": ["Facebook Reality Labs", "Research", "Internship - Engineering, Tech & Design"],
+    "sub_teams": ["Engineering", "Hardware"]
+  },
+  "detail": {
+    "@context": "http://schema.org/",
+    "@type": "JobPosting",
+    "title": "Research Scientist Intern, Multimodal Contextual AI (PhD)",
+    "description": "At Reality Labs, our team brings novel experiences to life on Meta’s AR devices.",
+    "responsibilities": "Build and characterize experimental HW+SW systems on AR devices and device prototypes",
+    "qualifications": "Currently has, or is in the process of obtaining a PhD in Computer Science",
+    "datePosted": "2026-05-15T12:01:53-07:00",
+    "employmentType": "Internship",
+    "jobLocation": [
+      {
+        "@type": "Place",
+        "name": "Redmond, WA",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Redmond",
+          "addressRegion": "WA",
+          "addressCountry": {
+            "@type": "Country",
+            "name": ["USA"]
+          }
+        }
+      }
+    ]
+  }
+}

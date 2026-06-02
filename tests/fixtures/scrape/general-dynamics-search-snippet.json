@@ -1,0 +1,28 @@
+{
+  "IsLogicError": false,
+  "Page": 0,
+  "PageCount": 2,
+  "PageSize": 10,
+  "Results": [
+    {
+      "Title": "Intern, Technical Support",
+      "Category": "Project/Program Management",
+      "Company": "GD Ordnance and Tactical Systems",
+      "Date": "2026-05-26T15:25:24Z",
+      "LocationNames": ["Lincoln, NE, US"],
+      "Link": {
+        "Url": "/careers/intern-technical-support-lincoln-ne-us-2026-36305-ots-opportunity"
+      }
+    },
+    {
+      "Title": "Software Engineer",
+      "Category": "Engineering",
+      "Company": "GD Mission Systems",
+      "Date": "2026-05-20T10:00:00Z",
+      "LocationNames": ["Manassas, VA, US"],
+      "Link": {
+        "Url": "/careers/software-engineer-manassas-va-us-2026-70625-gdms-opportunity"
+      }
+    }
+  ]
+}

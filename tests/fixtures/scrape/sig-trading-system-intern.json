@@ -1,0 +1,128 @@
+{
+  "job": {
+    "data": {
+      "slug": "10837",
+      "language": "en-us",
+      "languages": [
+        "en-us"
+      ],
+      "client_code": "sig",
+      "req_id": "10837",
+      "title": "Trading System Engineering Internship: Summer 2027",
+      "description": "<strong class=\"jdheader\">Overview</strong><br><br><p style=\"margin: 0px;\">Susquehanna is looking for highly motivated full-time students for our 10-week trading system engineering summer internship program. This is a computationally intensive role that will allow you to use your strong technical skills to solve problems at the intersection of trading, data, and technology.</p><p style=\"margin: 0px;\">\u00a0</p><p style=\"margin: 0px;\">Throughout the summer, you will receive education about how markets work by going through a deep dive into financial markets and Susquehanna\u2019s approach to trading. You will also work on challenging projects for our trading strategy development teams in low latency C++ trading system development. Additionally, you\u2019ll have the opportunity to work on projects side by side with senior developers who understand the nuances of building complex trading strategies.</p><p style=\"margin: 0px;\">\u00a0</p><p style=\"margin: 0px;\">If your experience is a better fit for our 2027 Quantitative Strategy Development Internship, apply here: <a href=\"https://careers.sig.com/job/10838/Quantitative-Strategy-Developer-Internship-Summer-2027\" target=\"_blank\" rel=\"noopener\">https://careers.sig.com/job/10838/Quantitative-Strategy-Developer-Internship-Summer-2027</a></p> <br><strong class=\"jdheader\">What we're looking for</strong><br><br><ul><li>Enrolled in a bachelor's or master's program in computer science, computer engineering, mathematics, or closely related STEM discipline</li><li>Strong software development skills in C++, C, Rust, C#, or Java, and some Python experience.</li><li>Intention to graduate with a minimum of a bachelor\u2019s degree and begin full time employment by August 2028</li><li>Exceptional logical reasoning skills</li><li>Visa sponsorship is available for this position.\u00a0</li></ul><p style=\"margin: 0px;\">\u00a0</p><p style=\"margin: 0px;\"><strong>What's in it for you:</strong></p><ul><li>Our non-hierarchical culture allows employees of every level to thrive and make impact. We are not your typical trading firm \u2013 the environment is casual, collaborative and we focus on continuous development.</li><li>Housing provided for duration of internship</li><li>Relaxed dress code: jeans and sneakers are the norm, shorts all summer long</li><li>Fully stocked kitchens for breakfast, lunch, snacks, and beverages</li><li>A forty thousand square-foot state of the art fitness facility with brand-new equipment, multi-purpose courts, group exercise classes, and locker room spaces</li><li>Discounts for dining, entertainment, shopping, travel, and attractions<br />Social events including a poker tournament, dinners, and sporting events in Philadelphia<br />On-site Wellness Center</li><li>On-site services such as a mailroom, barber, dry cleaning, and car maintenance</li><li>Opportunities to give back to the community through Susquehanna sponsored events and donation drives</li></ul><p style=\"margin: 0px;\">\u00a0</p><p style=\"margin: 0px;\"><em>If you're a recruiting agency and want to partner with us, please reach out to recruiting@sig.com. Any resume or referral submitted in the absence of a signed agreement will not be eligible for an agency fee</em>.</p><p style=\"margin: 0px;\">\u00a0</p>",
+      "location_name": "SIG",
+      "city": "Bala Cynwyd (Philadelphia Area)",
+      "state": "Pennsylvania",
+      "country": "United States",
+      "country_code": "US",
+      "location_type": "LAT_LNG",
+      "latitude": 30.87324,
+      "longitude": -88.0475,
+      "categories": [
+        {
+          "name": "Interns + Co-ops"
+        }
+      ],
+      "tags1": [
+        "Technology - Software Engineering"
+      ],
+      "tags2": [
+        "Interns + Co-ops"
+      ],
+      "tags3": [
+        "June 2027 Start"
+      ],
+      "tags4": [
+        "Bala Cynwyd (Philadelphia Area)"
+      ],
+      "tags5": [
+        "F"
+      ],
+      "brand": "Susquehanna International Group, LLP",
+      "department": "",
+      "salary_value": 0,
+      "salary_min_value": 0,
+      "salary_max_value": 0,
+      "qualifications": "<ul><li>Enrolled in a bachelor's or master's program in computer science, computer engineering, mathematics, or closely related STEM discipline</li><li>Strong software development skills in C++, C, Rust, C#, or Java, and some Python experience.</li><li>Intention to graduate with a minimum of a bachelor&rsquo;s degree and begin full time employment by August 2028</li><li>Exceptional logical reasoning skills</li><li>Visa sponsorship is available for this position.&nbsp;</li></ul><p style=\"margin: 0px;\">&nbsp;</p><p style=\"margin: 0px;\"><strong>What's in it for you:</strong></p><ul><li>Our non-hierarchical culture allows employees of every level to thrive and make impact. We are not your typical trading firm &ndash; the environment is casual, collaborative and we focus on continuous development.</li><li>Housing provided for duration of internship</li><li>Relaxed dress code: jeans and sneakers are the norm, shorts all summer long</li><li>Fully stocked kitchens for breakfast, lunch, snacks, and beverages</li><li>A forty thousand square-foot state of the art fitness facility with brand-new equipment, multi-purpose courts, group exercise classes, and locker room spaces</li><li>Discounts for dining, entertainment, shopping, travel, and attractions<br />Social events including a poker tournament, dinners, and sporting events in Philadelphia<br />On-site Wellness Center</li><li>On-site services such as a mailroom, barber, dry cleaning, and car maintenance</li><li>Opportunities to give back to the community through Susquehanna sponsored events and donation drives</li></ul><p style=\"margin: 0px;\">&nbsp;</p><p style=\"margin: 0px;\"><em>If you're a recruiting agency and want to partner with us, please reach out to recruiting@sig.com. Any resume or referral submitted in the absence of a signed agreement will not be eligible for an agency fee</em>.</p><p style=\"margin: 0px;\">&nbsp;</p>",
+      "hiring_organization": "Susquehanna International Group, LLP",
+      "hiring_organization_logo": "https://sig.icims.com/icims2/servlet/icims2?module=AppInert&action=download&id=1853207&hashed=332785984",
+      "source": "Susquehanna International Group, LLP",
+      "posted_date": "2026-04-23T17:38:00+0000",
+      "apply_url": "https://careers-sig.icims.com/jobs/10837/login",
+      "internal": false,
+      "external": false,
+      "searchable": true,
+      "applyable": true,
+      "li_easy_applyable": true,
+      "ats_code": "icims",
+      "hiring_flow_name": "iCIMS ATS Hiring Flow",
+      "meta_data": {
+        "mongo": {
+          "mongo_created": true
+        },
+        "openingjobs": {
+          "openingJobId": "0000a563479f8203863805316de3c32f533a"
+        },
+        "icims": {
+          "jps_is_public": true,
+          "primary_posted_site_object": {
+            "site": "careers-sig",
+            "tenantId": "3662",
+            "siteId": "b64ad4cc-6c0d-4ac5-b3a0-befd89c6ec40",
+            "datePosted": "2026-04-23T17:38:00+0000",
+            "siteType": "ATTRACT"
+          },
+          "date_updated": "2026-05-29T13:15:30Z",
+          "config_keys": {
+            "jobposting.external.company.name": "Susquehanna International Group, LLP",
+            "icims.external.xml.feeds": "icims.indeed.xml.enabled,icims.resume-library.xml.enabled,icims.direct-employers.xml.enabled,icims.monster.xml.enabled,icims.adzuna.xml.enabled,icims.careerbuilder.xml.enabled,icims.ziprecruiter.xml.enabled,icims.craigslist.xml.enabled,icims.itjobscafe.xml.enabled,icims.recruitnet.xml.enabled,icims.upward.xml.enabled,icims.jobbio.xml.enabled,icims.propellum.xml.enabled,icims.snagajob.xml.enabled,icims.inhersight.xml.enabled,icims.pallet-labs.xml.enabled,icims.qkly.xml.enabled,icims.cv-library.xml.enabled,icims.linkedin.xml.enabled,icims.zippia.xml.enabled,icims.puck.xml.enabled,icims.offerup.xml.enabled,icims.jobted.xml.enabled,icims.edtech.xml.enabled,icims.jobgether.xml.enabled,icims.referio.xml.enabled,icims.careerjet.xml.enabled,icims.advantageai.xml.enabled,icims.unpostedjobs.xml.enabled,icims.allyenergy.xml.enabled,icims.stealthstartup.xml.enabled,icims.hiringcafe.xml.enabled,icims.retailappointment.xml.enabled,icims.jobget.xml.enabled,icims.hirebase.xml.enabled,icims.shaker.xml.enabled,icims.tariangroup.xml.enabled,icims.flatworld.xml.enabled,icims.nexxt.xml.enabled,icims.intelycare.xml.enabled,icims.calibersourcing.xml.enabled,icims.almazlabs.xml.enabled,icims.dentalpost.xml.enabled,icims.nejoflexco.xml.enabled,icims.skillsire.xml.enabled,icims.handshake.xml.enabled,icims.hackajob.xml.enabled,icims.jooobs.xml.enabled",
+            "portal.id": "17",
+            "ccc.attract.portal.url": "https://careers.sig.com",
+            "icims.config.web.indeed.easy.apply": "0"
+          },
+          "revision_int": 3,
+          "uuid": "7448da3d-7976-498d-8fa1-5716f3fc7be5"
+        },
+        "ats_job_hash": "d78d9049cee09f5b77a3944206a800e2",
+        "googlejobs": {
+          "jobName": "projects/helpful-passage-853/tenants/cb22eb5b-7e00-0000-0000-007edad744d3/jobs/78718508447212230"
+        },
+        "import_id": "01758ca5-372c-41fd-8395-a1ddf425ae83",
+        "redirectOnApply": true,
+        "questionservice": {
+          "id": "44351268"
+        },
+        "canonical_url": null,
+        "gdpr": false,
+        "last_mod": "2026-05-29T14:08:39+0000",
+        "elasticsearch": {
+          "es_created": false
+        },
+        "opensearch": {
+          "hit_score": "NaN",
+          "hit_explanation": null,
+          "hit_matched_queries": [
+            "internal",
+            "applyable",
+            "term-language",
+            "term-categories.name.untouched",
+            "searchable",
+            "term-client_code"
+          ],
+          "hit_index": "jobs",
+          "hit_shard": null
+        },
+        "import_source": "ImporterService",
+        "client_code": "sig"
+      },
+      "update_date": "2026-05-29T14:08:39+0000",
+      "create_date": "2026-05-14T15:19:23+0000",
+      "category": [
+        " Interns + Co-ops"
+      ],
+      "full_location": "Bala Cynwyd (Philadelphia Area), Pennsylvania",
+      "short_location": "Bala Cynwyd (Philadelphia Area), Pennsylvania",
+      "multipleLocations": false
+    }
+  }
+}
