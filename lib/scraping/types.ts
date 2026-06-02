@@ -1,77 +1,85 @@
-export type SourceType =
-  | "greenhouse"
-  | "ashby"
-  | "lever"
-  | "workday"
-  | "nvidia"
-  | "microsoft"
-  | "google"
-  | "jane_street"
-  | "hudson_river_trading"
-  | "apple"
-  | "citadel"
-  | "two_sigma"
-  | "amazon"
-  | "meta"
-  | "qualcomm"
-  | "uber"
-  | "salesforce"
-  | "de_shaw"
-  | "tesla"
-  | "amd"
-  | "bytedance"
-  | "atlassian"
-  | "tower_research"
-  | "sig"
-  | "rivian"
-  | "five_rings"
-  | "jpmorgan_chase"
-  | "bloomberg"
-  | "goldman_sachs"
-  | "oracle"
-  | "morgan_stanley"
-  | "linkedin"
-  | "intuit"
-  | "shopify"
-  | "netflix"
-  | "ibm"
-  | "coinbase"
-  | "citigroup"
-  | "rtx"
-  | "millennium"
-  | "lockheed_martin"
-  | "workable"
-  | "hiringthing"
-  | "surge"
-  | "smartrecruiters"
-  | "github"
-  | "splunk"
-  | "slack"
-  | "jobvite"
-  | "juniper_networks"
-  | "vmware"
-  | "sap"
-  | "teradata"
-  | "seagate"
-  | "l3harris"
-  | "arm"
-  | "valve"
-  | "bae_systems"
-  | "chewy"
-  | "electronic_arts"
-  | "etsy"
-  | "peak6"
-  | "wayfair"
-  | "general_dynamics"
-  | "sakana_ai"
-  | "replicate"
-  | "luma_ai"
-  | "modular"
-  | "breezy"
-  | "weights_biases"
-  | "one_x_technologies"
-  | "synopsys"
-  | "x_corp";
+export const SOURCE_TYPES = [
+  "greenhouse",
+  "ashby",
+  "lever",
+  "workday",
+  "nvidia",
+  "microsoft",
+  "google",
+  "jane_street",
+  "hudson_river_trading",
+  "apple",
+  "citadel",
+  "two_sigma",
+  "amazon",
+  "meta",
+  "qualcomm",
+  "uber",
+  "salesforce",
+  "de_shaw",
+  "tesla",
+  "amd",
+  "bytedance",
+  "atlassian",
+  "tower_research",
+  "sig",
+  "rivian",
+  "five_rings",
+  "jpmorgan_chase",
+  "bloomberg",
+  "goldman_sachs",
+  "oracle",
+  "morgan_stanley",
+  "linkedin",
+  "intuit",
+  "shopify",
+  "netflix",
+  "ibm",
+  "coinbase",
+  "citigroup",
+  "rtx",
+  "millennium",
+  "lockheed_martin",
+  "workable",
+  "hiringthing",
+  "surge",
+  "smartrecruiters",
+  "github",
+  "splunk",
+  "slack",
+  "jobvite",
+  "juniper_networks",
+  "vmware",
+  "sap",
+  "teradata",
+  "seagate",
+  "l3harris",
+  "arm",
+  "valve",
+  "bae_systems",
+  "chewy",
+  "electronic_arts",
+  "etsy",
+  "peak6",
+  "wayfair",
+  "general_dynamics",
+  "sakana_ai",
+  "replicate",
+  "luma_ai",
+  "modular",
+  "breezy",
+  "weights_biases",
+  "one_x_technologies",
+  "synopsys",
+  "x_corp",
+  "pinpoint",
+] as const;
+
+export type SourceType = (typeof SOURCE_TYPES)[number];
+
+export function isSourceType(value: string): value is SourceType {
+  return (SOURCE_TYPES as readonly string[]).includes(value);
+}
 
 export type ScrapedSeason = "Summer" | "Fall" | "Spring" | "Winter";
 

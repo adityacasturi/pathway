@@ -1,5 +1,6 @@
 import { atsPublishDate } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
+import { buildRoleParseResult } from "../role-parse-result.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
@@ -172,14 +173,7 @@ export function parsePeak6Jobs(
     );
   }
 
-  return {
-    roles,
-    stats: {
-      fetched: fetchedCount,
-      kept: roles.length,
-      rejected,
-    },
-  };
+  return buildRoleParseResult(fetchedCount, roles, rejected);
 }
 
 function buildPeak6SearchBody(board: Peak6BoardConfig, page: number): string {

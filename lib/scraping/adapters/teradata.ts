@@ -1,5 +1,6 @@
 import { atsPublishDate } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
+import { buildRoleParseResult } from "../role-parse-result.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
@@ -207,14 +208,7 @@ export function parseTeradataJobs(
     );
   }
 
-  return {
-    roles,
-    stats: {
-      fetched: fetchedTotal,
-      kept: roles.length,
-      rejected,
-    },
-  };
+  return buildRoleParseResult(fetchedTotal, roles, rejected);
 }
 
 async function fetchAllTeradataJobs(board: TeradataBoardConfig): Promise<TeradataJobNode[]> {

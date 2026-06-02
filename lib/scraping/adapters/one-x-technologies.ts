@@ -1,4 +1,4 @@
-import { atsPublishDate, unknownScrapedDates } from "../posted-date.ts";
+import { atsPublishWithModified } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
@@ -135,7 +135,8 @@ export function parseOneXRecruiteeJobs(
       continue;
     }
 
-    const publishedAt = safeToIsoDate(offer.published_at ?? offer.updated_at);
+    const publishedAt = safeToIsoDate(offer.published_at);
+    const updatedAt = safeToIsoDate(offer.updated_at);
 
     roles.push(
       buildScrapedRole({
@@ -144,14 +145,11 @@ export function parseOneXRecruiteeJobs(
         companyName: source.companyName,
         companySlug: source.companySlug,
         classification,
-        description: htmlToPlainText(
-      [offer.description, offer.requirements].filter(Boolean).join("\n\n"),
-    ).trim(),
-        dates: publishedAt ? atsPublishDate(publishedAt) : unknownScrapedDates(),
+        description,
+        dates: atsPublishWithModified(publishedAt, updatedAt),
       }),
     );
   }
 
   return buildRoleParseResult(fetchedTotal, roles, rejected);
 }
-

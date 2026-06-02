@@ -34,6 +34,13 @@ const securityHeaders = [
   },
 ];
 
+const staticCompanyLogoHeaders = [
+  {
+    key: "Cache-Control",
+    value: "public, max-age=604800, stale-while-revalidate=2592000",
+  },
+];
+
 const nextConfig: NextConfig = {
   devIndicators: false,
   poweredByHeader: false,
@@ -44,6 +51,10 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
+      {
+        source: "/company-logos/:path*",
+        headers: staticCompanyLogoHeaders,
+      },
       {
         source: "/:path*",
         headers: securityHeaders,

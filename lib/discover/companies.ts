@@ -4,7 +4,7 @@ import { stablePostingId } from "@/lib/feed/ids";
 import { resolvePostedDisplay } from "@/lib/feed/posted-display";
 import type { FeedSeason } from "@/lib/feed/types";
 import { FEED_SEASONS } from "@/lib/feed/types";
-import { formatUsLocations, hasUsLocation } from "@/lib/feed/us-locations";
+import { formatUsLocations } from "@/lib/feed/us-locations";
 import type { PostedDateConfidence, PostedDateSource } from "@/lib/scraping/posted-date";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -23,18 +23,7 @@ interface CompanyRow {
 
 interface PostingCountRow {
   company_id: string;
-  location: string | null;
-  countries: string[] | null;
-}
-
-function isUsScrapedPostingRow(row: {
-  location: string | null;
-  countries: string[] | null;
-}): boolean {
-  if (row.countries?.includes("US")) {
-    return true;
-  }
-  return hasUsLocation(row.location ? [row.location] : []);
+  open_count: number | string | null;
 }
 
 interface PostingRow {
@@ -95,10 +84,7 @@ function mapPostingRow(row: PostingRow): ScrapedPostingRow | null {
 function buildOpenCountMap(rows: PostingCountRow[]) {
   const counts = new Map<string, number>();
   for (const row of rows) {
-    if (!isUsScrapedPostingRow(row)) {
-      continue;
-    }
-    counts.set(row.company_id, (counts.get(row.company_id) ?? 0) + 1);
+    counts.set(row.company_id, Number(row.open_count ?? 0));
   }
   return counts;
 }
@@ -127,10 +113,7 @@ export async function loadDiscoverCompanies(
       .eq("is_active", true)
       .eq("company_sources.enabled", true)
       .order("name", { ascending: true }),
-    supabase
-      .from("scraped_postings")
-      .select("company_id, location, countries")
-      .eq("status", "open"),
+    supabase.rpc("discover_company_open_counts"),
   ]);
 
   if (companiesRes.error) {

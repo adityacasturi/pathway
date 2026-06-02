@@ -1,5 +1,6 @@
 import type { ByteDanceJob } from "./bytedance.ts";
 import { TIKTOK_CAREERS_ORIGIN } from "./bytedance-brand.ts";
+import { fetchWithTimeout } from "./shared.ts";
 
 const US_LOCATION_PATTERN =
   /\b(San Jose|San Francisco|Mountain View|Seattle|Los Angeles|New York|Austin|Chicago|Washington|Cambridge|Boston|United States|California|Washington,? D\.?C\.?)\b/i;
@@ -11,7 +12,7 @@ const US_LOCATION_PATTERN =
 export async function fetchLifeAtTikTokJob(jobId: string): Promise<ByteDanceJob | null> {
   const url = `${TIKTOK_CAREERS_ORIGIN}/search/${jobId}`;
   try {
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       headers: {
         accept: "text/html,application/xhtml+xml",
         "accept-language": "en-US,en;q=0.9",

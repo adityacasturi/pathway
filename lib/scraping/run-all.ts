@@ -15,6 +15,13 @@ export interface RunAllScrapesOptions {
   onProgress?: ScrapeProgressHandler;
   /** Override `SCRAPE_COMPANY_CONCURRENCY` for this run. */
   companyConcurrency?: number;
+  /** Deterministically run only a subset of sources for distributed cron jobs. */
+  sourceShard?: ScrapeSourceShard;
+}
+
+export interface ScrapeSourceShard {
+  index: number;
+  count: number;
 }
 
 interface ScrapeJob {
@@ -67,6 +74,9 @@ export async function runAllScrapes(
       continue;
     }
     if (options.filterSlug && config.companySlug !== options.filterSlug) {
+      continue;
+    }
+    if (options.sourceShard && !sourceBelongsToShard(config, options.sourceShard)) {
       continue;
     }
 
@@ -141,6 +151,38 @@ export async function runAllScrapes(
 
     return result;
   });
+}
+
+export function sourceBelongsToShard(
+  config: NonNullable<ReturnType<typeof mapCompanySourceRow>>,
+  shard: ScrapeSourceShard,
+): boolean {
+  return stableShardForKey(buildScrapeSourceShardKey(config), shard.count) === shard.index;
+}
+
+export function buildScrapeSourceShardKey(
+  config: NonNullable<ReturnType<typeof mapCompanySourceRow>>,
+): string {
+  return [
+    config.companySlug,
+    config.sourceType,
+    config.adapterKey,
+    config.sourceUrl,
+    config.boardToken ?? "",
+  ].join("\u001f");
+}
+
+export function stableShardForKey(key: string, shardCount: number): number {
+  if (!Number.isSafeInteger(shardCount) || shardCount < 1) {
+    throw new Error("shardCount must be a positive integer");
+  }
+
+  let hash = 2166136261;
+  for (let index = 0; index < key.length; index += 1) {
+    hash ^= key.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) % shardCount;
 }
 
 function createProgressEmitter(onProgress?: ScrapeProgressHandler) {

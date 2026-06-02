@@ -9,12 +9,14 @@ import {
   type PostedDateSource,
   type StoredPostingDateState,
 } from "./posted-date.ts";
-import type {
-  KeptRolePreview,
-  ScrapeAdapter,
-  ScrapedRole,
-  ScrapedSeason,
-  SourceScrapeResult,
+import {
+  isSourceType,
+  type CompanySourceConfig,
+  type KeptRolePreview,
+  type ScrapeAdapter,
+  type ScrapedRole,
+  type ScrapedSeason,
+  type SourceScrapeResult,
 } from "./types.ts";
 
 const KEPT_PREVIEW_LIMIT = 10;
@@ -390,9 +392,9 @@ async function markSourceFailure(supabase: SupabaseClient, sourceId: string, mes
   if (error) throw error;
 }
 
-export function mapCompanySourceRow(row: CompanySourceRow) {
+export function mapCompanySourceRow(row: CompanySourceRow): CompanySourceConfig | null {
   const company = row.companies;
-  if (!company) {
+  if (!company || !isSourceType(row.source_type)) {
     return null;
   }
 
@@ -401,48 +403,7 @@ export function mapCompanySourceRow(row: CompanySourceRow) {
     companyId: company.id,
     companySlug: company.slug,
     companyName: company.name,
-    sourceType: row.source_type as
-      | "greenhouse"
-      | "ashby"
-      | "lever"
-      | "workday"
-      | "nvidia"
-      | "microsoft"
-      | "google"
-      | "jane_street"
-      | "hudson_river_trading"
-      | "apple"
-      | "citadel"
-      | "two_sigma"
-      | "amazon"
-      | "meta"
-      | "qualcomm"
-      | "uber"
-      | "salesforce"
-      | "de_shaw"
-      | "tesla"
-      | "amd"
-      | "bytedance"
-      | "atlassian"
-      | "tower_research"
-      | "sig"
-      | "rivian"
-      | "five_rings"
-      | "jpmorgan_chase"
-      | "bloomberg"
-      | "goldman_sachs"
-      | "oracle"
-      | "morgan_stanley"
-      | "linkedin"
-      | "intuit"
-      | "shopify"
-      | "netflix"
-      | "ibm"
-      | "coinbase"
-      | "citigroup"
-      | "rtx"
-      | "millennium"
-      | "lockheed_martin",
+    sourceType: row.source_type,
     adapterKey: row.adapter_key,
     sourceUrl: row.source_url ?? "",
     boardToken: row.board_token,

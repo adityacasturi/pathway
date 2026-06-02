@@ -21,6 +21,7 @@ const TWO_SIGMA_DETAIL_CONCURRENCY = 6;
 
 /** Listings that may be internships / campus hires before we fetch detail HTML. */
 const TWO_SIGMA_DETAIL_PREFETCH_PATTERN = /\b(intern(?:ship)?|co-?op|campus)\b/i;
+const TWO_SIGMA_FULL_TIME_CAMPUS_PATTERN = /\bcampus\b[\s\S]*\bfull[- ]?time\b|\bfull[- ]?time\b[\s\S]*\bcampus\b/i;
 
 const ARTICLE_BLOCK_PATTERN =
   /<article\s+class="article article--result"[^>]*>([\s\S]*?)<\/article>/gi;
@@ -120,6 +121,11 @@ export function parseTwoSigmaJobs(
       (value): value is string => Boolean(value?.trim()),
     );
     const locations = listing.location ? [listing.location] : [];
+
+    if (TWO_SIGMA_FULL_TIME_CAMPUS_PATTERN.test(roleName)) {
+      rejected.push({ title: roleName, reason: "not_internship" });
+      continue;
+    }
 
     const classification = classifyForSource(source, {
       title: roleName,
@@ -271,7 +277,7 @@ async function fetchTwoSigmaHtml(url: string): Promise<string> {
 /** Avature campus titles do not always say "intern". */
 function buildTwoSigmaClassificationDescription(listing: TwoSigmaListing): string {
   const boost: string[] = [];
-  if (/\bcampus\b/i.test(listing.title)) {
+  if (/\bcampus\b/i.test(listing.title) && /\bintern(?:ship)?|co-?op\b/i.test(listing.title)) {
     boost.push("campus internship");
   }
 
@@ -305,4 +311,3 @@ function dedupeListingsByUrl(listings: TwoSigmaListing[]): TwoSigmaListing[] {
   }
   return Array.from(byUrl.values());
 }
-

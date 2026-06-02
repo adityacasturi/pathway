@@ -3,7 +3,7 @@ import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { isHttpUrl, safeToIsoDate } from "./shared.ts";
+import { fetchWithTimeout, isHttpUrl, safeToIsoDate } from "./shared.ts";
 import { INTERNSHIP_LIST_TITLE_PATTERN } from "../list-filters.ts";
 
 /** Meta Careers Comet GraphQL (CareersJobSearchResultsV2DataQuery). */
@@ -387,12 +387,5 @@ function metaGraphqlHeaders(session: MetaSession): HeadersInit {
 }
 
 async function fetchWithMetaTimeout(url: string, init: RequestInit): Promise<Response> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20_000);
-  try {
-    return await fetch(url, { ...init, signal: controller.signal });
-  } finally {
-    clearTimeout(timeout);
-  }
+  return fetchWithTimeout(url, init);
 }
-

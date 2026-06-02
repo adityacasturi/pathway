@@ -68,11 +68,11 @@ export function parseByteDanceBrandBoard(source: CompanySourceConfig): ByteDance
   return { scope, searchQueries, supplementalJobIds };
 }
 
-export function buildScopedPostingUrl(scope: ByteDanceBrandScope, locale: string, jobId: string): string {
+export function buildScopedPostingUrl(scope: ByteDanceBrandScope, _locale: string, jobId: string): string {
   if (scope === "tiktok") {
     return `${TIKTOK_CAREERS_ORIGIN}/search/${jobId}`;
   }
-  return `https://jobs.bytedance.com/${locale}/position/${jobId}/detail`;
+  return `https://joinbytedance.com/search/${jobId}`;
 }
 
 /** TikTok Discover: core TikTok product + TikTok Shop; exclude other ByteDance brands. */

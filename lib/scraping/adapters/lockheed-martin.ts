@@ -7,7 +7,7 @@ import { htmlToPlainText } from "../plain-text.ts";
 import { inferSeason } from "../season.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
 import { atsModifiedOnly, atsPublishDate, parseFlexiblePostedDate } from "../posted-date.ts";
-import { isHttpUrl } from "./shared.ts";
+import { fetchWithTimeout, isHttpUrl } from "./shared.ts";
 
 /**
  * Lockheed Martin careers use Kenexa BrassRing Talent Gateway (sjobs.brassring.com).
@@ -34,8 +34,6 @@ const SEARCH_KEYWORDS = [
 
 const MAX_PAGES_PER_KEYWORD = 8;
 const DETAIL_CONCURRENCY = 6;
-const SOURCE_TIMEOUT_MS = 20_000;
-
 /** List rows that may be internships before we fetch JobDetails. */
 const LIST_CANDIDATE_PATTERN =
   /\bintern(?:ship|ships)?\b|\bco-?op\b|\breturnship\b|\buniversity\b|\bstudent\b/i;
@@ -589,29 +587,22 @@ async function brassRingPost(
 }
 
 async function brassRingFetch(url: string, init: RequestInit): Promise<Response> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), SOURCE_TIMEOUT_MS);
-  try {
-    const res = await fetch(url, {
-      ...init,
-      signal: controller.signal,
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-        Accept: init.method === "POST" ? "application/json, text/plain, */*" : "text/html,application/xhtml+xml",
-        "Accept-Language": "en-US,en;q=0.9",
-        ...(init.headers ?? {}),
-      },
-    });
+  const res = await fetchWithTimeout(url, {
+    ...init,
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+      Accept: init.method === "POST" ? "application/json, text/plain, */*" : "text/html,application/xhtml+xml",
+      "Accept-Language": "en-US,en;q=0.9",
+      ...(init.headers ?? {}),
+    },
+  });
 
-    if (!res.ok) {
-      throw new Error(`Lockheed Martin BrassRing returned ${res.status} for ${url}`);
-    }
-
-    return res;
-  } finally {
-    clearTimeout(timeout);
+  if (!res.ok) {
+    throw new Error(`Lockheed Martin BrassRing returned ${res.status} for ${url}`);
   }
+
+  return res;
 }
 
 async function parseBrassRingJson<T>(res: Response, label: string): Promise<T> {
@@ -638,4 +629,3 @@ function dedupeSummariesByReqId(summaries: BrassRingJobSummary[]): BrassRingJobS
   }
   return Array.from(byReqId.values());
 }
-

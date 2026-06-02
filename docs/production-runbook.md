@@ -34,7 +34,7 @@ NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 NEXT_PUBLIC_SITE_URL=https://...
 SUPABASE_SERVICE_ROLE_KEY=...   # server/cron only — never NEXT_PUBLIC_
-CRON_SECRET=...                 # /api/cron/scrape-postings, /api/cron/send-alert-digests
+CRON_SECRET=...                 # /api/cron/scrape-postings, /api/cron/send-instant-alerts, /api/cron/send-alert-digests
 RESEND_API_KEY=...              # Email alerts (Resend)
 RESEND_FROM_EMAIL=...           # Verified sender, e.g. Pathway Alerts <alerts@yourdomain.com>
 ALERT_UNSUBSCRIBE_SECRET=...    # Random secret for signed unsubscribe tokens
@@ -45,18 +45,39 @@ ALERT_UNSUBSCRIBE_SECRET=...    # Random secret for signed unsubscribe tokens
 - Omit `ALERTS_LAUNCHED` (or set anything other than `true` / `1` / `yes`) on dev/staging so `/alerts` stays preview-only and crons skip outbound email.
 - Set `ALERTS_LAUNCHED=true` only when Resend is verified and you want real subscriptions + delivery.
 
-**GitHub Actions cron (production schedules):**
+**QStash cron (production schedules):**
 
-Repository secrets (Settings → Secrets and variables → Actions):
+Add these local-only values to `.env.local` for schedule management:
 
-| Secret | Example | Purpose |
+| Variable | Example | Purpose |
 | --- | --- | --- |
-| `CRON_SECRET` | same as Vercel | `Authorization: Bearer` for cron routes |
 | `CRON_BASE_URL` | `https://www.trypathway.app` | Production deployment URL (no trailing slash) |
+| `CRON_SECRET` | same as Vercel | Forwarded as `Authorization: Bearer` to cron routes |
+| `QSTASH_TOKEN` | `qstash_...` | Upstash QStash API token |
+| `QSTASH_URL` | `https://qstash-us-east-1.upstash.io` | QStash regional API URL; use this when the default region returns 404 |
 
-Workflow: [`.github/workflows/production-cron.yml`](../.github/workflows/production-cron.yml). Schedules run only from the **default branch** (merge `dev` → `main` before relying on cron). Manual run: Actions → **Production cron** → **Run workflow**.
+Manage schedules from the repo:
 
-Do not put hourly crons in `vercel.json` on the Hobby plan — deploy will fail with no build logs.
+```bash
+npm run qstash:cron -- list
+npm run qstash:cron -- upsert
+npm run qstash:cron -- delete
+```
+
+For US-region QStash tokens, set `QSTASH_URL=https://qstash-us-east-1.upstash.io`. For EU-region tokens, omit `QSTASH_URL` or set `https://qstash-eu-central-1.upstash.io`.
+
+`upsert` is idempotent because each schedule uses a stable `Upstash-Schedule-Id`. Scrape cadence is every 30 minutes. Each cycle fans out to four shards on staggered minute offsets:
+
+```text
+:07,:37 /api/cron/scrape-postings?shard=0&shards=4&alerts=0
+:08,:38 /api/cron/scrape-postings?shard=1&shards=4&alerts=0
+:09,:39 /api/cron/scrape-postings?shard=2&shards=4&alerts=0
+:10,:40 /api/cron/scrape-postings?shard=3&shards=4&alerts=0
+```
+
+QStash calls `/api/cron/send-instant-alerts` at `:15` and `:45` UTC. Digest remains daily at 14:11 UTC. QStash retries delivery failures; missed or failed scrape cycles are acceptable because the next 30-minute cycle rechecks the same sources.
+
+Do not put 30-minute crons in `vercel.json` on the Vercel Hobby plan — deploy will fail because Hobby cron is limited to daily schedules.
 
 **Optional:**
 
@@ -67,7 +88,7 @@ UPSTASH_REDIS_REST_URL=...      # Distributed rate limits (server actions, unsub
 UPSTASH_REDIS_REST_TOKEN=...    # Falls back to in-memory limits when unset
 ```
 
-**Static company logos:** `npm run company-logos` (all active slugs) or `npm run company-logos -- --slug <slug>` after Discover onboarding. Commits `public/company-logos/*.png` and `lib/logo/static-slug-manifest.json`. In-app surfaces use static files when the slug is in the manifest; otherwise `/api/logo` proxy.
+**Static company logos:** `npm run company-logos` (all active slugs) or `npm run company-logos -- --slug <slug>` after Discover onboarding. Commits `public/company-logos/*.png` and `lib/logo/static-slug-manifest.json`. In-app surfaces use static files when the slug is in the manifest; otherwise `/api/logo` proxy. Static logo responses are served with long-lived browser cache headers, so navigation should not refetch the full logo grid.
 
 **Logos 403 in production:** Pathway does not rate-limit `/api/logo`. Intermittent **403** on logo requests is usually logo.dev rejecting the server-side fetch: publishable key + **Allowed domains only** without a matching `Referer`, or a wrong token. Ensure `NEXT_PUBLIC_SITE_URL` matches an allowed domain in the [logo.dev dashboard](https://www.logo.dev/dashboard) (include `www` if users hit that host), or disable domain restrictions for the key used in `LOGO_DEV_TOKEN`. After fixing env/dashboard, hard-refresh Discover (clears `pathway:logo-failed:v7` in session storage if logos were cached as missing).
 
@@ -88,7 +109,7 @@ Via MCP or dashboard:
 
 Last verified against the hosted project during the v2 pre-launch sweep:
 
-- **Alert RPCs executable by `anon`** — **resolved** (migration `revoke_public_execute_on_alert_rpcs`). `EXECUTE` was revoked from `PUBLIC`/`anon` and granted only to `authenticated` for `add_alert_company_subscription`, `add_alert_sector_subscription`, `delete_alert_subscription`, `set_alert_emails_enabled`, `set_alert_digest_enabled`. The residual WARN-level `authenticated_security_definer_function_executable` lints on those five functions are expected: they are intended for signed-in users and enforce `auth.uid()` internally.
+- **Alert write RPC exposure** — **resolved** (migrations `revoke_public_execute_on_alert_rpcs`, `revoke_authenticated_alert_write_rpcs`). Alert writes now flow through server actions that authenticate the user and perform scoped service-role writes for that `user.id`; client `EXECUTE` on the legacy public write RPCs is revoked.
 - **`alert_unsubscribe_nonces` has RLS enabled with no policy** — intentional (service-role writes only; deny-all to clients). No action needed.
 - **Leaked-password protection disabled** — enable in the Auth dashboard (see above).
 
@@ -141,10 +162,10 @@ Use a dedicated QA account — not a personal user.
 ### Empty or stale Live / Discover
 
 1. **Live/Discover read `scraped_postings`** — UI refresh does not scrape.
-2. Check GitHub Actions **Production cron** workflow (hourly scrape) or run `curl` against `/api/cron/scrape-postings` with `CRON_SECRET`.
+2. Check QStash schedules with `npm run qstash:cron -- list` (30-minute sharded scrape) or run `curl` against `/api/cron/scrape-postings` with `CRON_SECRET`.
 3. Inspect `company_sources.last_success_at` / `last_failure_at` for failing companies.
 4. Run `npm run scrape -- --verbose <slug>` locally with service role to reproduce.
-5. After deploy, run `npm run scrape` once if data is needed before the next cron tick.
+5. After deploy, run `npm run scrape` once if data is needed before the next 30-minute cron tick.
 
 ### Discover industry labels / grouping
 

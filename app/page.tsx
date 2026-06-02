@@ -100,8 +100,8 @@ function LandingPage() {
             <span>to new internships.</span>
           </h1>
           <p className="lp-hero-sub mt-7 max-w-2xl">
-            Pathway checks 400+ company career pages every 15 minutes and surfaces new internships
-            the moment they post, so you apply before the listing makes the rounds.
+            Pathway checks hundreds of company career pages every 30 minutes and surfaces new
+            internships quickly, so you apply before the listing makes the rounds.
           </p>
           <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row">
             <Link href="/register" className="lp-cta lp-cta--primary">
@@ -173,8 +173,8 @@ function LandingPage() {
             How we stack up against the alternatives.
           </h2>
           <p className="lp-section-sub lp-section-sub--center mt-5">
-            Pathway watches company career pages on a 15-minute loop and alerts you when new
-            internships post. Simplify and a spreadsheet won&apos;t tell you the moment a role goes live.
+            Pathway watches company career pages every 30 minutes and alerts you when new
+            internships post. Simplify and a spreadsheet won&apos;t keep your search this current.
           </p>
         </div>
         <ComparisonTable />

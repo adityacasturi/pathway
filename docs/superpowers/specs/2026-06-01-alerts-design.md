@@ -5,7 +5,7 @@
 
 ## Goal
 
-Add an **Alerts** page where users opt in to email notifications for new internships at specific companies or in specific Discover industries. Delivery supports **instant** (after hourly scrape) and **daily digest** (9:00 AM ET). Powered by Resend.
+Add an **Alerts** page where users opt in to email notifications for new internships at specific companies or in specific Discover industries. Delivery supports **instant** (after scheduled scrape) and **daily digest** (14:11 UTC). Powered by Resend.
 
 ## Product behavior
 
@@ -27,8 +27,8 @@ Add an **Alerts** page where users opt in to email notifications for new interns
 
 | Cadence | Trigger |
 | --- | --- |
-| **Instant** | End of hourly scrape cron (`/api/cron/scrape-postings`) |
-| **Digest** | Daily cron at **14:00 UTC** (~9:00 AM EST / ~10:00 AM EDT) |
+| **Instant** | After scheduled scrape cron (`/api/cron/scrape-postings`) |
+| **Digest** | Daily cron at **14:11 UTC** |
 
 ### What counts as “new”
 
@@ -92,7 +92,7 @@ Hourly: /api/cron/scrape-postings
   └─ runAllScrapes()
   └─ processInstantAlerts()     (service role, lib/alerts/send-instant.ts)
 
-Daily: /api/cron/send-alert-digests  (14:00 UTC)
+Daily: /api/cron/send-alert-digests  (14:11 UTC)
   └─ processDigestAlerts()      (service role, lib/alerts/send-digest.ts)
 ```
 

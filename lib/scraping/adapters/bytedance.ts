@@ -25,6 +25,8 @@ const BYTEDANCE_PAGE_SIZE = 50;
 const BYTEDANCE_MAX_PAGES = 30;
 const BYTEDANCE_REQUEST_DELAY_MS = 250;
 const BYTEDANCE_DETAIL_CONCURRENCY = 6;
+const BYTEDANCE_DETAIL_DATE_ENRICHMENT =
+  process.env.SCRAPE_BYTEDANCE_DETAIL_DATES === "1";
 
 const INTERNSHIP_LIST_TITLE_PATTERN =
   /\bintern(?:ship|ships)?\b|\bco-?op\b|\bfellowship\b|\buniversity\b|\bproject\s+intern\b/i;
@@ -188,6 +190,24 @@ export async function enrichByteDanceJobDates(
   jobs: ByteDanceJob[],
 ): Promise<ByteDanceEnrichedJob[]> {
   const dateById = new Map<string, string | null>();
+
+  for (const job of jobs) {
+    if (!job.id) {
+      continue;
+    }
+    const embeddedDate = readByteDanceJobDatePosted(job);
+    if (embeddedDate || !BYTEDANCE_DETAIL_DATE_ENRICHMENT) {
+      dateById.set(job.id, embeddedDate);
+    }
+  }
+
+  if (!BYTEDANCE_DETAIL_DATE_ENRICHMENT) {
+    return jobs.map((job) => ({
+      job,
+      datePosted: dateById.get(job.id) ?? null,
+    }));
+  }
+
   let index = 0;
 
   async function worker(): Promise<void> {
@@ -195,6 +215,9 @@ export async function enrichByteDanceJobDates(
       const job = jobs[index];
       index += 1;
       if (!job?.id) {
+        continue;
+      }
+      if (dateById.has(job.id)) {
         continue;
       }
       dateById.set(job.id, await fetchByteDanceDetailDatePosted(board, job.id));
@@ -215,7 +238,7 @@ export async function fetchByteDanceDetailDatePosted(
   board: ByteDanceBoardConfig,
   jobId: string,
 ): Promise<string | null> {
-  const url = `${BYTEDANCE_CAREERS_ORIGIN}/${board.locale}/position/${jobId}/detail`;
+  const url = buildByteDancePostingUrl(board, jobId);
   try {
     const res = await fetchJsonWithTimeout(url, {
       headers: {
@@ -227,10 +250,96 @@ export async function fetchByteDanceDetailDatePosted(
       return null;
     }
     const html = await res.text();
-    return extractAvatureDetailDatePosted(html);
+    return extractByteDanceDetailDatePosted(html);
   } catch {
     return null;
   }
+}
+
+export function readByteDanceJobDatePosted(job: ByteDanceJob): string | null {
+  const record = job as unknown as Record<string, unknown>;
+  const rawJobPostInfo = record.job_post_info;
+  const jobPostInfo =
+    rawJobPostInfo && typeof rawJobPostInfo === "object"
+      ? (rawJobPostInfo as Record<string, unknown>)
+      : null;
+  const candidates = [
+    record.datePosted,
+    record.date_posted,
+    record.publish_time,
+    record.published_at,
+    record.create_time,
+    record.created_at,
+    jobPostInfo?.datePosted,
+    jobPostInfo?.date_posted,
+    jobPostInfo?.publish_time,
+    jobPostInfo?.published_at,
+    jobPostInfo?.create_time,
+    jobPostInfo?.created_at,
+  ];
+
+  for (const candidate of candidates) {
+    const parsed = coerceByteDanceDate(candidate);
+    if (parsed) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
+export function extractByteDanceDetailDatePosted(html: string): string | null {
+  return (
+    coerceByteDanceDate(extractAvatureDetailDatePosted(html)) ??
+    extractNamedByteDanceDate(html, "datePosted") ??
+    extractNamedByteDanceDate(html, "date_posted") ??
+    extractNamedByteDanceDate(html, "publish_time") ??
+    extractNamedByteDanceDate(html, "published_at") ??
+    extractNamedByteDanceDate(html, "create_time") ??
+    extractNamedByteDanceDate(html, "created_at")
+  );
+}
+
+function extractNamedByteDanceDate(html: string, key: string): string | null {
+  const quoted = html.match(new RegExp(`"${key}"\\s*:\\s*"([^"]+)"`, "i"))?.[1];
+  if (quoted) {
+    return coerceByteDanceDate(quoted);
+  }
+
+  const numeric = html.match(new RegExp(`"${key}"\\s*:\\s*(\\d{10,})`, "i"))?.[1];
+  return coerceByteDanceDate(numeric ?? null);
+}
+
+function coerceByteDanceDate(value: unknown): string | null {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return timestampNumberToIso(value);
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    if (/^\d{10,}$/.test(trimmed)) {
+      return timestampNumberToIso(Number.parseInt(trimmed, 10));
+    }
+    return parseFlexiblePostedDate(trimmed);
+  }
+
+  return null;
+}
+
+function timestampNumberToIso(value: number): string | null {
+  const millis = value >= 10_000_000_000 ? value : value * 1000;
+  const date = new Date(millis);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date.toISOString();
 }
 
 export function byteDanceJobDescription(job: ByteDanceJob): string {

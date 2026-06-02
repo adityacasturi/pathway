@@ -27,7 +27,7 @@ Environment:
 | `SCRAPER_VERBOSE=1` | Same as `--verbose` |
 | `SCRAPE_COMPANY_CONCURRENCY` | Parallel companies (default 8, max 16) |
 
-Cron (production): `GET/POST` `/api/cron/scrape-postings` with `Authorization: Bearer $CRON_SECRET` — scheduled hourly via GitHub Actions (see `.github/workflows/production-cron.yml`). Local: `npm run scrape`.
+Cron (production): `GET` `/api/cron/scrape-postings` with `Authorization: Bearer $CRON_SECRET` — scheduled every 30 minutes via Upstash QStash (`npm run qstash:cron -- upsert`). Each scheduled run fans out across four deterministic source shards; `/api/cron/send-instant-alerts` runs a few minutes later. Local: `npm run scrape`.
 
 ### Company logos (static)
 
@@ -37,7 +37,7 @@ npm run company-logos -- --slug acme
 npm run company-logos -- --manifest-only   # rebuild lib/logo/static-slug-manifest.json from PNGs
 ```
 
-Requires `LOGO_DEV_TOKEN`. After Discover onboarding, run per slug (see discover-queue skill). The app serves static logos when the slug is listed in the manifest; otherwise it falls back to `/api/logo`.
+Requires `LOGO_DEV_TOKEN`. After Discover onboarding, run per slug. The app serves static logos when the slug is listed in the manifest; otherwise it falls back to `/api/logo`. Static `/company-logos/*` responses carry long-lived browser cache headers and render with normal lazy/eager image loading, so navigating away and back should not refetch hundreds of PNGs.
 
 ## Pipeline
 
@@ -53,20 +53,20 @@ Health columns on `company_sources`: `last_success_at`, `last_failure_at`.
 
 ## Source types
 
-Canonical list: `SourceType` in `lib/scraping/types.ts`. Registration: `buildScrapeAdapter()` in `lib/scraping/registry.ts`.
+Canonical list: `SOURCE_TYPES` / `SourceType` in `lib/scraping/types.ts`. Registration is the typed `ADAPTER_FACTORIES` map in `lib/scraping/registry.ts`; `satisfies Record<SourceType, AdapterFactory>` makes a missing adapter a TypeScript error.
 
 **Generic ATS (often only need DB rows + standard adapter):**
 
 - `greenhouse`, `ashby`, `lever`, `workday`
-- `workable`, `hiringthing`, `surge`, `smartrecruiters`, `jobvite`, `breezy`
+- `workable`, `hiringthing`, `surge`, `smartrecruiters`, `jobvite`, `breezy`, `pinpoint`
 
 **Custom adapters (employer-specific APIs or HTML):** include `google`, `microsoft`, `amazon`, `meta`, `apple`, `tesla`, `nvidia`, `jane_street`, `hudson_river_trading`, `uber`, `salesforce`, `linkedin`, `oracle`, `goldman_sachs`, `jpmorgan_chase`, and others in the registry — copy an existing file under `lib/scraping/adapters/` when adding a new employer.
 
 Adding a **new** `source_type` requires:
 
-1. Adapter file + `registry.ts` branch
+1. Adapter file + `ADAPTER_FACTORIES` entry in `registry.ts`
 2. Extend `company_sources_source_type_check` in SQL (`apply_migration`)
-3. Unit tests in `tests/unit/scraping-adapters.test.ts` when practical
+3. Unit tests in `tests/unit/scraping-adapters.test.ts` when practical; `tests/unit/scraping-registry.test.ts` checks registry/source-type coverage
 
 ## Role filters
 
@@ -91,10 +91,10 @@ Two Discover companies share one supplier API (`jobs.bytedance.com`) via `lib/sc
 
 | Company slug | Careers surface | Posting URLs | Scope |
 | --- | --- | --- | --- |
-| `bytedance` | [jobs.bytedance.com](https://jobs.bytedance.com/en/position) | `jobs.bytedance.com/.../detail` | All US engineering internships from default intern keywords |
+| `bytedance` | [joinbytedance.com](https://joinbytedance.com) | `joinbytedance.com/search/{id}` | All US engineering internships from default intern keywords |
 | `tiktok` | [lifeattiktok.com](https://lifeattiktok.com/early-careers) | `lifeattiktok.com/search/{id}` | TikTok / TikTok Shop (and related) roles only; excludes PICO-only, CapCut-only, etc. |
 
-TikTok uses TikTok-focused search keywords. Roles listed on lifeattiktok but missing from supplier search are merged from `lib/scraping/adapters/lifeattiktok.ts` (IDs in `TIKTOK_SUPPLIER_SEARCH_GAP_JOB_IDS` or after `|` in `board_token`).
+TikTok uses TikTok-focused search keywords. Roles listed on lifeattiktok but missing from supplier search are merged from `lib/scraping/adapters/lifeattiktok.ts` (IDs in `TIKTOK_SUPPLIER_SEARCH_GAP_JOB_IDS` or after `|` in `board_token`). ByteDance/TikTok supplier search currently exposes accurate locations but not trustworthy publish dates; detail-page date enrichment is opt-in with `SCRAPE_BYTEDANCE_DETAIL_DATES=1` because the public pages usually do not expose `datePosted`.
 
 ## Adapter quality checklist
 
@@ -118,7 +118,7 @@ Shared modules:
 - `lib/scraping/location.ts` — `extractLocationsFromPlainText()` for HTML-only boards (Valve, Surge)
 - `lib/scraping/season.ts` — season inference
 
-Most adapters now use `buildScrapedRole()` + `buildRoleParseResult()` so US location trim and date stats stay consistent. Run `npm run scrape:audit-adapters` to find stragglers (thin Greenhouse wrappers, `nvidia`/`slack` Workday delegates).
+Parser adapters use `buildScrapedRole()` + `buildRoleParseResult()` so US location trim and date stats stay consistent. Run `npm run scrape:audit-adapters` to verify; delegated wrappers are labeled separately from parser adapters.
 
 **Ashby public API** (`api.ashbyhq.com/posting-api/job-board/{token}`): use `descriptionPlain`, `publishedAt`, `address.postalAddress`, `employmentType`, `workplaceType`, `isListed`; skip `isListed === false`.
 
@@ -143,22 +143,58 @@ Or hit public APIs directly (Greenhouse/Ashby/Lever) — see `.cursor/skills/dis
 
 ## Onboarding a new company
 
-1. **Check catalog:** `npm run discover-queue -- catalog-check --slug <slug>`
-2. **Queue (optional):** add to `discover-queue/inbox.json` → `npm run discover-queue -- import`
-3. **Pick industry** — set `companies.industry` to a valid `discover_industries.slug` (see [discover-industries.md](./discover-industries.md)); default `enterprise-software`
-4. **Apply SQL** via Supabase `apply_migration` (`companies` + `company_sources`, and check constraint if new `source_type`)
-5. **Verify:** `production_integrity_check()`, `npm run scrape -- --dry-run --verbose <slug>`, then live scrape
-6. **Custom adapter** when standard ATS probes fail — do not fail the queue item only because Greenhouse/Ashby/Lever/Workday failed
+For one-off onboarding, prefer the direct hosted-Supabase CLI:
 
-Bulk worker instructions: [discover-queue/README.md](../discover-queue/README.md).
+```bash
+npm run discover-company -- \
+  --slug acme \
+  --name "Acme" \
+  --website https://acme.example \
+  --careers https://acme.example/careers \
+  --industry enterprise-software \
+  --source-type greenhouse \
+  --source-url https://job-boards.greenhouse.io/acme \
+  --board-token acme
+
+# Review the JSON dry-run, then repeat with --apply --scrape:
+npm run discover-company -- \
+  --slug acme \
+  --name "Acme" \
+  --website https://acme.example \
+  --careers https://acme.example/careers \
+  --industry enterprise-software \
+  --source-type greenhouse \
+  --source-url https://job-boards.greenhouse.io/acme \
+  --board-token acme \
+  --apply \
+  --scrape
+```
+
+The command validates the registered `source_type`, validates the industry slug against hosted Supabase, upserts `companies`, upserts one `company_sources` row, defaults `scrape_interval_minutes` to 15, and never clears existing optional company fields unless you provide replacements. Use `--logo-asset-key <slug>` after adding `public/company-logos/<slug>.png`.
+
+Workflow:
+
+1. **Check catalog:** `npm run discover-queue -- catalog-check --slug <slug>`
+2. **Probe source:** use the standard ATS URL/API or add a custom adapter when Greenhouse/Ashby/Lever/Workday probes fail.
+3. **Dry-run plan:** `npm run discover-company -- <flags>` and verify source/industry/logos.
+4. **Apply + verify:** repeat the same command with `--apply --scrape`, then `npm run scrape -- --dry-run --verbose <slug>`.
+5. **Database safety:** run `production_integrity_check()` after durable schema/RLS changes or new `source_type` migrations. Routine company/source onboarding via `discover-company` does not need a migration file.
+
+Bulk worker instructions remain available for large batches: [discover-queue/README.md](../discover-queue/README.md).
 
 ## Tesla note
 
-Use `source_type` `tesla` and `tesla.com` careers APIs — not `tesla.wd1.myworkdayjobs.com` (maintenance redirect / CXS 422). Cron IPs may hit Akamai rate limits; adapter retries `429` only.
+Use `source_type` `tesla` and `tesla.com` careers APIs — not `tesla.wd1.myworkdayjobs.com` (maintenance redirect / CXS 422). Cron IPs may hit Akamai rate limits; adapter retries `429` only. As of hosted migration `triage_failing_discover_sources` (2026-06-02), the Tesla source is disabled until a collection path that avoids persistent 429s is implemented.
 
 ## Posted dates
 
 Scrapers emit structured `dates` in `lib/scraping/posted-date.ts`; upsert merge in `lib/scraping/upsert.ts`. UI rules: [scraped-posted-dates.md](./scraped-posted-dates.md).
+
+Known live-source limitations from the 2026-06-02 dry-run audit:
+
+- ByteDance/TikTok supplier search exposes locations and role detail text, but no trustworthy publish field. Detail-page date fetching is opt-in and still usually finds no `datePosted`.
+- IBM's accessible Avature list/detail pages currently expose valid locations but no publish field for kept US internship/apprentice roles.
+- Electronic Arts Avature RSS can provide `pubDate` for overlapping listings, and the adapter now merges it into HTML results. The current kept EA internship detail page itself exposes no trustworthy publish field.
 
 ## Debugging
 

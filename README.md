@@ -142,7 +142,7 @@ tests/unit/             Node unit tests
 - Public signup: open to any valid email. App-level hygiene (format + disposable-domain blocklist) lives in `lib/auth/validation.ts`. To restrict the audience later, enforce both in app code and at the Auth layer — see [docs/production-runbook.md](docs/production-runbook.md).
 - Default accent: **midnight** (`user_preferences`).
 - Discover hides postings you already applied to (by normalized posting URL).
-- Scrape ingestion: hourly cron in production; local `npm run scrape`.
+- Scrape ingestion: QStash 30-minute cron in production; local `npm run scrape`.
 - Email alerts (`/alerts`) are launch-gated by `ALERTS_LAUNCHED` / `lib/config/alerts-launch.ts`.
 
 ## Agents and database work

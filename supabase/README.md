@@ -8,6 +8,7 @@ Production schema and migration history live on the **hosted Supabase project**.
 | --- | --- |
 | See tables/columns | MCP `list_tables` or SQL editor |
 | Is a Discover company onboarded? | `npm run discover-queue -- catalog-check --slug <slug>` |
+| Add one Discover company/source | `npm run discover-company -- <flags>` dry-run, then repeat with `--apply --scrape` |
 | Industry slugs for `companies.industry` | [docs/discover-industries.md](../docs/discover-industries.md) (`discover_industries` table) |
 | Apply a durable change | MCP `apply_migration` with a descriptive name |
 | Verify | `list_migrations`, `select * from app_private.production_integrity_check();` (0 rows), advisors |
@@ -18,7 +19,7 @@ Production schema and migration history live on the **hosted Supabase project**.
 1. Do **not** grep `supabase/migrations_archive/` — historical only, excluded from Cursor.
 2. Do **not** invent `NNN_description.sql` filenames.
 3. Use `execute_sql` for inspection, not as the only record of production DDL.
-4. Discover **company seeds** usually need only `apply_migration` on remote, not a git SQL file.
+4. Routine Discover company/source onboarding should use `npm run discover-company -- <flags> --apply --scrape`; it does not need a migration.
 5. **Schema / RLS / new `source_type`:** `apply_migration` plus optional git file for PR review.
 
 ## Local development
@@ -40,3 +41,12 @@ select * from app_private.production_integrity_check();
 ```
 
 Any row returned is a blocker until fixed forward or reverted via a new migration.
+
+## Recent hosted migrations
+
+- `add_market_summary_rpcs_and_favorite_index` — adds `discover_company_open_counts()`, `market_posting_summary(_now)`, the missing `discover_company_favorites(company_id)` FK index, and a partial open-US postings index for the aggregate path.
+- `triage_failing_discover_sources` — disables Tesla and TransMarket Group sources after repeated hosted scrape failures; re-enable only after a replacement source/adapter passes dry-run verification.
+- `allow_fifteen_minute_scrape_interval` — lowers `company_sources.scrape_interval_minutes` default/check constraint to 15 minutes so production can run sub-hourly schedules.
+- `deny_client_access_to_unsubscribe_nonces` — adds an explicit deny-all RLS policy for `alert_unsubscribe_nonces`; writes stay service-role only.
+- `add_pinpoint_source_type_and_wolverine_source` — registers the `pinpoint` source type and moves Wolverine Trading from a stale Lever board to `https://careers.wolve.com/en/postings.json`.
+- `revoke_authenticated_alert_write_rpcs` — revokes signed-in client `EXECUTE` on legacy alert write RPCs after moving `/alerts` mutations behind scoped server actions.

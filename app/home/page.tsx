@@ -6,6 +6,7 @@ import { Home } from "@/components/home";
 import { normalizeApplicationState } from "@/lib/config/application-state";
 import { isMissingPreferenceColumnError } from "@/lib/config/user-preferences";
 import { loadDiscoverCompanyFavoriteSlugs } from "@/lib/discover/favorites";
+import { loadMarketPostingSummary } from "@/lib/feed/market-summary";
 import {
   buildHomeBriefing,
   HOME_NEW_WINDOW_SECONDS,
@@ -31,11 +32,14 @@ function interactionDate(savedAtById: Map<string, string>, posting: FeedPosting)
 
 export default async function HomePage() {
   const supabase = await createClient();
+  // eslint-disable-next-line react-hooks/purity
+  const nowUnix = Math.floor(Date.now() / 1000);
 
-  const [userResult, postings, appsRes, interactionsRes, preferencesRes] =
+  const [userResult, postings, marketSummary, appsRes, interactionsRes, preferencesRes] =
     await Promise.all([
       supabase.auth.getUser(),
       fetchFeed(),
+      loadMarketPostingSummary(supabase, nowUnix),
       supabase
         .from("applications")
         .select("*, application_events(*)"),
@@ -82,8 +86,6 @@ export default async function HomePage() {
     if (normalized) trackedUrls.add(normalized);
   }
 
-  // eslint-disable-next-line react-hooks/purity
-  const nowUnix = Math.floor(Date.now() / 1000);
   const cutoff = nowUnix - HOME_NEW_WINDOW_SECONDS;
   const newPostings = postings
     .filter((p) => p.datePosted >= cutoff && !hasInteraction(dismissedSet, p))
@@ -102,6 +104,8 @@ export default async function HomePage() {
     favoriteSlugs: new Set(favoriteSlugs),
     dismissedIds: dismissedSet,
     trackedUrls,
+    marketPulse: marketSummary.pulse,
+    marketWeek: marketSummary.week,
   });
 
   return (

@@ -1,5 +1,6 @@
 import { atsPublishDate } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
+import { buildRoleParseResult } from "../role-parse-result.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
@@ -220,14 +221,7 @@ export function parseChewyJobs(
     );
   }
 
-  return {
-    roles,
-    stats: {
-      fetched: fetchedCount,
-      kept: roles.length,
-      rejected,
-    },
-  };
+  return buildRoleParseResult(fetchedCount, roles, rejected);
 }
 
 async function fetchAllChewySummaries(board: ChewyBoardConfig): Promise<ChewyJobSummary[]> {

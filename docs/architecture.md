@@ -10,7 +10,7 @@ Pathway is a Next.js 16 App Router app backed by Supabase Auth and Postgres. Stu
 | Styling | Tailwind CSS v4 (`app/globals.css` tokens) |
 | UI | Local primitives in `components/ui/` (`@base-ui/react`) |
 | Data | Supabase Auth, Postgres, RLS, SQL functions/triggers |
-| Scraping | Node scripts + Vercel cron (`lib/scraping/`) |
+| Scraping | Node scripts + Upstash QStash schedules + Next route handlers (`lib/scraping/`) |
 | Tests | Node test runner (unit), Playwright (e2e) |
 | Runtime | Node.js 22.x |
 
@@ -34,8 +34,9 @@ Before changing routing, caching, `proxy.ts`, or Server Components, read the rel
 | `/settings` | Auth | Account and preferences (accent, quick track) |
 | `/alerts/unsubscribe` | Public | One-click email unsubscribe (signed token) |
 | `/api/logo` | Auth | Logo.dev proxy (not a public CDN) |
-| `/api/cron/scrape-postings` | Cron | Hourly scrape + instant alerts (`Authorization: Bearer CRON_SECRET`) |
-| `/api/cron/send-alert-digests` | Cron | Daily digest alerts at 14:00 UTC |
+| `/api/cron/scrape-postings` | Cron | 30-minute sharded scrape (`Authorization: Bearer CRON_SECRET`) |
+| `/api/cron/send-instant-alerts` | Cron | Instant alert delivery after scrape shards succeed |
+| `/api/cron/send-alert-digests` | Cron | Daily digest alerts at 14:11 UTC |
 
 `proxy.ts` gates routes: unauthenticated users go to `/`; authenticated users cannot stay on `/login`.
 
@@ -108,13 +109,14 @@ Pattern: validate input → Supabase server client or narrow RPC → `revalidate
 | --- | --- |
 | `lib/supabase/server.ts` | Cookie-aware server client (RLS as user) |
 | `lib/supabase/auth.ts` | `getUser()` helper for server components |
-| `lib/supabase/admin.ts` | Service role — bypasses RLS (scrapes, cron alert sends, unsubscribe writes, discover-queue). Server/CLI only; guarded against browser use. |
+| `lib/supabase/admin.ts` | Service role — bypasses RLS (scrapes, cron alert sends, unsubscribe writes, discover-company / discover-queue). Server/CLI only; guarded against browser use. |
 
 ## Live feed
 
 Loader: `lib/feed/scraped-postings.ts` → `FeedPosting` (`lib/feed/source.ts`).
 
 - Open rows from `scraped_postings` for **active** companies with **enabled** `company_sources`.
+- Market top-line counts for Home/Stats come from `public.market_posting_summary(_now)` so the DB performs the aggregate scan instead of recomputing every summary in React route code.
 - Posting ids: stable URL hash (`lib/feed/ids.ts`) plus row uuid for interactions.
 - **US-only:** `lib/feed/us-locations.ts` at scrape, upsert, and read; `countries` column stores ISO codes when known.
 - **Posted vs Discovered:** see [scraped-posted-dates.md](./scraped-posted-dates.md). Live **NEW** uses `first_seen_at`, not ATS touch times.
@@ -127,6 +129,7 @@ Loader: `lib/discover/companies.ts`. UI: `components/discover-companies.tsx`.
 
 - Industry taxonomy in **`discover_industries`**; each company’s `industry` column is an FK to that table (no in-app slug map). See [discover-industries.md](./discover-industries.md).
 - Catalog loaded via `loadDiscoverIndustryCatalog()` in `lib/discover/catalog.ts`; grouping via `lib/discover/industries.ts`.
+- Open role counts come from `public.discover_company_open_counts()`; the route no longer downloads every open posting just to count companies.
 - Search, industry chips, season filter, starred section, paginated company list.
 - Postings for a company load on demand via `fetchDiscoverCompanyPostings` (`lib/actions/discover.ts`).
 - Company dialog rows reuse Live **Track** and **Save for later** (`feed_interactions`); applied postings (matching active application URL) are hidden; saved postings stay visible. No dismiss on Discover.
@@ -143,11 +146,11 @@ Loader: `lib/discover/companies.ts`. UI: `components/discover-companies.tsx`.
 - Launch gate: without `ALERTS_LAUNCHED=true`, the `/alerts` UI is preview-only (visible, non-interactive), server actions reject writes, and crons skip outbound email.
 - DB: `alert_curated_sectors` + `app_private.validate_alert_subscription_row` trigger enforce sector/company/industry targets and `cadence = instant` on writes; RLS uses `(select auth.uid())` for performance.
 - Unsubscribe: `GET /alerts/unsubscribe` shows a confirm form; `POST` performs the disable (avoids mail-scanner GET side effects). Tokens include expiry + single-use nonce (`alert_unsubscribe_nonces`).
-- Writes: authenticated clients use RPCs (`set_alert_emails_enabled`, `add_alert_*_subscription`, etc.); direct table inserts are revoked.
+- Writes: server actions authenticate with the user session, then perform scoped service-role writes for that `user.id`; direct client table inserts and public alert write RPC execution are revoked.
 
 ## Scraping (summary)
 
-- Cron: GitHub Actions [`.github/workflows/production-cron.yml`](../.github/workflows/production-cron.yml) calls `/api/cron/scrape-postings` hourly and `/api/cron/send-alert-digests` daily at 14:00 UTC (~9 AM ET). Vercel Hobby cannot schedule hourly crons in `vercel.json`.
+- Cron: Upstash QStash schedules call `/api/cron/scrape-postings` every 30 minutes across four source shards, then `/api/cron/send-instant-alerts` a few minutes later. QStash also calls `/api/cron/send-alert-digests` daily at 14:11 UTC. Manage schedules with `npm run qstash:cron -- <list|upsert|delete>`.
 - Local: `npm run scrape` (needs `SUPABASE_SERVICE_ROLE_KEY`).
 - Adapters: `lib/scraping/registry.ts` keyed by `company_sources.source_type` (`lib/scraping/types.ts`).
 - Full detail: [scraping.md](./scraping.md).

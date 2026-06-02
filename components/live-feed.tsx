@@ -16,7 +16,6 @@ import { ApplicationDialog } from "@/components/application-dialog";
 import { PostingRow } from "@/components/posting-row";
 import { InlineError } from "@/components/ui/inline-error";
 import { FilterSection, FilterToggle, SegmentedControl } from "@/components/ui/filter-menu";
-import { SkeletonBlock } from "@/components/ui/loading-indicator";
 import { PageHeader, PageMain, PageShell } from "@/components/ui/page";
 import { SearchInput } from "@/components/search-input";
 import { useFocusSearchShortcut } from "@/lib/ui/focus-search-shortcut";
@@ -34,6 +33,7 @@ import {
   buildTrackApplicationFormData,
   feedSeasonToApplicationSeason,
 } from "@/lib/feed/build-track-form-data";
+import { applyInteractionIds, hasAnyInteraction } from "@/lib/feed/interactions";
 import type { FeedPosting } from "@/lib/feed/source";
 import type { ApplicationSeason } from "@/types/application";
 import { getPageLabel } from "@/lib/config/nav";
@@ -51,6 +51,50 @@ const LEGACY_SEASON_KEY = "pathway:discover-season";
 const LAST_SEEN_STORAGE_KEY = "pathway:feed-last-seen-at";
 
 const VALID_SEASONS = new Set<SeasonFilter>(SEASON_FILTER_OPTIONS.map((option) => option.value));
+
+function readStoredFeedPreferences(initialFeedPrefs: FeedViewPreferences): FeedViewPreferences {
+  if (typeof window === "undefined") return initialFeedPrefs;
+
+  const storedLastSeen = window.localStorage.getItem(LAST_SEEN_STORAGE_KEY);
+  const parsedLastSeen = storedLastSeen ? Number.parseInt(storedLastSeen, 10) : NaN;
+  const lastSeenUnix =
+    Number.isFinite(parsedLastSeen) && parsedLastSeen > initialFeedPrefs.lastSeenUnix
+      ? parsedLastSeen
+      : initialFeedPrefs.lastSeenUnix;
+
+  const dismissPref =
+    window.localStorage.getItem(SHOW_DISMISSED_STORAGE_KEY) ??
+    window.localStorage.getItem(LEGACY_SHOW_DISMISSED_KEY);
+  const showDismissed =
+    dismissPref === "1" && !initialFeedPrefs.showDismissed
+      ? true
+      : initialFeedPrefs.showDismissed;
+
+  const hideAppliedPref =
+    window.localStorage.getItem(HIDE_APPLIED_STORAGE_KEY) ??
+    window.localStorage.getItem(LEGACY_HIDE_APPLIED_KEY);
+  const hideApplied =
+    hideAppliedPref === "0" && initialFeedPrefs.hideApplied
+      ? false
+      : hideAppliedPref === "1" && !initialFeedPrefs.hideApplied
+        ? true
+        : initialFeedPrefs.hideApplied;
+
+  const seasonPref =
+    window.localStorage.getItem(SEASON_STORAGE_KEY) ??
+    window.localStorage.getItem(LEGACY_SEASON_KEY);
+  let seasonFilter = initialFeedPrefs.seasonFilter;
+  if (seasonPref && VALID_SEASONS.has(seasonPref as SeasonFilter)) {
+    seasonFilter = seasonPref as SeasonFilter;
+  } else if (seasonPref?.includes(",")) {
+    const first = seasonPref.split(",")[0]?.trim();
+    if (first && VALID_SEASONS.has(first as SeasonFilter)) {
+      seasonFilter = first as SeasonFilter;
+    }
+  }
+
+  return { lastSeenUnix, showDismissed, hideApplied, seasonFilter };
+}
 
 // Progressive render window. The filter/search still runs over the full list
 // (cheap), but we only paint a chunk at a time. The IntersectionObserver
@@ -78,23 +122,6 @@ interface Prefill {
   season?: ApplicationSeason;
 }
 
-function hasAnyInteraction(interactions: Set<string>, posting: FeedPosting): boolean {
-  return posting.interactionIds.some((id) => interactions.has(id));
-}
-
-function applyInteractionIds(
-  current: Set<string>,
-  posting: FeedPosting,
-  next: boolean,
-): Set<string> {
-  const out = new Set(current);
-  for (const id of posting.interactionIds) {
-    if (next) out.add(id);
-    else out.delete(id);
-  }
-  return out;
-}
-
 export function LiveFeed({
   postings,
   dismissedIds,
@@ -110,11 +137,11 @@ export function LiveFeed({
   // Typing stays snappy because the filter runs against the deferred value,
   // letting React keep the input responsive while it catches up on the list.
   const deferredQuery = useDeferredValue(query);
-  const [seasonFilter, setSeasonFilter] = useState<SeasonFilter>(initialFeedPrefs.seasonFilter);
-  const [showDismissed, setShowDismissed] = useState(initialFeedPrefs.showDismissed);
+  const [storedInitialFeedPrefs] = useState(() => readStoredFeedPreferences(initialFeedPrefs));
+  const [seasonFilter, setSeasonFilter] = useState<SeasonFilter>(storedInitialFeedPrefs.seasonFilter);
+  const [showDismissed, setShowDismissed] = useState(storedInitialFeedPrefs.showDismissed);
   const [showSavedOnly, setShowSavedOnly] = useState(initialSavedOnly);
-  const [hideApplied, setHideApplied] = useState(initialFeedPrefs.hideApplied);
-  const [preferencesReady, setPreferencesReady] = useState(false);
+  const [hideApplied, setHideApplied] = useState(storedInitialFeedPrefs.hideApplied);
   const [dialogPrefill, setDialogPrefill] = useState<Prefill | null>(null);
   const [trackPendingId, setTrackPendingId] = useState<string | null>(null);
   const [trackedUrlOverrides, setTrackedUrlOverrides] = useState<Set<string>>(() => new Set());
@@ -140,7 +167,7 @@ export function LiveFeed({
   // is a candidate for the NEW badge. We capture this once on mount and keep
   // it frozen for the whole session, then stamp the current time into
   // localStorage on unmount so the next visit has the right baseline.
-  const [lastSeen, setLastSeen] = useState<number | null>(initialFeedPrefs.lastSeenUnix);
+  const [lastSeen, setLastSeen] = useState<number | null>(storedInitialFeedPrefs.lastSeenUnix);
 
   useEffect(() => {
     const patch: {
@@ -150,67 +177,35 @@ export function LiveFeed({
       seasonFilter?: SeasonFilter;
     } = {};
 
-    const storedLastSeen = localStorage.getItem(LAST_SEEN_STORAGE_KEY);
-    const parsedLastSeen = storedLastSeen ? Number.parseInt(storedLastSeen, 10) : NaN;
-    if (Number.isFinite(parsedLastSeen) && parsedLastSeen > initialFeedPrefs.lastSeenUnix) {
-      patch.lastSeenUnix = parsedLastSeen;
-      setLastSeen(parsedLastSeen);
+    if (storedInitialFeedPrefs.lastSeenUnix > initialFeedPrefs.lastSeenUnix) {
+      patch.lastSeenUnix = storedInitialFeedPrefs.lastSeenUnix;
     }
-
-    const dismissPref =
-      localStorage.getItem(SHOW_DISMISSED_STORAGE_KEY) ??
-      localStorage.getItem(LEGACY_SHOW_DISMISSED_KEY);
-    if (dismissPref === "1" && !initialFeedPrefs.showDismissed) {
-      patch.showDismissed = true;
-      setShowDismissed(true);
+    if (storedInitialFeedPrefs.showDismissed !== initialFeedPrefs.showDismissed) {
+      patch.showDismissed = storedInitialFeedPrefs.showDismissed;
     }
-
-    const hideAppliedPref =
-      localStorage.getItem(HIDE_APPLIED_STORAGE_KEY) ??
-      localStorage.getItem(LEGACY_HIDE_APPLIED_KEY);
-    if (hideAppliedPref === "0" && initialFeedPrefs.hideApplied) {
-      patch.hideApplied = false;
-      setHideApplied(false);
-    } else if (hideAppliedPref === "1" && !initialFeedPrefs.hideApplied) {
-      patch.hideApplied = true;
-      setHideApplied(true);
+    if (storedInitialFeedPrefs.hideApplied !== initialFeedPrefs.hideApplied) {
+      patch.hideApplied = storedInitialFeedPrefs.hideApplied;
     }
-
-    const seasonPref =
-      localStorage.getItem(SEASON_STORAGE_KEY) ?? localStorage.getItem(LEGACY_SEASON_KEY);
-    let migratedSeason: SeasonFilter | null = null;
-    if (seasonPref && VALID_SEASONS.has(seasonPref as SeasonFilter)) {
-      migratedSeason = seasonPref as SeasonFilter;
-    } else if (seasonPref?.includes(",")) {
-      const first = seasonPref.split(",")[0]?.trim();
-      if (first && VALID_SEASONS.has(first as SeasonFilter)) {
-        migratedSeason = first as SeasonFilter;
-      }
-    }
-    if (migratedSeason && migratedSeason !== initialFeedPrefs.seasonFilter) {
-      patch.seasonFilter = migratedSeason;
-      setSeasonFilter(migratedSeason);
+    if (storedInitialFeedPrefs.seasonFilter !== initialFeedPrefs.seasonFilter) {
+      patch.seasonFilter = storedInitialFeedPrefs.seasonFilter;
     }
 
     if (Object.keys(patch).length > 0) {
       void updateFeedViewPreferences(patch);
     }
 
-    setPreferencesReady(true);
-
     return () => {
       const unix = Math.floor(Date.now() / 1000);
       void updateFeedViewPreferences({ lastSeenUnix: unix });
     };
-  }, [initialFeedPrefs.hideApplied, initialFeedPrefs.lastSeenUnix, initialFeedPrefs.seasonFilter, initialFeedPrefs.showDismissed]);
+  }, [initialFeedPrefs.hideApplied, initialFeedPrefs.lastSeenUnix, initialFeedPrefs.seasonFilter, initialFeedPrefs.showDismissed, storedInitialFeedPrefs]);
 
   useEffect(() => {
-    if (!preferencesReady) return;
     const timer = window.setTimeout(() => {
       void updateFeedViewPreferences({ showDismissed, hideApplied, seasonFilter });
     }, 400);
     return () => window.clearTimeout(timer);
-  }, [hideApplied, preferencesReady, seasonFilter, showDismissed]);
+  }, [hideApplied, seasonFilter, showDismissed]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -262,7 +257,7 @@ export function LiveFeed({
     (posting: FeedPosting, next: boolean) => {
       const id = posting.id;
       setActionError(null);
-      setDismissedSet((prev) => applyInteractionIds(prev, posting, next));
+      setDismissedSet((prev) => applyInteractionIds(prev, posting.interactionIds, next));
       setPendingIds((prev) => {
         const out = new Set(prev);
         out.add(id);
@@ -276,7 +271,7 @@ export function LiveFeed({
           : await undismissPosting(posting.interactionIds);
         if (result?.error) {
           setActionError(result.error);
-          setDismissedSet((prev) => applyInteractionIds(prev, posting, !next));
+          setDismissedSet((prev) => applyInteractionIds(prev, posting.interactionIds, !next));
         }
         setPendingIds((prev) => {
           if (!prev.has(id)) return prev;
@@ -293,7 +288,7 @@ export function LiveFeed({
     (posting: FeedPosting, next: boolean) => {
       const id = posting.id;
       setActionError(null);
-      setSavedSet((prev) => applyInteractionIds(prev, posting, next));
+      setSavedSet((prev) => applyInteractionIds(prev, posting.interactionIds, next));
       setPendingSavedIds((prev) => {
         const out = new Set(prev);
         out.add(id);
@@ -305,7 +300,7 @@ export function LiveFeed({
           : await unsavePosting(posting.interactionIds);
         if (result?.error) {
           setActionError(result.error);
-          setSavedSet((prev) => applyInteractionIds(prev, posting, !next));
+          setSavedSet((prev) => applyInteractionIds(prev, posting.interactionIds, !next));
         }
         setPendingSavedIds((prev) => {
           if (!prev.has(id)) return prev;
@@ -350,9 +345,9 @@ export function LiveFeed({
     const out: FeedPosting[] = [];
     for (const p of postings) {
       if (seasonFilter !== "all" && p.season !== seasonFilter) continue;
-      const isDismissed = hasAnyInteraction(dismissedSet, p);
+      const isDismissed = hasAnyInteraction(dismissedSet, p.interactionIds);
       if (!showDismissed && isDismissed) continue;
-      if (showSavedOnly && !hasAnyInteraction(savedSet, p)) continue;
+      if (showSavedOnly && !hasAnyInteraction(savedSet, p.interactionIds)) continue;
       if (hideApplied && trackedIdSet.has(p.id)) continue;
 
       const hay = haystacks.get(p.id) ?? "";
@@ -383,7 +378,9 @@ export function LiveFeed({
     if (lastSeen == null) return 0;
     let count = 0;
     for (const p of postings) {
-      if (p.pathwayNewUnix > lastSeen && !hasAnyInteraction(dismissedSet, p)) count++;
+      if (p.pathwayNewUnix > lastSeen && !hasAnyInteraction(dismissedSet, p.interactionIds)) {
+        count++;
+      }
     }
     return count;
   }, [postings, lastSeen, dismissedSet]);
@@ -411,7 +408,6 @@ export function LiveFeed({
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    if (!preferencesReady) return;
     if (visibleCount >= filtered.length) return;
     const el = sentinelRef.current;
     if (!el) return;
@@ -427,7 +423,7 @@ export function LiveFeed({
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [preferencesReady, visibleCount, filtered.length]);
+  }, [visibleCount, filtered.length]);
 
   const visiblePostings = useMemo(
     () => filtered.slice(0, visibleCount),
@@ -602,30 +598,22 @@ export function LiveFeed({
           ) : null}
         </motion.div>
 
-        {preferencesReady && (
-          <div className="mb-3 flex items-center justify-end font-mono text-[11px] text-muted-foreground">
-            {filtered.length === postings.length ? (
-              <span>{postings.length.toLocaleString()} postings</span>
-            ) : (
-              <span>
-                <span className="text-foreground">{filtered.length.toLocaleString()}</span>
-                <span className="text-muted-foreground/70">
-                  {" "}
-                  of {postings.length.toLocaleString()} postings
-                </span>
+        <div className="mb-3 flex items-center justify-end font-mono text-[11px] text-muted-foreground">
+          {filtered.length === postings.length ? (
+            <span>{postings.length.toLocaleString()} postings</span>
+          ) : (
+            <span>
+              <span className="text-foreground">{filtered.length.toLocaleString()}</span>
+              <span className="text-muted-foreground/70">
+                {" "}
+                of {postings.length.toLocaleString()} postings
               </span>
-            )}
-          </div>
-        )}
+            </span>
+          )}
+        </div>
 
         <section className="mt-2 min-h-[560px]">
-          {!preferencesReady ? (
-            <div className="flex flex-col gap-3" aria-label="Loading feed preferences">
-              {Array.from({ length: 8 }).map((_, index) => (
-                <SkeletonBlock key={index} className="h-[68px] w-full rounded-lg" />
-              ))}
-            </div>
-          ) : filtered.length === 0 ? (
+          {filtered.length === 0 ? (
             <p className="py-16 text-center text-[15px] text-muted-foreground">
               Nothing matches the filters.
             </p>
@@ -637,8 +625,8 @@ export function LiveFeed({
                     key={posting.id}
                     density="comfortable"
                     posting={posting}
-                    dismissed={hasAnyInteraction(dismissedSet, posting)}
-                    saved={hasAnyInteraction(savedSet, posting)}
+                    dismissed={hasAnyInteraction(dismissedSet, posting.interactionIds)}
+                    saved={hasAnyInteraction(savedSet, posting.interactionIds)}
                     tracked={trackedIdSet.has(posting.id)}
                     isNew={isPostingNew(posting)}
                     pending={pendingIds.has(posting.id)}

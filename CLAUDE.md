@@ -58,7 +58,7 @@ Public signup (any valid email) · application tracker with event-derived status
 | `/alerts/unsubscribe` | One-click unsubscribe (HMAC token, public) |
 | `/settings` | Preferences |
 | `/api/logo` | Authenticated logo proxy (logo.dev) |
-| `/api/cron/scrape-postings` | Hourly scrape + instant alerts (cron secret) |
+| `/api/cron/scrape-postings` | 30-minute sharded scrape (cron secret) |
 | `/api/cron/send-alert-digests` | Daily digest send (cron secret) |
 
 `proxy.ts`: unauthenticated → `/` (except public routes); authenticated cannot stay on `/login`.
@@ -77,8 +77,8 @@ Clients: `lib/supabase/server.ts` (user, RLS), `lib/supabase/admin.ts` (service 
 
 - **Home:** `lib/home/briefing.ts` → `components/home/*` — snapshot pipeline counts, "since yesterday", starred, "for later".
 - **Live:** `lib/feed/scraped-postings.ts` — `feed_interactions`, hide applied URLs, refresh does not scrape.
-- **Discover:** `lib/discover/companies.ts` + `lib/discover/catalog.ts` — same scrape store; industries from `discover_industries`; cron hourly `/api/cron/scrape-postings`; local `npm run scrape`.
-- **Alerts:** `lib/alerts/*` — match new postings to subscriptions, instant emails (hourly cron) + daily digest, Resend delivery, launch-gated by `lib/config/alerts-launch.ts`.
+- **Discover:** `lib/discover/companies.ts` + `lib/discover/catalog.ts` — same scrape store; industries from `discover_industries`; QStash 30-minute cron `/api/cron/scrape-postings`; local `npm run scrape`.
+- **Alerts:** `lib/alerts/*` — match new postings to subscriptions, instant emails after scrape cron + daily digest, Resend delivery, launch-gated by `lib/config/alerts-launch.ts`.
 
 ## Database
 

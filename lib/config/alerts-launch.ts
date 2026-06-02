@@ -1,6 +1,6 @@
 /** User-facing error when alerts are preview-only. */
 export const ALERTS_PREVIEW_LOCKED_MESSAGE =
-  "Same-minute email alerts are coming soon.";
+  "New-role email alerts are coming soon.";
 
 /**
  * When true, users can change alert settings and crons may send email.

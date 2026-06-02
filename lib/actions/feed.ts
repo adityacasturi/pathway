@@ -126,7 +126,7 @@ export async function unsavePosting(postingIds: string | string[]) {
 
 /**
  * Re-read scraped postings from Supabase for Live and Home. Does not run scrape
- * jobs — ingestion stays on the hourly cron (`/api/cron/scrape-postings`).
+ * jobs — ingestion stays on the 30-minute cron (`/api/cron/scrape-postings`).
  * Pair with `router.refresh()` on the client.
  */
 export async function refreshFeed() {

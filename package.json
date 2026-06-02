@@ -27,6 +27,8 @@
     "scrape:audit": "node --disable-warning=ExperimentalWarning --experimental-strip-types --experimental-specifier-resolution=node scripts/audit-scrape-quality.ts",
     "scrape:audit-adapters": "node --disable-warning=ExperimentalWarning --experimental-strip-types --experimental-specifier-resolution=node scripts/audit-adapter-patterns.ts",
     "discover-queue": "node --disable-warning=ExperimentalWarning --experimental-strip-types --experimental-specifier-resolution=node scripts/discover-queue.ts",
+    "discover-company": "node --disable-warning=ExperimentalWarning --experimental-strip-types --experimental-specifier-resolution=node scripts/discover-company.ts",
+    "qstash:cron": "node --disable-warning=ExperimentalWarning --experimental-strip-types --experimental-specifier-resolution=node scripts/qstash-cron.ts",
     "landing-logos": "node --disable-warning=ExperimentalWarning --experimental-strip-types --experimental-specifier-resolution=node scripts/download-landing-logos.ts",
     "company-logos": "node --disable-warning=ExperimentalWarning --experimental-strip-types --experimental-specifier-resolution=node scripts/download-company-logos.ts",
     "test:e2e": "playwright test",

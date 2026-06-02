@@ -45,6 +45,26 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "last_activity", label: "Recent" },
 ];
 
+function readStoredApplicationsViewPreferences(
+  initialViewPrefs: ApplicationsViewPreferences,
+): ApplicationsViewPreferences {
+  if (typeof window === "undefined") return initialViewPrefs;
+
+  const storedRejected = window.localStorage.getItem(HIDE_REJECTED_STORAGE_KEY);
+  const storedArchived = window.localStorage.getItem(HIDE_ARCHIVED_STORAGE_KEY);
+
+  return {
+    hideRejected:
+      storedRejected === "false" && initialViewPrefs.hideRejected
+        ? false
+        : initialViewPrefs.hideRejected,
+    hideArchived:
+      storedArchived === "false" && initialViewPrefs.hideArchived
+        ? false
+        : initialViewPrefs.hideArchived,
+  };
+}
+
 interface Props {
   applications: Application[];
   companyWebsiteByName?: CompanyWebsiteByName;
@@ -60,12 +80,24 @@ export function Dashboard({
   companyLogoAssetByName = {},
   initialViewPrefs,
 }: Props) {
-  const [applications, setApplications] = useState(initialApplications);
-  const [lastInitialApplications, setLastInitialApplications] = useState(initialApplications);
-  if (initialApplications !== lastInitialApplications) {
-    setLastInitialApplications(initialApplications);
-    setApplications(initialApplications);
-  }
+  const [applicationState, setApplicationState] = useState({
+    source: initialApplications,
+    items: initialApplications,
+  });
+  const applications =
+    applicationState.source === initialApplications ? applicationState.items : initialApplications;
+  const setApplications = (
+    update: Application[] | ((current: Application[]) => Application[]),
+  ) => {
+    setApplicationState((current) => {
+      const currentItems =
+        current.source === initialApplications ? current.items : initialApplications;
+      return {
+        source: initialApplications,
+        items: typeof update === "function" ? update(currentItems) : update,
+      };
+    });
+  };
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -80,9 +112,11 @@ export function Dashboard({
   const [seasonFilter, setSeasonFilter] = useState<SeasonFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
-  const [hideRejected, setHideRejected] = useState(initialViewPrefs.hideRejected);
-  const [hideArchived, setHideArchived] = useState(initialViewPrefs.hideArchived);
-  const [viewPrefsReady, setViewPrefsReady] = useState(false);
+  const [storedInitialViewPrefs] = useState(() =>
+    readStoredApplicationsViewPreferences(initialViewPrefs),
+  );
+  const [hideRejected, setHideRejected] = useState(storedInitialViewPrefs.hideRejected);
+  const [hideArchived, setHideArchived] = useState(storedInitialViewPrefs.hideArchived);
   const archivedIds = useMemo(
     () => new Set(applications.filter((app) => app.archived_at).map((app) => app.id)),
     [applications],
@@ -90,12 +124,12 @@ export function Dashboard({
   const [searchFocused, setSearchFocused] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const listResetKey = `${query}|${statusFilter}|${seasonFilter}|${hideRejected}|${hideArchived}|${sortKey ?? ""}|${sortDirection}`;
-  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
-  const [visibleListKey, setVisibleListKey] = useState(listResetKey);
-  if (listResetKey !== visibleListKey) {
-    setVisibleListKey(listResetKey);
-    setVisibleCount(INITIAL_VISIBLE);
-  }
+  const [visibleState, setVisibleState] = useState({
+    key: listResetKey,
+    count: INITIAL_VISIBLE,
+  });
+  const effectiveVisibleCount =
+    visibleState.key === listResetKey ? visibleState.count : INITIAL_VISIBLE;
 
   const searchInputRef = useRef<HTMLDivElement | null>(null);
   const filtersRef = useRef<HTMLDivElement | null>(null);
@@ -103,32 +137,24 @@ export function Dashboard({
 
   useEffect(() => {
     const patch: { hideRejected?: boolean; hideArchived?: boolean } = {};
-    const storedRejected = window.localStorage.getItem(HIDE_REJECTED_STORAGE_KEY);
-    const storedArchived = window.localStorage.getItem(HIDE_ARCHIVED_STORAGE_KEY);
-
-    if (storedRejected === "false" && initialViewPrefs.hideRejected) {
-      patch.hideRejected = false;
-      setHideRejected(false);
+    if (storedInitialViewPrefs.hideRejected !== initialViewPrefs.hideRejected) {
+      patch.hideRejected = storedInitialViewPrefs.hideRejected;
     }
-    if (storedArchived === "false" && initialViewPrefs.hideArchived) {
-      patch.hideArchived = false;
-      setHideArchived(false);
+    if (storedInitialViewPrefs.hideArchived !== initialViewPrefs.hideArchived) {
+      patch.hideArchived = storedInitialViewPrefs.hideArchived;
     }
 
     if (Object.keys(patch).length > 0) {
       void updateApplicationsViewPreferences(patch);
     }
-
-    setViewPrefsReady(true);
-  }, [initialViewPrefs.hideArchived, initialViewPrefs.hideRejected]);
+  }, [initialViewPrefs.hideArchived, initialViewPrefs.hideRejected, storedInitialViewPrefs]);
 
   useEffect(() => {
-    if (!viewPrefsReady) return;
     const timer = window.setTimeout(() => {
       void updateApplicationsViewPreferences({ hideRejected, hideArchived });
     }, 400);
     return () => window.clearTimeout(timer);
-  }, [hideArchived, hideRejected, viewPrefsReady]);
+  }, [hideArchived, hideRejected]);
 
   const detail = detailId ? (applications.find((app) => app.id === detailId) ?? null) : null;
 
@@ -248,24 +274,27 @@ export function Dashboard({
   }, [filtered, sortKey, sortDirection]);
 
   useEffect(() => {
-    if (visibleCount >= sorted.length) return;
+    if (effectiveVisibleCount >= sorted.length) return;
     const el = sentinelRef.current;
     if (!el) return;
     const io = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting) {
-          setVisibleCount((count) => Math.min(count + LOAD_BATCH, sorted.length));
+          setVisibleState({
+            key: listResetKey,
+            count: Math.min(effectiveVisibleCount + LOAD_BATCH, sorted.length),
+          });
         }
       },
       { rootMargin: "800px 0px" },
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [visibleCount, sorted.length]);
+  }, [effectiveVisibleCount, listResetKey, sorted.length]);
 
   const visibleApplications = useMemo(
-    () => sorted.slice(0, visibleCount),
-    [sorted, visibleCount],
+    () => sorted.slice(0, effectiveVisibleCount),
+    [sorted, effectiveVisibleCount],
   );
 
   const activeFilterCount =
@@ -449,7 +478,7 @@ export function Dashboard({
           archivedIds={archivedIds}
           onArchiveChange={setApplicationArchived}
         />
-        {visibleCount < sorted.length ? (
+        {effectiveVisibleCount < sorted.length ? (
           <div ref={sentinelRef} className="h-10" aria-hidden="true" />
         ) : null}
       </PageMain>

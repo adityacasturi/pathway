@@ -6,6 +6,7 @@ import {
   isAlertsLaunched,
 } from "@/lib/config/alerts-launch";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { formatSupabaseMutationError } from "@/lib/supabase/errors";
 import { limitServerActionByIp } from "@/lib/rate-limit";
 
@@ -40,14 +41,20 @@ export async function updateAlertsEnabled(enabled: boolean) {
     return { error: rateLimit.error };
   }
 
-  const { supabase, user } = await getAuthenticatedUser();
+  const { user } = await getAuthenticatedUser();
   if (!user) {
     return { error: "Not authenticated" };
   }
 
-  const { error } = await supabase.rpc("set_alert_emails_enabled", {
-    p_enabled: enabled,
-  });
+  const admin = createAdminClient();
+  const { error } = await admin.from("alert_preferences").upsert(
+    {
+      user_id: user.id,
+      emails_enabled: enabled,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" },
+  );
 
   if (error) {
     return { error: formatSupabaseMutationError(error, "Unable to save instant alerts.") };
@@ -68,14 +75,20 @@ export async function updateDigestEnabled(enabled: boolean) {
     return { error: rateLimit.error };
   }
 
-  const { supabase, user } = await getAuthenticatedUser();
+  const { user } = await getAuthenticatedUser();
   if (!user) {
     return { error: "Not authenticated" };
   }
 
-  const { error } = await supabase.rpc("set_alert_digest_enabled", {
-    p_enabled: enabled,
-  });
+  const admin = createAdminClient();
+  const { error } = await admin.from("alert_preferences").upsert(
+    {
+      user_id: user.id,
+      digest_enabled: enabled,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" },
+  );
 
   if (error) {
     return { error: formatSupabaseMutationError(error, "Unable to save daily digest.") };
@@ -115,8 +128,12 @@ export async function addSectorAlert(sectorSlug: string) {
     return { error: "Sector not found." };
   }
 
-  const { error } = await supabase.rpc("add_alert_sector_subscription", {
-    p_sector_slug: slug,
+  const admin = createAdminClient();
+  const { error } = await admin.from("alert_subscriptions").insert({
+    user_id: user.id,
+    target_type: "sector",
+    target_id: slug,
+    cadence: "instant",
   });
 
   if (error) {
@@ -141,7 +158,7 @@ export async function removeSectorAlert(subscriptionId: string) {
     return { error: rateLimit.error };
   }
 
-  const { supabase, user } = await getAuthenticatedUser();
+  const { user } = await getAuthenticatedUser();
   if (!user) {
     return { error: "Not authenticated" };
   }
@@ -150,9 +167,13 @@ export async function removeSectorAlert(subscriptionId: string) {
     return { error: "Invalid sector alert." };
   }
 
-  const { error } = await supabase.rpc("delete_alert_subscription", {
-    p_subscription_id: subscriptionId,
-  });
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("alert_subscriptions")
+    .delete()
+    .eq("id", subscriptionId)
+    .eq("user_id", user.id)
+    .eq("target_type", "sector");
 
   if (error) {
     return { error: formatSupabaseMutationError(error, "Unable to remove sector alert.") };
@@ -193,8 +214,12 @@ export async function addCompanyAlert(companyId: string) {
     return { error: "Company not found." };
   }
 
-  const { error } = await supabase.rpc("add_alert_company_subscription", {
-    p_company_id: companyId,
+  const admin = createAdminClient();
+  const { error } = await admin.from("alert_subscriptions").insert({
+    user_id: user.id,
+    target_type: "company",
+    target_id: companyId,
+    cadence: "instant",
   });
 
   if (error) {
@@ -219,7 +244,7 @@ export async function removeCompanyAlert(subscriptionId: string) {
     return { error: rateLimit.error };
   }
 
-  const { supabase, user } = await getAuthenticatedUser();
+  const { user } = await getAuthenticatedUser();
   if (!user) {
     return { error: "Not authenticated" };
   }
@@ -228,9 +253,13 @@ export async function removeCompanyAlert(subscriptionId: string) {
     return { error: "Invalid company alert." };
   }
 
-  const { error } = await supabase.rpc("delete_alert_subscription", {
-    p_subscription_id: subscriptionId,
-  });
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("alert_subscriptions")
+    .delete()
+    .eq("id", subscriptionId)
+    .eq("user_id", user.id)
+    .eq("target_type", "company");
 
   if (error) {
     return { error: formatSupabaseMutationError(error, "Unable to remove company alert.") };

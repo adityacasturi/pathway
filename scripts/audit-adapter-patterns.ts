@@ -14,6 +14,8 @@ const files = readdirSync(adaptersDir)
 
 type Row = {
   file: string;
+  exportsAdapter: boolean;
+  delegatesParsing: boolean;
   usesBuildScrapedRole: boolean;
   usesBuildRoleParseResult: boolean;
   usesClassify: boolean;
@@ -28,6 +30,11 @@ for (const file of files) {
   const src = readFileSync(path, "utf8");
   rows.push({
     file: file.replace(/\.ts$/, ""),
+    exportsAdapter: /export function create[A-Z][A-Za-z0-9]*Adapter\(/.test(src),
+    delegatesParsing:
+      /create(?:Filtered)?[A-Z][A-Za-z0-9]*Adapter\(/.test(src) ||
+      /\bparse(?:Workday|Salesforce|Greenhouse|Microsoft)Jobs?\(/.test(src) ||
+      /\bparseWorkdayPostings\(/.test(src),
     usesBuildScrapedRole: src.includes("buildScrapedRole"),
     usesBuildRoleParseResult: src.includes("buildRoleParseResult"),
     usesClassify: src.includes("classifyScrapeRole"),
@@ -36,15 +43,21 @@ for (const file of files) {
   });
 }
 
-const needsMigrate = rows.filter(
-  (r) => !r.usesBuildScrapedRole || r.handBuiltRoles || !r.usesBuildRoleParseResult,
+const adapterRows = rows.filter((r) => r.exportsAdapter);
+const needsMigrate = adapterRows.filter(
+  (r) =>
+    !r.delegatesParsing &&
+    (!r.usesBuildScrapedRole || r.handBuiltRoles || !r.usesBuildRoleParseResult),
 );
 
-console.log("adapter\ttbuildScrapedRole\tbuildRoleParseResult\tclassify\tunknownDates\thandBuilt");
+console.log(
+  "adapter\tkind\tbuildScrapedRole\tbuildRoleParseResult\tclassify\tunknownDates\thandBuilt",
+);
 for (const r of rows) {
   console.log(
     [
       r.file,
+      r.exportsAdapter ? (r.delegatesParsing ? "delegated" : "parser") : "support",
       r.usesBuildScrapedRole ? "yes" : "NO",
       r.usesBuildRoleParseResult ? "yes" : "NO",
       r.usesClassify ? "yes" : "NO",
@@ -54,4 +67,6 @@ for (const r of rows) {
   );
 }
 
-console.log(`\n${rows.length} adapters; ${needsMigrate.length} still hand-roll roles or skip shared parse helpers.`);
+console.log(
+  `\n${adapterRows.length} adapter factories; ${needsMigrate.length} parser adapters still hand-roll roles or skip shared parse helpers.`,
+);

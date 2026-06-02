@@ -66,6 +66,8 @@ export interface BuildHomeBriefingInput {
   favoriteSlugs: ReadonlySet<string>;
   dismissedIds: ReadonlySet<string>;
   trackedUrls: ReadonlySet<string>;
+  marketPulse?: MarketPulse;
+  marketWeek?: MarketWeekSummary;
 }
 
 export function parseCompanySlug(sourceId: string): string | null {
@@ -318,8 +320,8 @@ export function buildHomeBriefing(input: BuildHomeBriefingInput): HomeBriefing {
   const nowUnix = input.nowUnix ?? Math.floor(Date.now() / 1000);
 
   return {
-    marketPulse: buildMarketPulse(input.postings, nowUnix),
-    marketWeek: buildMarketWeekSummary(input.postings, nowUnix),
+    marketPulse: input.marketPulse ?? buildMarketPulse(input.postings, nowUnix),
+    marketWeek: input.marketWeek ?? buildMarketWeekSummary(input.postings, nowUnix),
     starredPostings: buildStarredPostings(input.postings, input),
   };
 }

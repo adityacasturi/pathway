@@ -59,11 +59,11 @@ export function AlertsPreviewGate({ active, children }: AlertsPreviewGateProps) 
                   Coming soon
                 </p>
                 <h2 className="mt-1 text-[20px] font-medium tracking-tight text-foreground">
-                  Same-minute email alerts
+                  New-role email alerts
                 </h2>
                 <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
                   The moment a new role hits our feed at a company or sector you follow,
-                  you&apos;ll know—often within minutes, not hours later. We&apos;re putting the
+                  you&apos;ll know, usually within minutes of the next scrape. We&apos;re putting the
                   finishing touches on it now.
                 </p>
               </div>

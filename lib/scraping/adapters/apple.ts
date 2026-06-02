@@ -4,7 +4,7 @@ import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { isHttpUrl, safeToIsoDate } from "./shared.ts";
+import { fetchWithTimeout, isHttpUrl, safeToIsoDate } from "./shared.ts";
 
 const APPLE_PAGE_SIZE = 20;
 const APPLE_MAX_PAGES = 40;
@@ -12,7 +12,6 @@ const APPLE_SEARCH_QUERY = "intern";
 const HYDRATION_MARKER = "__staticRouterHydrationData";
 
 const SCRAPER_USER_AGENT = "Pathway internship tracker scraper (+https://pathway.app)";
-const SOURCE_TIMEOUT_MS = 20_000;
 
 export interface AppleSearchConfig {
   locale: string;
@@ -271,23 +270,16 @@ async function fetchAllAppleSearchResults(config: AppleSearchConfig): Promise<Ap
 }
 
 async function fetchAppleSearchHtml(url: string): Promise<string> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), SOURCE_TIMEOUT_MS);
-  try {
-    const res = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        accept: "text/html,application/xhtml+xml",
-        "user-agent": SCRAPER_USER_AGENT,
-      },
-    });
-    if (!res.ok) {
-      throw new Error(`Apple careers returned ${res.status} for ${url}`);
-    }
-    return await res.text();
-  } finally {
-    clearTimeout(timeout);
+  const res = await fetchWithTimeout(url, {
+    headers: {
+      accept: "text/html,application/xhtml+xml",
+      "user-agent": SCRAPER_USER_AGENT,
+    },
+  });
+  if (!res.ok) {
+    throw new Error(`Apple careers returned ${res.status} for ${url}`);
   }
+  return await res.text();
 }
 
 function dedupeAppleJobs(jobs: AppleJobPosting[]): AppleJobPosting[] {
@@ -301,4 +293,3 @@ function dedupeAppleJobs(jobs: AppleJobPosting[]): AppleJobPosting[] {
   }
   return Array.from(byId.values());
 }
-

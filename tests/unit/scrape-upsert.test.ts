@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { atsPublishDate } from "../../lib/scraping/posted-date.ts";
-import { buildScrapedPostingUpsertRows } from "../../lib/scraping/upsert.ts";
+import { buildScrapedPostingUpsertRows, mapCompanySourceRow } from "../../lib/scraping/upsert.ts";
 
 test("buildScrapedPostingUpsertRows preserves first_seen_at for existing postings", () => {
   const now = "2026-05-30T12:00:00.000Z";
@@ -56,4 +56,23 @@ test("buildScrapedPostingUpsertRows preserves first_seen_at for existing posting
   assert.equal(rows[1].first_seen_at, now);
   assert.equal(rows[1].date_posted, "2026-05-01T00:00:00.000Z");
   assert.equal(rows[1].season, "Fall");
+});
+
+test("mapCompanySourceRow accepts current source types and rejects unknown values", () => {
+  const baseRow = {
+    id: "source-uuid",
+    source_type: "x_corp",
+    adapter_key: "x_corp",
+    source_url: "https://boards.example/x",
+    board_token: null,
+    companies: {
+      id: "company-uuid",
+      slug: "x-corp",
+      name: "X Corp",
+    },
+  };
+
+  assert.equal(mapCompanySourceRow(baseRow)?.sourceType, "x_corp");
+  assert.equal(mapCompanySourceRow({ ...baseRow, source_type: "not_a_real_source" }), null);
+  assert.equal(mapCompanySourceRow({ ...baseRow, companies: null }), null);
 });

@@ -20,6 +20,7 @@ import {
   buildTrackApplicationFormDataFromScraped,
   feedSeasonToApplicationSeason,
 } from "@/lib/feed/build-track-form-data";
+import { applyInteractionIds, hasAnyInteraction } from "@/lib/feed/interactions";
 import { scrapedPostingToFeedPosting } from "@/lib/discover/posting-feed";
 import { normalizeUrl } from "@/lib/url";
 import type { ApplicationSeason } from "@/types/application";
@@ -78,23 +79,6 @@ interface TrackPrefill {
   posting_url: string;
   location: string;
   season?: ApplicationSeason;
-}
-
-function hasAnyInteraction(interactions: Set<string>, interactionIds: string[]): boolean {
-  return interactionIds.some((id) => interactions.has(id));
-}
-
-function applyInteractionIds(
-  current: Set<string>,
-  interactionIds: string[],
-  next: boolean,
-): Set<string> {
-  const out = new Set(current);
-  for (const id of interactionIds) {
-    if (next) out.add(id);
-    else out.delete(id);
-  }
-  return out;
 }
 
 function isPostingTracked(
@@ -312,10 +296,6 @@ export function DiscoverCompanies({
       ? "all"
       : industryFilter;
 
-  if (resolvedIndustryFilter !== industryFilter) {
-    setIndustryFilter(resolvedIndustryFilter);
-  }
-
   const filtered = useMemo(() => {
     return companies.filter((company) => {
       if (resolvedIndustryFilter !== "all" && company.industry !== resolvedIndustryFilter) {
@@ -368,24 +348,26 @@ export function DiscoverCompanies({
   );
 
   const companyListResetKey = `${resolvedIndustryFilter}|${deferredQuery}`;
-  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COMPANIES);
-  const [visibleListKey, setVisibleListKey] = useState(companyListResetKey);
-  if (companyListResetKey !== visibleListKey) {
-    setVisibleListKey(companyListResetKey);
-    setVisibleCount(INITIAL_VISIBLE_COMPANIES);
-  }
+  const [visibleState, setVisibleState] = useState({
+    key: companyListResetKey,
+    count: INITIAL_VISIBLE_COMPANIES,
+  });
+  const effectiveVisibleCount =
+    visibleState.key === companyListResetKey
+      ? visibleState.count
+      : INITIAL_VISIBLE_COMPANIES;
 
   const visibleCompanyIds = useMemo(() => {
     if (!useProgressiveReveal) {
       return null;
     }
-    return new Set(listedCompanies.slice(0, visibleCount).map((company) => company.id));
-  }, [useProgressiveReveal, listedCompanies, visibleCount]);
+    return new Set(listedCompanies.slice(0, effectiveVisibleCount).map((company) => company.id));
+  }, [useProgressiveReveal, listedCompanies, effectiveVisibleCount]);
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!useProgressiveReveal || visibleCount >= listedCompanies.length) {
+    if (!useProgressiveReveal || effectiveVisibleCount >= listedCompanies.length) {
       return;
     }
 
@@ -397,7 +379,10 @@ export function DiscoverCompanies({
     const io = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting) {
-          setVisibleCount((count) => Math.min(count + LOAD_COMPANY_BATCH, listedCompanies.length));
+          setVisibleState({
+            key: companyListResetKey,
+            count: Math.min(effectiveVisibleCount + LOAD_COMPANY_BATCH, listedCompanies.length),
+          });
         }
       },
       { rootMargin: "800px 0px" },
@@ -405,7 +390,7 @@ export function DiscoverCompanies({
 
     io.observe(el);
     return () => io.disconnect();
-  }, [useProgressiveReveal, visibleCount, listedCompanies.length]);
+  }, [useProgressiveReveal, effectiveVisibleCount, companyListResetKey, listedCompanies.length]);
 
   const resetPostingFilters = useCallback(() => {
     setPostingQuery("");
@@ -649,7 +634,7 @@ export function DiscoverCompanies({
                 </section>
               );
             })}
-            {useProgressiveReveal && visibleCount < listedCompanies.length ? (
+            {useProgressiveReveal && effectiveVisibleCount < listedCompanies.length ? (
               <div ref={sentinelRef} className="h-px" aria-hidden />
             ) : null}
           </div>

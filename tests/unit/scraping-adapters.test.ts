@@ -29,8 +29,13 @@ import {
 import { parseLeverJobs } from "../../lib/scraping/adapters/lever.ts";
 import {
   isHiringThingListCandidate,
+  parseHiringThingJobDetailHtml,
   parseHiringThingListHtml,
 } from "../../lib/scraping/adapters/hiringthing.ts";
+import {
+  parsePinpointJobs,
+  resolvePinpointBoard,
+} from "../../lib/scraping/adapters/pinpoint.ts";
 import {
   isJobviteListCandidate,
   parseJobviteListHtml,
@@ -108,6 +113,8 @@ import {
 } from "../../lib/scraping/adapters/rtx.ts";
 import {
   EA_SEARCH_JOBS_URL,
+  mergeElectronicArtsRssDates,
+  parseElectronicArtsJobDetailFields,
   parseElectronicArtsJobs,
   parseElectronicArtsRssFeed,
   resolveElectronicArtsBoard,
@@ -264,11 +271,13 @@ import {
 } from "../../lib/scraping/adapters/amazon.ts";
 import {
   buildByteDancePostingUrl,
+  extractByteDanceDetailDatePosted,
   formatByteDanceLocations,
   isByteDanceListCandidate,
   isByteDanceTikTokScopedJob,
   parseByteDanceJobs,
   parseByteDanceSearchQueries,
+  readByteDanceJobDatePosted,
   resolveByteDanceBoard,
 } from "../../lib/scraping/adapters/bytedance.ts";
 import { parseLifeAtTikTokSearchHtml } from "../../lib/scraping/adapters/lifeattiktok.ts";
@@ -2276,6 +2285,36 @@ test("parseByteDanceJobs uses lifeattiktok URLs for TikTok company", () => {
   assert.equal(parsed.roles[0].postingUrl, `https://lifeattiktok.com/search/${job.id}`);
 });
 
+test("parseByteDanceJobs uses current joinbytedance URLs for ByteDance company", () => {
+  const fixture = JSON.parse(
+    readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "../fixtures/scrape/bytedance-swe-intern.json"),
+      "utf8",
+    ),
+  );
+  const job = fixture.data.job_post_list[0];
+  const board = resolveByteDanceBoard(bytedanceSource);
+  const parsed = parseByteDanceJobs([{ job, datePosted: null }], bytedanceSource, board, 1);
+
+  assert.equal(parsed.roles.length, 1);
+  assert.equal(parsed.roles[0].postingUrl, `https://joinbytedance.com/search/${job.id}`);
+});
+
+test("readByteDanceJobDatePosted accepts future API timestamp fields", () => {
+  assert.equal(
+    readByteDanceJobDatePosted({
+      id: "1",
+      title: "Software Engineer Intern",
+      publish_time: 1_779_580_800,
+    } as never),
+    "2026-05-24T00:00:00.000Z",
+  );
+  assert.equal(
+    extractByteDanceDetailDatePosted('{"datePosted":"2026-05-25T12:00:00Z"}'),
+    "2026-05-25T12:00:00.000Z",
+  );
+});
+
 test("parseLifeAtTikTokSearchHtml extracts title and TikTok description from RSC payload", () => {
   const html = readFileSync(
     join(dirname(fileURLToPath(import.meta.url)), "../fixtures/scrape/lifeattiktok-recommendation-intern.html"),
@@ -2532,28 +2571,24 @@ test("parseTwoSigmaJobDetailFields extracts publish date from detail HTML", () =
   assert.match(fields.description, /quantitative investment/i);
 });
 
-test("parseTwoSigmaJobs keeps US campus engineering roles from fixture", () => {
+test("parseTwoSigmaJobs rejects campus full-time roles from fixture", () => {
   const fixtureDir = join(dirname(fileURLToPath(import.meta.url)), "../fixtures/scrape");
   const listing = JSON.parse(readFileSync(join(fixtureDir, "two-sigma-campus.json"), "utf8"));
 
   const parsed = parseTwoSigmaJobs([listing], twoSigmaSource);
 
-  assert.equal(parsed.roles.length, 1);
-  assert.equal(parsed.roles[0].roleName, "AI Research Scientist - Campus Full-Time");
-  assert.match(parsed.roles[0].postingUrl, /JobDetail\/.*\/13671/);
-  assert.equal(parsed.roles[0].companyName, "Two Sigma");
-  assert.equal(parsed.roles[0].dates?.published, "2025-04-02T00:00:00.000Z");
-  assert.equal(parsed.roles[0].dates?.source, "ats_publish");
+  assert.equal(parsed.roles.length, 0);
+  assert.ok(parsed.stats.rejected.some((row) => row.title.includes("Campus Full-Time")));
 });
 
-test("parseTwoSigmaJobs keeps campus listing and rejects business roles from snippet", () => {
+test("parseTwoSigmaJobs rejects campus full-time and business roles from snippet", () => {
   const fixtureDir = join(dirname(fileURLToPath(import.meta.url)), "../fixtures/scrape");
   const html = readFileSync(join(fixtureDir, "two-sigma-openroles-snippet.html"), "utf8");
   const listings = parseTwoSigmaOpenRolesHtml(html);
   const parsed = parseTwoSigmaJobs(listings, twoSigmaSource);
 
-  assert.equal(parsed.roles.length, 1);
-  assert.match(parsed.roles[0].roleName, /Campus Full-Time/);
+  assert.equal(parsed.roles.length, 0);
+  assert.ok(parsed.stats.rejected.some((row) => row.title.includes("Campus Full-Time")));
   assert.ok(parsed.stats.rejected.some((row) => row.title.includes("Business Development")));
 });
 
@@ -2676,6 +2711,45 @@ test("parseElectronicArtsRssFeed extracts titles and normalizes posting URLs", (
   assert.match(listings[0].postingUrl, /\/en_US\/careers\/JobDetail\/Software-Engineer-Intern\/200001/);
 });
 
+test("mergeElectronicArtsRssDates enriches HTML listings without replacing existing dates", () => {
+  const merged = mergeElectronicArtsRssDates(
+    [
+      {
+        title: "Software Engineer Intern",
+        postingUrl: "https://jobs.ea.com/en_US/careers/JobDetail/Software-Engineer-Intern/200001",
+        location: "Orlando, United States",
+        studioDepartment: null,
+      },
+      {
+        title: "Already Dated Intern",
+        postingUrl: "https://jobs.ea.com/en_US/careers/JobDetail/Already-Dated/200002",
+        location: "Orlando, United States",
+        studioDepartment: null,
+        datePosted: "2026-05-01",
+      },
+    ],
+    [
+      {
+        title: "Software Engineer Intern",
+        postingUrl: "https://jobs.ea.com/careers/JobDetail/Software-Engineer-Intern/200001",
+        location: null,
+        studioDepartment: null,
+        datePosted: "Tue, 26 May 2026 00:00:00 +0000",
+      },
+      {
+        title: "Already Dated Intern",
+        postingUrl: "https://jobs.ea.com/en_US/careers/JobDetail/Already-Dated/200002",
+        location: null,
+        studioDepartment: null,
+        datePosted: "Tue, 27 May 2026 00:00:00 +0000",
+      },
+    ],
+  );
+
+  assert.equal(merged[0]?.datePosted, "Tue, 26 May 2026 00:00:00 +0000");
+  assert.equal(merged[1]?.datePosted, "2026-05-01");
+});
+
 test("shouldPrefetchElectronicArtsDetail targets internship titles", () => {
   assert.equal(
     shouldPrefetchElectronicArtsDetail({
@@ -2695,6 +2769,21 @@ test("shouldPrefetchElectronicArtsDetail targets internship titles", () => {
     }),
     false,
   );
+});
+
+test("parseElectronicArtsJobDetailFields extracts Avature publish date", () => {
+  const fields = parseElectronicArtsJobDetailFields(`
+    <script type="application/ld+json">{"@type":"JobPosting","datePosted":"2026-05-26"}</script>
+    <article class="article article--details">
+      <div class="article__content__view__field__label">Studio/Department</div>
+      <div class="article__content__view__field__value">Technology</div>
+      <div class="article__content__view__field__label">Description</div>
+      <div class="article__content__view__field__value">${"Build software systems. ".repeat(8)}</div>
+    </article>
+  `);
+
+  assert.equal(fields.datePosted, "2026-05-26");
+  assert.equal(fields.studioDepartment, "Technology");
 });
 
 test("parseElectronicArtsJobs keeps US intern listing from RSS fixture", () => {
@@ -4625,6 +4714,94 @@ test("parseHiringThingListHtml finds intern listings", () => {
   assert.equal(isHiringThingListCandidate(jobs[1]!), false);
 });
 
+test("parseHiringThingJobDetailHtml reads JSON-LD date, description, and location", () => {
+  const detail = parseHiringThingJobDetailHtml(
+    `
+      <html>
+        <head>
+          <meta property="og:title" content="Quantitative Developer Intern 2027" />
+          <script type="application/ld+json">{"@type":"JobPosting","datePosted":"2026-05-25"}</script>
+        </head>
+        <body>
+          <div class="job-location">Jupiter, FL</div>
+          <div class="job-description">
+            <p>Build research systems for an internship program.</p>
+          </div>
+        </body>
+      </html>
+    `,
+    { companyName: "Voloridge", companySlug: "voloridge" },
+  );
+
+  assert.equal(detail.title, "Quantitative Developer Intern 2027");
+  assert.equal(detail.postedOn, "2026-05-25");
+  assert.equal(detail.location, "Jupiter, FL");
+  assert.match(detail.description, /research systems/i);
+});
+
+test("resolvePinpointBoard accepts explicit JSON endpoints", () => {
+  const board = resolvePinpointBoard({
+    id: "src",
+    companyId: "co",
+    companySlug: "wolverine-trading",
+    companyName: "Wolverine Trading",
+    adapterKey: "pinpoint",
+    sourceType: "pinpoint" as const,
+    sourceUrl: "https://careers.wolve.com/en/postings.json",
+    boardToken: null,
+  });
+
+  assert.equal(board.postingsUrl, "https://careers.wolve.com/en/postings.json");
+  assert.equal(board.careersOrigin, "https://careers.wolve.com");
+});
+
+test("parsePinpointJobs keeps US engineering internships from JSON payload", () => {
+  const source = {
+    id: "src",
+    companyId: "co",
+    companySlug: "wolverine-trading",
+    companyName: "Wolverine Trading",
+    adapterKey: "pinpoint",
+    sourceType: "pinpoint" as const,
+    sourceUrl: "https://careers.wolve.com/en/postings.json",
+    boardToken: null,
+  };
+  const result = parsePinpointJobs(
+    [
+      {
+        id: "123",
+        title: "Software Engineering Intern",
+        url: "https://careers.wolve.com/en/postings/123",
+        path: "/en/postings/123",
+        description: "<p>Build trading systems during an internship program.</p>",
+        employment_type_text: "Internship",
+        job: {
+          department: { name: "Technology" },
+          division: { name: "Wolverine Trading" },
+          structure_custom_group_one: { name: "Engineering" },
+        },
+        location: { city: "Chicago", name: "Chicago, IL", province: "Illinois" },
+      },
+      {
+        id: "456",
+        title: "Office Manager",
+        url: "https://careers.wolve.com/en/postings/456",
+        description: "<p>Operations role.</p>",
+        employment_type_text: "Full Time",
+        location: { name: "Chicago, IL" },
+      },
+    ],
+    source,
+    "https://careers.wolve.com",
+    2,
+  );
+
+  assert.equal(result.roles.length, 1);
+  assert.equal(result.roles[0]?.roleName, "Software Engineering Intern");
+  assert.equal(result.roles[0]?.location, "Chicago, IL");
+  assert.equal(result.roles[0]?.dates?.source, "unknown");
+});
+
 test("formatOneXRecruiteeLocation joins location parts", () => {
   assert.equal(
     formatOneXRecruiteeLocation({
@@ -4668,6 +4845,39 @@ test("parseOneXRecruiteeJobs keeps internship titles", () => {
   );
   assert.equal(result.roles.length, 1);
   assert.equal(result.roles[0]?.roleName, "AI Residency");
+  assert.equal(result.roles[0]?.dates?.source, "ats_publish");
+});
+
+test("parseOneXRecruiteeJobs treats updated-only dates as modified-only", () => {
+  const source = {
+    id: "src",
+    companyId: "co",
+    companySlug: "1x-technologies",
+    companyName: "1X Technologies",
+    adapterKey: "one_x_technologies",
+    sourceType: "one_x_technologies" as const,
+    sourceUrl: "https://1x.recruitee.com/api/offers/",
+    boardToken: "1x",
+  };
+  const result = parseOneXRecruiteeJobs(
+    [
+      {
+        status: "published",
+        title: "Software Engineering Intern",
+        careers_url: "https://1x.recruitee.com/o/software-engineering-intern",
+        description: "Build robotics software as part of an internship program.",
+        locations: [{ city: "San Carlos", state: "California", country: "United States" }],
+        updated_at: "2026-05-02T00:00:00Z",
+      },
+    ],
+    source,
+    1,
+  );
+
+  assert.equal(result.roles.length, 1);
+  assert.equal(result.roles[0]?.dates?.source, "ats_modified");
+  assert.equal(result.roles[0]?.dates?.published, null);
+  assert.equal(result.roles[0]?.dates?.modified, "2026-05-02T00:00:00.000Z");
 });
 
 test("isWeightsBiasesGreenhouseJob matches Acquisition Company metadata", () => {

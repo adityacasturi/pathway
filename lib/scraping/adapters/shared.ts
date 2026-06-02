@@ -3,8 +3,15 @@ import type { CompanySourceConfig } from "../types.ts";
 const SCRAPER_USER_AGENT = "Pathway internship tracker scraper (+https://pathway.app)";
 /** Per-request ceiling; large Greenhouse boards and rate-limited ATS APIs can exceed 8s. */
 const SOURCE_TIMEOUT_MS = 20_000;
-const FETCH_MAX_ATTEMPTS = 2;
+const FETCH_MAX_ATTEMPTS = 3;
 const FETCH_RETRY_DELAY_MS = 1000;
+const FETCH_RETRY_MAX_DELAY_MS = 30_000;
+
+interface FetchWithTimeoutOptions {
+  maxAttempts?: number;
+  retryDelayMs?: number;
+  timeoutMs?: number;
+}
 
 export function atsJsonHeaders(): HeadersInit {
   return {
@@ -75,37 +82,125 @@ function isAbortError(error: unknown): boolean {
   return error.name === "AbortError" || error.message.includes("aborted");
 }
 
+export function isRetryableFetchError(error: unknown): boolean {
+  if (isAbortError(error)) {
+    return true;
+  }
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const cause = (error as { cause?: unknown }).cause;
+  const causeRecord =
+    cause && typeof cause === "object"
+      ? (cause as { code?: unknown; message?: unknown })
+      : null;
+  const detail = [
+    error.name,
+    error.message,
+    typeof causeRecord?.code === "string" ? causeRecord.code : "",
+    typeof causeRecord?.message === "string" ? causeRecord.message : "",
+  ].join(" ");
+
+  return /\b(fetch failed|network|timeout|ETIMEDOUT|ECONNRESET|ECONNREFUSED|EAI_AGAIN|ENOTFOUND|UND_ERR)\b/i.test(
+    detail,
+  );
+}
+
 export function scraperDelay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export async function fetchJsonWithTimeout(url: string, init: RequestInit = {}): Promise<Response> {
+export function isRetryableFetchStatus(status: number): boolean {
+  return (
+    status === 408 ||
+    status === 425 ||
+    status === 429 ||
+    status === 500 ||
+    status === 502 ||
+    status === 503 ||
+    status === 504
+  );
+}
+
+export function parseRetryAfterMs(header: string | null): number | null {
+  if (!header) {
+    return null;
+  }
+
+  const seconds = Number.parseInt(header.trim(), 10);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return seconds * 1000;
+  }
+
+  const date = new Date(header);
+  if (!Number.isNaN(date.getTime())) {
+    return Math.max(0, date.getTime() - Date.now());
+  }
+
+  return null;
+}
+
+export function computeFetchRetryDelayMs(
+  attempt: number,
+  response?: Pick<Response, "headers"> | null,
+  baseDelayMs = FETCH_RETRY_DELAY_MS,
+): number {
+  const retryAfterMs = parseRetryAfterMs(response?.headers.get("retry-after") ?? null);
+  if (retryAfterMs !== null) {
+    return Math.min(retryAfterMs, FETCH_RETRY_MAX_DELAY_MS);
+  }
+
+  const exponentialDelay = baseDelayMs * 2 ** Math.max(0, attempt - 1);
+  return Math.min(exponentialDelay, FETCH_RETRY_MAX_DELAY_MS);
+}
+
+export async function fetchWithTimeout(
+  url: string,
+  init: RequestInit = {},
+  options: FetchWithTimeoutOptions = {},
+): Promise<Response> {
+  const maxAttempts = options.maxAttempts ?? FETCH_MAX_ATTEMPTS;
+  const timeoutMs = options.timeoutMs ?? SOURCE_TIMEOUT_MS;
+  const retryDelayMs = options.retryDelayMs ?? FETCH_RETRY_DELAY_MS;
   let lastError: unknown;
 
-  for (let attempt = 1; attempt <= FETCH_MAX_ATTEMPTS; attempt++) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), SOURCE_TIMEOUT_MS);
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      return await fetch(url, {
+      const response = await fetch(url, {
         ...init,
         signal: controller.signal,
-        headers: {
-          ...atsJsonHeaders(),
-          ...(init.headers ?? {}),
-        },
       });
+
+      if (!isRetryableFetchStatus(response.status) || attempt >= maxAttempts) {
+        return response;
+      }
+
+      await scraperDelay(computeFetchRetryDelayMs(attempt, response, retryDelayMs));
     } catch (error) {
       lastError = error;
-      if (!isAbortError(error) || attempt >= FETCH_MAX_ATTEMPTS) {
+      if (!isRetryableFetchError(error) || attempt >= maxAttempts) {
         throw error;
       }
-      await scraperDelay(FETCH_RETRY_DELAY_MS);
+      await scraperDelay(computeFetchRetryDelayMs(attempt, null, retryDelayMs));
     } finally {
       clearTimeout(timeout);
     }
   }
 
   throw lastError;
+}
+
+export async function fetchJsonWithTimeout(url: string, init: RequestInit = {}): Promise<Response> {
+  return fetchWithTimeout(url, {
+    ...init,
+    headers: {
+      ...atsJsonHeaders(),
+      ...(init.headers ?? {}),
+    },
+  });
 }
 
 function normalizeToken(value: string | null | undefined): string | null {

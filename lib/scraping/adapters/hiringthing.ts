@@ -2,6 +2,7 @@ import { atsPublishDate } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
+import { extractJsonLdDatePosted } from "../avature-dates.ts";
 import { extractLocationFromPlainText, isInvalidScrapedLocationToken, normalizeScrapedLocationPart } from "../location.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
@@ -117,6 +118,7 @@ export function parseHiringThingJobDetailHtml(
   const location = extractHiringThingLocation(html, description, context);
 
   const postedOn =
+    extractJsonLdDatePosted(html) ??
     readHiringThingMeta(html, "article:published_time") ??
     readHiringThingMeta(html, "og:published_time") ??
     html.match(/<time[^>]+datetime=["']([^"']+)["']/i)?.[1]?.trim() ??
@@ -177,6 +179,8 @@ export async function parseHiringThingJobs(
     try {
       const detailHtml = await fetchHiringThingHtml(listing.listUrl);
       const detail = parseHiringThingJobDetailHtml(detailHtml, {
+        companyName: source.companyName,
+        companySlug: source.companySlug,
       });
       if (detail.title) {
         roleName = detail.title;
@@ -214,7 +218,7 @@ export async function parseHiringThingJobs(
         companyName: source.companyName,
         companySlug: source.companySlug,
         classification,
-        description: "",
+        description,
         dates: atsPublishDate(datePosted),
       }),
     );
@@ -283,4 +287,3 @@ async function fetchHiringThingHtml(url: string): Promise<string> {
 
   return res.text();
 }
-

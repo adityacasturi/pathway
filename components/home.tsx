@@ -22,6 +22,7 @@ import {
   buildTrackApplicationFormData,
   feedSeasonToApplicationSeason,
 } from "@/lib/feed/build-track-form-data";
+import { applyInteractionIds, hasAnyInteraction } from "@/lib/feed/interactions";
 import {
   HOME_MAX_NEW_ROWS,
   HOME_MAX_SAVED_ROWS,
@@ -65,23 +66,6 @@ function SectionHeading({ title, description }: { title: string; description?: s
       ) : null}
     </div>
   );
-}
-
-function hasAnyInteraction(interactions: Set<string>, posting: FeedPosting): boolean {
-  return posting.interactionIds.some((id) => interactions.has(id));
-}
-
-function applyInteractionIds(
-  current: Set<string>,
-  posting: FeedPosting,
-  next: boolean,
-): Set<string> {
-  const out = new Set(current);
-  for (const id of posting.interactionIds) {
-    if (next) out.add(id);
-    else out.delete(id);
-  }
-  return out;
 }
 
 export function Home({
@@ -133,7 +117,7 @@ export function Home({
   const onToggleDismiss = useCallback((posting: FeedPosting, next: boolean) => {
     const id = posting.id;
     setActionError(null);
-    setDismissedSet((prev) => applyInteractionIds(prev, posting, next));
+    setDismissedSet((prev) => applyInteractionIds(prev, posting.interactionIds, next));
     setPendingIds((prev) => {
       const out = new Set(prev);
       out.add(id);
@@ -145,7 +129,7 @@ export function Home({
         : await undismissPosting(posting.interactionIds);
       if (result?.error) {
         setActionError(result.error);
-        setDismissedSet((prev) => applyInteractionIds(prev, posting, !next));
+        setDismissedSet((prev) => applyInteractionIds(prev, posting.interactionIds, !next));
       }
       setPendingIds((prev) => {
         if (!prev.has(id)) return prev;
@@ -159,7 +143,7 @@ export function Home({
   const onToggleSaved = useCallback((posting: FeedPosting, next: boolean) => {
     const id = posting.id;
     setActionError(null);
-    setSavedSet((prev) => applyInteractionIds(prev, posting, next));
+    setSavedSet((prev) => applyInteractionIds(prev, posting.interactionIds, next));
     if (next) {
       setSavedOverrides((prev) => {
         const out = new Map(prev);
@@ -178,7 +162,7 @@ export function Home({
         : await unsavePosting(posting.interactionIds);
       if (result?.error) {
         setActionError(result.error);
-        setSavedSet((prev) => applyInteractionIds(prev, posting, !next));
+        setSavedSet((prev) => applyInteractionIds(prev, posting.interactionIds, !next));
       }
       setPendingSavedIds((prev) => {
         if (!prev.has(id)) return prev;
@@ -207,7 +191,8 @@ export function Home({
   const availableNew = useMemo(
     () =>
       newPostings.filter(
-        (posting) => !hasAnyInteraction(dismissedSet, posting) && !trackedIdSet.has(posting.id),
+        (posting) =>
+          !hasAnyInteraction(dismissedSet, posting.interactionIds) && !trackedIdSet.has(posting.id),
       ),
     [dismissedSet, newPostings, trackedIdSet],
   );
@@ -220,7 +205,10 @@ export function Home({
 
     const rows: FeedPosting[] = [];
     for (const posting of byId.values()) {
-      if (hasAnyInteraction(savedSet, posting) && !hasAnyInteraction(dismissedSet, posting)) {
+      if (
+        hasAnyInteraction(savedSet, posting.interactionIds) &&
+        !hasAnyInteraction(dismissedSet, posting.interactionIds)
+      ) {
         rows.push(posting);
       }
     }
@@ -273,8 +261,8 @@ export function Home({
             key={posting.id}
             density="comfortable"
             posting={posting}
-            dismissed={hasAnyInteraction(dismissedSet, posting)}
-            saved={hasAnyInteraction(savedSet, posting)}
+            dismissed={hasAnyInteraction(dismissedSet, posting.interactionIds)}
+            saved={hasAnyInteraction(savedSet, posting.interactionIds)}
             tracked={trackedIdSet.has(posting.id)}
             isNew={isNew}
             pending={pendingIds.has(posting.id)}
@@ -297,8 +285,8 @@ export function Home({
             key={posting.id}
             density="comfortable"
             posting={posting}
-            dismissed={hasAnyInteraction(dismissedSet, posting)}
-            saved={hasAnyInteraction(savedSet, posting)}
+            dismissed={hasAnyInteraction(dismissedSet, posting.interactionIds)}
+            saved={hasAnyInteraction(savedSet, posting.interactionIds)}
             tracked={trackedIdSet.has(posting.id)}
             isNew={isNew}
             pending={pendingIds.has(posting.id)}

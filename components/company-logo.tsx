@@ -172,12 +172,6 @@ export function CompanyLogo({
       return;
     }
 
-    const cached = initialProxyLoad(key, resolvedLogoUrl);
-    if (cached) {
-      setLogoLoad(cached);
-      return;
-    }
-
     let cancelled = false;
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -233,7 +227,7 @@ export function CompanyLogo({
           alt={`${company} logo`}
           width={size}
           height={size}
-          loading={staticSrc ? "eager" : lazy ? "lazy" : "eager"}
+          loading={lazy ? "lazy" : "eager"}
           decoding="async"
           className="block size-full rounded-sm object-contain object-center"
           onError={() => {

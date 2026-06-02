@@ -11,7 +11,7 @@ type Row = {
 
 const ROWS: Row[] = [
   { label: "Price", pathway: "Free", simplify: "$39.99/mo", spreadsheet: "Free" },
-  { label: "Check frequency", pathway: "Every 15 min", simplify: "Hourly", spreadsheet: "Manual" },
+  { label: "Check frequency", pathway: "Hourly", simplify: "Hourly", spreadsheet: "Manual" },
   { label: "Instant new-role alerts", pathway: "yes", simplify: "no", spreadsheet: "no" },
   { label: "Daily digest of new roles", pathway: "yes", simplify: "no", spreadsheet: "no" },
 ];

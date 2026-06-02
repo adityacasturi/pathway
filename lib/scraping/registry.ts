@@ -71,227 +71,90 @@ import { createUberAdapter } from "./adapters/uber.ts";
 import { createWeightsBiasesAdapter } from "./adapters/weights-biases.ts";
 import { createWayfairAdapter } from "./adapters/wayfair.ts";
 import { createWorkdayAdapter } from "./adapters/workday.ts";
-import type { CompanySourceConfig, ScrapeAdapter } from "./types.ts";
+import { createPinpointAdapter } from "./adapters/pinpoint.ts";
+import type { CompanySourceConfig, ScrapeAdapter, SourceType } from "./types.ts";
 
-export function buildScrapeAdapter(source: CompanySourceConfig): ScrapeAdapter | null {
-  if (source.sourceType === "greenhouse") {
-    return createGreenhouseAdapter(source);
-  }
-  if (source.sourceType === "ashby") {
-    return createAshbyAdapter(source);
-  }
-  if (source.sourceType === "lever") {
-    return createLeverAdapter(source);
-  }
-  if (source.sourceType === "workday") {
-    return createWorkdayAdapter(source);
-  }
-  if (source.sourceType === "nvidia") {
-    return createNvidiaAdapter(source);
-  }
-  if (source.sourceType === "microsoft") {
-    return createMicrosoftAdapter(source);
-  }
-  if (source.sourceType === "google") {
-    return createGoogleAdapter(source);
-  }
-  if (source.sourceType === "jane_street") {
-    return createJaneStreetAdapter(source);
-  }
-  if (source.sourceType === "hudson_river_trading") {
-    return createHudsonRiverTradingAdapter(source);
-  }
-  if (source.sourceType === "apple") {
-    return createAppleAdapter(source);
-  }
-  if (source.sourceType === "citadel") {
-    return createCitadelAdapter(source);
-  }
-  if (source.sourceType === "two_sigma") {
-    return createTwoSigmaAdapter(source);
-  }
-  if (source.sourceType === "amazon") {
-    return createAmazonAdapter(source);
-  }
-  if (source.sourceType === "meta") {
-    return createMetaAdapter(source);
-  }
-  if (source.sourceType === "qualcomm") {
-    return createQualcommAdapter(source);
-  }
-  if (source.sourceType === "uber") {
-    return createUberAdapter(source);
-  }
-  if (source.sourceType === "salesforce") {
-    return createSalesforceAdapter(source);
-  }
-  if (source.sourceType === "de_shaw") {
-    return createDeShawAdapter(source);
-  }
-  if (source.sourceType === "amd") {
-    return createAmdAdapter(source);
-  }
-  if (source.sourceType === "bytedance") {
-    return createByteDanceAdapter(source);
-  }
-  if (source.sourceType === "atlassian") {
-    return createAtlassianAdapter(source);
-  }
-  if (source.sourceType === "tower_research") {
-    return createTowerResearchAdapter(source);
-  }
-  if (source.sourceType === "sig") {
-    return createSigAdapter(source);
-  }
-  if (source.sourceType === "rivian") {
-    return createRivianAdapter(source);
-  }
-  if (source.sourceType === "five_rings") {
-    return createFiveRingsAdapter(source);
-  }
-  if (source.sourceType === "jpmorgan_chase") {
-    return createJpmorganChaseAdapter(source);
-  }
-  if (source.sourceType === "bloomberg") {
-    return createBloombergAdapter(source);
-  }
-  if (source.sourceType === "goldman_sachs") {
-    return createGoldmanSachsAdapter(source);
-  }
-  if (source.sourceType === "oracle") {
-    return createOracleAdapter(source);
-  }
-  if (source.sourceType === "morgan_stanley") {
-    return createMorganStanleyAdapter(source);
-  }
-  if (source.sourceType === "linkedin") {
-    return createLinkedInAdapter(source);
-  }
-  if (source.sourceType === "intuit") {
-    return createIntuitAdapter(source);
-  }
-  if (source.sourceType === "shopify") {
-    return createShopifyAdapter(source);
-  }
-  if (source.sourceType === "netflix") {
-    return createNetflixAdapter(source);
-  }
-  if (source.sourceType === "ibm") {
-    return createIbmAdapter(source);
-  }
-  if (source.sourceType === "coinbase") {
-    return createCoinbaseAdapter(source);
-  }
-  if (source.sourceType === "citigroup") {
-    return createCitigroupAdapter(source);
-  }
-  if (source.sourceType === "rtx") {
-    return createRtxAdapter(source);
-  }
-  if (source.sourceType === "millennium") {
-    return createMillenniumAdapter(source);
-  }
-  if (source.sourceType === "lockheed_martin") {
-    return createLockheedMartinAdapter(source);
-  }
-  if (source.sourceType === "tesla") {
-    return createTeslaAdapter(source);
-  }
-  if (source.sourceType === "workable") {
-    return createWorkableAdapter(source);
-  }
-  if (source.sourceType === "hiringthing") {
-    return createHiringThingAdapter(source);
-  }
-  if (source.sourceType === "jobvite") {
-    return createJobviteAdapter(source);
-  }
-  if (source.sourceType === "replicate") {
-    return createReplicateAdapter(source);
-  }
-  if (source.sourceType === "sakana_ai") {
-    return createSakanaAiAdapter(source);
-  }
-  if (source.sourceType === "luma_ai") {
-    return createLumaAiAdapter(source);
-  }
-  if (source.sourceType === "modular") {
-    return createModularAdapter(source);
-  }
-  if (source.sourceType === "breezy") {
-    return createBreezyAdapter(source);
-  }
-  if (source.sourceType === "surge") {
-    return createSurgeAdapter(source);
-  }
-  if (source.sourceType === "smartrecruiters") {
-    return createSmartRecruitersAdapter(source);
-  }
-  if (source.sourceType === "github") {
-    return createGithubAdapter(source);
-  }
-  if (source.sourceType === "splunk") {
-    return createSplunkAdapter(source);
-  }
-  if (source.sourceType === "slack") {
-    return createSlackAdapter(source);
-  }
-  if (source.sourceType === "juniper_networks") {
-    return createJuniperNetworksAdapter(source);
-  }
-  if (source.sourceType === "vmware") {
-    return createVmwareAdapter(source);
-  }
-  if (source.sourceType === "sap") {
-    return createSapAdapter(source);
-  }
-  if (source.sourceType === "seagate") {
-    return createSeagateAdapter(source);
-  }
-  if (source.sourceType === "teradata") {
-    return createTeradataAdapter(source);
-  }
-  if (source.sourceType === "l3harris") {
-    return createL3HarrisAdapter(source);
-  }
-  if (source.sourceType === "arm") {
-    return createArmAdapter(source);
-  }
-  if (source.sourceType === "synopsys") {
-    return createSynopsysAdapter(source);
-  }
-  if (source.sourceType === "valve") {
-    return createValveAdapter(source);
-  }
-  if (source.sourceType === "chewy") {
-    return createChewyAdapter(source);
-  }
-  if (source.sourceType === "bae_systems") {
-    return createBaeSystemsAdapter(source);
-  }
-  if (source.sourceType === "etsy") {
-    return createEtsyAdapter(source);
-  }
-  if (source.sourceType === "electronic_arts") {
-    return createElectronicArtsAdapter(source);
-  }
-  if (source.sourceType === "wayfair") {
-    return createWayfairAdapter(source);
-  }
-  if (source.sourceType === "peak6") {
-    return createPeak6Adapter(source);
-  }
-  if (source.sourceType === "general_dynamics") {
-    return createGeneralDynamicsAdapter(source);
-  }
-  if (source.sourceType === "weights_biases") {
-    return createWeightsBiasesAdapter(source);
-  }
-  if (source.sourceType === "one_x_technologies") {
-    return createOneXTechnologiesAdapter(source);
-  }
-  if (source.sourceType === "x_corp") {
-    return createXCorpAdapter(source);
-  }
-  return null;
+type AdapterFactory = (source: CompanySourceConfig) => ScrapeAdapter;
+
+const ADAPTER_FACTORIES = {
+  greenhouse: createGreenhouseAdapter,
+  ashby: createAshbyAdapter,
+  lever: createLeverAdapter,
+  workday: createWorkdayAdapter,
+  nvidia: createNvidiaAdapter,
+  microsoft: createMicrosoftAdapter,
+  google: createGoogleAdapter,
+  jane_street: createJaneStreetAdapter,
+  hudson_river_trading: createHudsonRiverTradingAdapter,
+  apple: createAppleAdapter,
+  citadel: createCitadelAdapter,
+  two_sigma: createTwoSigmaAdapter,
+  amazon: createAmazonAdapter,
+  meta: createMetaAdapter,
+  qualcomm: createQualcommAdapter,
+  uber: createUberAdapter,
+  salesforce: createSalesforceAdapter,
+  de_shaw: createDeShawAdapter,
+  tesla: createTeslaAdapter,
+  amd: createAmdAdapter,
+  bytedance: createByteDanceAdapter,
+  atlassian: createAtlassianAdapter,
+  tower_research: createTowerResearchAdapter,
+  sig: createSigAdapter,
+  rivian: createRivianAdapter,
+  five_rings: createFiveRingsAdapter,
+  jpmorgan_chase: createJpmorganChaseAdapter,
+  bloomberg: createBloombergAdapter,
+  goldman_sachs: createGoldmanSachsAdapter,
+  oracle: createOracleAdapter,
+  morgan_stanley: createMorganStanleyAdapter,
+  linkedin: createLinkedInAdapter,
+  intuit: createIntuitAdapter,
+  shopify: createShopifyAdapter,
+  netflix: createNetflixAdapter,
+  ibm: createIbmAdapter,
+  coinbase: createCoinbaseAdapter,
+  citigroup: createCitigroupAdapter,
+  rtx: createRtxAdapter,
+  millennium: createMillenniumAdapter,
+  lockheed_martin: createLockheedMartinAdapter,
+  workable: createWorkableAdapter,
+  hiringthing: createHiringThingAdapter,
+  surge: createSurgeAdapter,
+  smartrecruiters: createSmartRecruitersAdapter,
+  github: createGithubAdapter,
+  splunk: createSplunkAdapter,
+  slack: createSlackAdapter,
+  jobvite: createJobviteAdapter,
+  juniper_networks: createJuniperNetworksAdapter,
+  vmware: createVmwareAdapter,
+  sap: createSapAdapter,
+  teradata: createTeradataAdapter,
+  seagate: createSeagateAdapter,
+  l3harris: createL3HarrisAdapter,
+  arm: createArmAdapter,
+  valve: createValveAdapter,
+  bae_systems: createBaeSystemsAdapter,
+  chewy: createChewyAdapter,
+  electronic_arts: createElectronicArtsAdapter,
+  etsy: createEtsyAdapter,
+  peak6: createPeak6Adapter,
+  wayfair: createWayfairAdapter,
+  general_dynamics: createGeneralDynamicsAdapter,
+  sakana_ai: createSakanaAiAdapter,
+  replicate: createReplicateAdapter,
+  luma_ai: createLumaAiAdapter,
+  modular: createModularAdapter,
+  breezy: createBreezyAdapter,
+  weights_biases: createWeightsBiasesAdapter,
+  one_x_technologies: createOneXTechnologiesAdapter,
+  synopsys: createSynopsysAdapter,
+  x_corp: createXCorpAdapter,
+  pinpoint: createPinpointAdapter,
+} satisfies Record<SourceType, AdapterFactory>;
+
+export const REGISTERED_SOURCE_TYPES = Object.keys(ADAPTER_FACTORIES) as SourceType[];
+
+export function buildScrapeAdapter(source: CompanySourceConfig): ScrapeAdapter {
+  return ADAPTER_FACTORIES[source.sourceType](source);
 }
