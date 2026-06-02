@@ -28,7 +28,12 @@ export function HotCompaniesList({ companies }: Props) {
           {companies.map((company) => (
             <li key={company.slug} className={MARKET_WEEK_LIST_ROW_CLASS}>
               <span className="flex min-w-0 items-center gap-2">
-                <CompanyLogo company={company.name} websiteUrl={company.websiteUrl} size={20} />
+                <CompanyLogo
+                  company={company.name}
+                  companySlug={company.slug}
+                  websiteUrl={company.websiteUrl}
+                  size={20}
+                />
                 <span className="truncate text-[13px] text-foreground">{company.name}</span>
               </span>
               <span className="shrink-0 text-[13px] font-medium tabular-nums text-foreground">

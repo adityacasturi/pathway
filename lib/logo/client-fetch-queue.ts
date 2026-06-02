@@ -124,6 +124,11 @@ function enqueue(state: QueueState, url: string, cacheKey: string): Promise<Logo
   return promise;
 }
 
+/** Synchronous read of a completed proxy outcome (survives route transitions). */
+export function peekLogoProxyCache(cacheKey: string): LogoProxyFetchOutcome | undefined {
+  return getState().memoryCache.get(cacheKey);
+}
+
 /** Fetch a logo through `/api/logo` with global concurrency and deduplication. */
 export function fetchLogoProxy(url: string, cacheKey: string): Promise<LogoProxyFetchOutcome> {
   return enqueue(getState(), url, cacheKey);

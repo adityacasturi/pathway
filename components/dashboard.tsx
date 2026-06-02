@@ -20,8 +20,14 @@ import { getSearchTerms } from "@/lib/search-terms";
 import { motionVariants } from "@/lib/ui/motion";
 import { SearchInput } from "@/components/search-input";
 import { updateApplicationArchive } from "@/lib/actions/applications";
+import { updateApplicationsViewPreferences } from "@/lib/actions/user-preferences";
 import { normalizeApplicationState } from "@/lib/config/application-state";
-import type { CompanyWebsiteByName } from "@/lib/logo/company-website-lookup";
+import type {
+  CompanyLogoAssetByName,
+  CompanySlugByName,
+  CompanyWebsiteByName,
+} from "@/lib/logo/company-website-lookup";
+import type { ApplicationsViewPreferences } from "@/lib/user-preferences/view-preferences";
 
 type StatusFilter = "all" | (typeof STATUSES)[number];
 type SortKey = "company" | "role" | "status" | "last_activity";
@@ -29,14 +35,6 @@ type SortDirection = "asc" | "desc";
 
 const HIDE_REJECTED_STORAGE_KEY = "pathway:hide-rejected";
 const HIDE_ARCHIVED_STORAGE_KEY = "pathway:hide-archived";
-
-function readStoredBoolean(key: string, fallback: boolean): boolean {
-  if (typeof window === "undefined") {
-    return fallback;
-  }
-  const saved = window.localStorage.getItem(key);
-  return saved !== null ? saved === "true" : fallback;
-}
 const INITIAL_VISIBLE = 40;
 const LOAD_BATCH = 40;
 
@@ -50,11 +48,17 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
 interface Props {
   applications: Application[];
   companyWebsiteByName?: CompanyWebsiteByName;
+  companySlugByName?: CompanySlugByName;
+  companyLogoAssetByName?: CompanyLogoAssetByName;
+  initialViewPrefs: ApplicationsViewPreferences;
 }
 
 export function Dashboard({
   applications: initialApplications,
   companyWebsiteByName = {},
+  companySlugByName = {},
+  companyLogoAssetByName = {},
+  initialViewPrefs,
 }: Props) {
   const [applications, setApplications] = useState(initialApplications);
   const [lastInitialApplications, setLastInitialApplications] = useState(initialApplications);
@@ -76,12 +80,9 @@ export function Dashboard({
   const [seasonFilter, setSeasonFilter] = useState<SeasonFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
-  const [hideRejected, setHideRejected] = useState(() =>
-    readStoredBoolean(HIDE_REJECTED_STORAGE_KEY, true),
-  );
-  const [hideArchived, setHideArchived] = useState(() =>
-    readStoredBoolean(HIDE_ARCHIVED_STORAGE_KEY, true),
-  );
+  const [hideRejected, setHideRejected] = useState(initialViewPrefs.hideRejected);
+  const [hideArchived, setHideArchived] = useState(initialViewPrefs.hideArchived);
+  const [viewPrefsReady, setViewPrefsReady] = useState(false);
   const archivedIds = useMemo(
     () => new Set(applications.filter((app) => app.archived_at).map((app) => app.id)),
     [applications],
@@ -101,11 +102,33 @@ export function Dashboard({
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    window.localStorage.setItem(HIDE_REJECTED_STORAGE_KEY, String(hideRejected));
-  }, [hideRejected]);
+    const patch: { hideRejected?: boolean; hideArchived?: boolean } = {};
+    const storedRejected = window.localStorage.getItem(HIDE_REJECTED_STORAGE_KEY);
+    const storedArchived = window.localStorage.getItem(HIDE_ARCHIVED_STORAGE_KEY);
+
+    if (storedRejected === "false" && initialViewPrefs.hideRejected) {
+      patch.hideRejected = false;
+      setHideRejected(false);
+    }
+    if (storedArchived === "false" && initialViewPrefs.hideArchived) {
+      patch.hideArchived = false;
+      setHideArchived(false);
+    }
+
+    if (Object.keys(patch).length > 0) {
+      void updateApplicationsViewPreferences(patch);
+    }
+
+    setViewPrefsReady(true);
+  }, [initialViewPrefs.hideArchived, initialViewPrefs.hideRejected]);
+
   useEffect(() => {
-    window.localStorage.setItem(HIDE_ARCHIVED_STORAGE_KEY, String(hideArchived));
-  }, [hideArchived]);
+    if (!viewPrefsReady) return;
+    const timer = window.setTimeout(() => {
+      void updateApplicationsViewPreferences({ hideRejected, hideArchived });
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [hideArchived, hideRejected, viewPrefsReady]);
 
   const detail = detailId ? (applications.find((app) => app.id === detailId) ?? null) : null;
 
@@ -418,6 +441,8 @@ export function Dashboard({
         <ApplicationsTable
           applications={visibleApplications}
           companyWebsiteByName={companyWebsiteByName}
+          companySlugByName={companySlugByName}
+          companyLogoAssetByName={companyLogoAssetByName}
           hasActiveFilters={Boolean(query || statusFilter !== "all" || seasonFilter !== "all")}
           searchQuery={query}
           onOpen={(application) => setDetailId(application.id)}
@@ -437,6 +462,8 @@ export function Dashboard({
       <ApplicationDetail
         application={detail}
         companyWebsiteByName={companyWebsiteByName}
+        companySlugByName={companySlugByName}
+        companyLogoAssetByName={companyLogoAssetByName}
         onClose={() => setDetailId(null)}
       />
     </PageShell>

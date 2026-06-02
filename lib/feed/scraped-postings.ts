@@ -31,6 +31,7 @@ export interface ScrapedPostingFeedRow {
   companies: {
     slug: string;
     website_url: string | null;
+    logo_asset_key: string | null;
   };
 }
 
@@ -77,6 +78,7 @@ export function mapScrapedRowToFeedPosting(row: ScrapedPostingFeedRow): FeedPost
     sourceId: `company:${row.companies.slug}`,
     company,
     companyWebsiteUrl: row.companies.website_url?.trim() || null,
+    companyLogoAssetKey: row.companies.logo_asset_key?.trim() || null,
     title,
     url,
     locations,
@@ -123,7 +125,8 @@ export async function loadScrapedFeedPostings(supabase: SupabaseClient): Promise
       updated_at,
       companies!inner (
         slug,
-        website_url
+        website_url,
+        logo_asset_key
       )
     `,
     )
@@ -153,6 +156,7 @@ export async function loadScrapedFeedPostings(supabase: SupabaseClient): Promise
       companies: {
         slug: company.slug,
         website_url: company.website_url ?? null,
+        logo_asset_key: company.logo_asset_key ?? null,
       },
     };
     const posting = mapScrapedRowToFeedPosting(row);

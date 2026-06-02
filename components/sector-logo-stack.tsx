@@ -64,7 +64,12 @@ export function SectorLogoStack({ companies, logoSize = 34, className }: Props) 
               )}
               style={{ width: frameSize, height: frameSize }}
             >
-              <CompanyLogo company={company.name} websiteUrl={company.websiteUrl} size={logoSize} />
+              <CompanyLogo
+                company={company.name}
+                companySlug={company.slug}
+                websiteUrl={company.websiteUrl}
+                size={logoSize}
+              />
             </div>
           </div>
         );

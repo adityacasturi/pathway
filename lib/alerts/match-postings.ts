@@ -16,6 +16,7 @@ export function buildSentKey(userId: string, postingId: string, channel: AlertCh
 export function matchPostingsToUsers(
   postings: AlertPostingCandidate[],
   subscriptions: AlertSubscription[],
+  sectorMembers: Map<string, Set<string>>,
   options: {
     enabledUserIds: Set<string>;
     sentKeys: Set<string>;
@@ -37,7 +38,7 @@ export function matchPostingsToUsers(
         (sub.targetType === "company" && sub.targetId === posting.companyId) ||
         (sub.targetType === "industry" && sub.targetId === posting.industrySlug) ||
         (sub.targetType === "sector" &&
-          isCompanyInCuratedSector(sub.targetId, posting.companySlug));
+          isCompanyInCuratedSector(sub.targetId, posting.companySlug, sectorMembers));
       if (!matched) continue;
 
       const key = buildSentKey(sub.userId, posting.postingId, options.channel);

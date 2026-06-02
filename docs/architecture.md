@@ -55,19 +55,19 @@ User-owned (RLS via `auth.uid()`):
 | `application_events` | Timeline events |
 | `feed_interactions` | Saved / dismissed Live posting ids (stable URL hashes) |
 | `discover_company_favorites` | Starred Discover companies |
-| `user_preferences` | Accent color, quick-track preference |
+| `user_preferences` | Accent, quick-track, Live feed view prefs (`live_*`), Applications hide toggles (`hide_rejected`, `hide_archived`) |
 | `alert_preferences` | Email alerts master switch (`emails_enabled`, `digest_enabled`) |
 | `alert_subscriptions` | Per-company, curated sector, or legacy industry alert with instant/digest cadence |
 | `alert_sent_postings` | Dedup ledger for sent alert emails |
 | `alert_digest_state` | Last digest send timestamp per user |
-| `alert_curated_sectors` | DB-side catalog of curated sector targets (validated on subscription writes) |
+| `alert_curated_sectors` | Curated sector labels/metadata; `alert_curated_sector_companies` maps sector → company slugs |
 | `alert_unsubscribe_nonces` | Single-use unsubscribe nonces (service-role only; RLS deny-all to clients) |
 
 Shared scrape catalog (authenticated read; writes via service role / cron):
 
 | Table | Role |
 | --- | --- |
-| `companies` | Discover catalog entry (`slug`, `name`, `industry` → `discover_industries`, …) |
+| `companies` | Discover catalog entry (`slug`, `name`, `industry`, `logo_asset_key` for static PNG path, …) |
 | `discover_industries` | Canonical Discover industry taxonomy (`slug`, `label`, `description`, `sort_order`) |
 | `company_sources` | ATS config: `source_type`, `source_url`, `board_token`, scrape health timestamps |
 | `scraped_postings` | Open roles from scrapes |
@@ -136,7 +136,7 @@ Loader: `lib/discover/companies.ts`. UI: `components/discover-companies.tsx`.
 
 - UI: `app/alerts/page.tsx`, `components/alerts-page.tsx`.
 - **Daily digest** — global toggle (`alert_preferences.digest_enabled`); one morning email with new roles matching the user’s follows (instant subscriptions + legacy industry digest rows).
-- **Curated sector alerts** — global toggle (`emails_enabled`) plus subscriptions to hand-picked groups (FAANG+, AI labs, Quant, Semis, Wall Street, Autonomous & robotics, Defense & space, Unicorns, Cybersecurity) defined in `lib/alerts/curated-sectors.ts`; instant email when a new role appears at any company in a followed sector. Legacy `industry` subscriptions still match in cron but are no longer offered in UI.
+- **Curated sector alerts** — global toggle (`emails_enabled`) plus subscriptions to sector slugs in `alert_curated_sectors` / `alert_curated_sector_companies` (loaded via `lib/alerts/load-curated-sectors.ts`); instant email when a new role appears at any company in a followed sector. Legacy `industry` subscriptions still match in cron but are no longer offered in UI.
 - Matching: `lib/alerts/match-postings.ts` (US-only, `first_seen_at` for new roles).
 - Send: Resend via `lib/email/resend-client.ts`; instant after scrape, digest on daily cron.
 - Env: `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `ALERT_UNSUBSCRIBE_SECRET` — see [production-runbook.md](./production-runbook.md).

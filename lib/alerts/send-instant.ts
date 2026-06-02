@@ -7,6 +7,7 @@ import {
   loadUserEmails,
   recordAlertSentPostings,
 } from "@/lib/alerts/load-alert-data";
+import { loadCuratedSectorCompanyMap } from "@/lib/alerts/load-curated-sectors";
 import { matchPostingsToUsers } from "@/lib/alerts/match-postings";
 import type { AlertMatch } from "@/lib/alerts/types";
 import { isAlertsLaunched } from "@/lib/config/alerts-launch";
@@ -23,10 +24,11 @@ export async function processInstantAlerts(since: Date): Promise<{ sent: number;
   }
 
   const supabase = createAdminClient();
-  const [enabledUserIds, allSubscriptions, postings] = await Promise.all([
+  const [enabledUserIds, allSubscriptions, postings, sectorMembers] = await Promise.all([
     loadEnabledAlertUserIds(supabase),
     loadAlertSubscriptions(supabase),
     loadAlertPostingCandidates(supabase, since),
+    loadCuratedSectorCompanyMap(supabase),
   ]);
 
   const subscriptions = allSubscriptions.filter((sub) => sub.cadence === "instant");
@@ -37,7 +39,7 @@ export async function processInstantAlerts(since: Date): Promise<{ sent: number;
 
   const postingIds = postings.map((posting) => posting.postingId);
   const sentKeys = await loadAlertSentKeys(supabase, postingIds);
-  const rawMatches = matchPostingsToUsers(postings, subscriptions, {
+  const rawMatches = matchPostingsToUsers(postings, subscriptions, sectorMembers, {
     enabledUserIds,
     sentKeys,
     channel: "instant",

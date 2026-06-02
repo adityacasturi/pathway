@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { lookupCompanyWebsiteUrl } from "../../lib/logo/company-website-lookup.ts";
+import {
+  lookupCompanySlug,
+  lookupCompanyWebsiteUrl,
+} from "../../lib/logo/company-website-lookup.ts";
 
 test("lookupCompanyWebsiteUrl prefers explicit website", () => {
   const url = lookupCompanyWebsiteUrl(
@@ -24,8 +27,17 @@ test("lookupCompanyWebsiteUrl resolves by slug when lookups include bySlug", () 
     {
       bySlug: new Map([["google", "https://google.com"]]),
       byName: new Map(),
+      slugByName: new Map(),
+      logoAssetByName: new Map(),
     },
     { slug: "google" },
   );
   assert.equal(url, "https://google.com");
+});
+
+test("lookupCompanySlug resolves catalog slug by normalized company name", () => {
+  const slug = lookupCompanySlug("  Goldman Sachs  ", {
+    "goldman sachs": "goldman-sachs",
+  });
+  assert.equal(slug, "goldman-sachs");
 });

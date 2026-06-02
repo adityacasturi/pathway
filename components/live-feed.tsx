@@ -39,6 +39,8 @@ import type { ApplicationSeason } from "@/types/application";
 import { getPageLabel } from "@/lib/config/nav";
 import { SEASON_FILTER_OPTIONS, type SeasonFilter } from "@/lib/config/season-filter";
 import { getSearchTerms } from "@/lib/search-terms";
+import { updateFeedViewPreferences } from "@/lib/actions/user-preferences";
+import type { FeedViewPreferences } from "@/lib/user-preferences/view-preferences";
 
 const SHOW_DISMISSED_STORAGE_KEY = "pathway:live-show-dismissed";
 const HIDE_APPLIED_STORAGE_KEY = "pathway:live-hide-applied";
@@ -65,6 +67,7 @@ interface Props {
   initialQuery?: string;
   initialSavedOnly?: boolean;
   quickTrackEnabled?: boolean;
+  initialFeedPrefs: FeedViewPreferences;
 }
 
 interface Prefill {
@@ -100,16 +103,17 @@ export function LiveFeed({
   initialQuery = "",
   initialSavedOnly = false,
   quickTrackEnabled = false,
+  initialFeedPrefs,
 }: Props) {
   const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
   // Typing stays snappy because the filter runs against the deferred value,
   // letting React keep the input responsive while it catches up on the list.
   const deferredQuery = useDeferredValue(query);
-  const [seasonFilter, setSeasonFilter] = useState<SeasonFilter>("all");
-  const [showDismissed, setShowDismissed] = useState(false);
+  const [seasonFilter, setSeasonFilter] = useState<SeasonFilter>(initialFeedPrefs.seasonFilter);
+  const [showDismissed, setShowDismissed] = useState(initialFeedPrefs.showDismissed);
   const [showSavedOnly, setShowSavedOnly] = useState(initialSavedOnly);
-  const [hideApplied, setHideApplied] = useState(true);
+  const [hideApplied, setHideApplied] = useState(initialFeedPrefs.hideApplied);
   const [preferencesReady, setPreferencesReady] = useState(false);
   const [dialogPrefill, setDialogPrefill] = useState<Prefill | null>(null);
   const [trackPendingId, setTrackPendingId] = useState<string | null>(null);
@@ -136,58 +140,77 @@ export function LiveFeed({
   // is a candidate for the NEW badge. We capture this once on mount and keep
   // it frozen for the whole session, then stamp the current time into
   // localStorage on unmount so the next visit has the right baseline.
-  const [lastSeen, setLastSeen] = useState<number | null>(null);
+  const [lastSeen, setLastSeen] = useState<number | null>(initialFeedPrefs.lastSeenUnix);
 
   useEffect(() => {
-    const stored = localStorage.getItem(LAST_SEEN_STORAGE_KEY);
-    const parsed = stored ? Number.parseInt(stored, 10) : NaN;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLastSeen(Number.isFinite(parsed) ? parsed : 0);
+    const patch: {
+      lastSeenUnix?: number;
+      showDismissed?: boolean;
+      hideApplied?: boolean;
+      seasonFilter?: SeasonFilter;
+    } = {};
+
+    const storedLastSeen = localStorage.getItem(LAST_SEEN_STORAGE_KEY);
+    const parsedLastSeen = storedLastSeen ? Number.parseInt(storedLastSeen, 10) : NaN;
+    if (Number.isFinite(parsedLastSeen) && parsedLastSeen > initialFeedPrefs.lastSeenUnix) {
+      patch.lastSeenUnix = parsedLastSeen;
+      setLastSeen(parsedLastSeen);
+    }
 
     const dismissPref =
       localStorage.getItem(SHOW_DISMISSED_STORAGE_KEY) ??
       localStorage.getItem(LEGACY_SHOW_DISMISSED_KEY);
-    if (dismissPref === "1") {
+    if (dismissPref === "1" && !initialFeedPrefs.showDismissed) {
+      patch.showDismissed = true;
       setShowDismissed(true);
     }
 
     const hideAppliedPref =
       localStorage.getItem(HIDE_APPLIED_STORAGE_KEY) ??
       localStorage.getItem(LEGACY_HIDE_APPLIED_KEY);
-    if (hideAppliedPref !== null) setHideApplied(hideAppliedPref === "1");
+    if (hideAppliedPref === "0" && initialFeedPrefs.hideApplied) {
+      patch.hideApplied = false;
+      setHideApplied(false);
+    } else if (hideAppliedPref === "1" && !initialFeedPrefs.hideApplied) {
+      patch.hideApplied = true;
+      setHideApplied(true);
+    }
 
     const seasonPref =
       localStorage.getItem(SEASON_STORAGE_KEY) ?? localStorage.getItem(LEGACY_SEASON_KEY);
+    let migratedSeason: SeasonFilter | null = null;
     if (seasonPref && VALID_SEASONS.has(seasonPref as SeasonFilter)) {
-      setSeasonFilter(seasonPref as SeasonFilter);
+      migratedSeason = seasonPref as SeasonFilter;
     } else if (seasonPref?.includes(",")) {
       const first = seasonPref.split(",")[0]?.trim();
       if (first && VALID_SEASONS.has(first as SeasonFilter)) {
-        setSeasonFilter(first as SeasonFilter);
+        migratedSeason = first as SeasonFilter;
       }
+    }
+    if (migratedSeason && migratedSeason !== initialFeedPrefs.seasonFilter) {
+      patch.seasonFilter = migratedSeason;
+      setSeasonFilter(migratedSeason);
+    }
+
+    if (Object.keys(patch).length > 0) {
+      void updateFeedViewPreferences(patch);
     }
 
     setPreferencesReady(true);
 
     return () => {
-      localStorage.setItem(LAST_SEEN_STORAGE_KEY, String(Math.floor(Date.now() / 1000)));
+      const unix = Math.floor(Date.now() / 1000);
+      void updateFeedViewPreferences({ lastSeenUnix: unix });
     };
-  }, []);
+  }, [initialFeedPrefs.hideApplied, initialFeedPrefs.lastSeenUnix, initialFeedPrefs.seasonFilter, initialFeedPrefs.showDismissed]);
 
   useEffect(() => {
     if (!preferencesReady) return;
-    localStorage.setItem(SHOW_DISMISSED_STORAGE_KEY, showDismissed ? "1" : "0");
-  }, [preferencesReady, showDismissed]);
-
-  useEffect(() => {
-    if (!preferencesReady) return;
-    localStorage.setItem(HIDE_APPLIED_STORAGE_KEY, hideApplied ? "1" : "0");
-  }, [preferencesReady, hideApplied]);
-
-  useEffect(() => {
-    if (!preferencesReady) return;
-    localStorage.setItem(SEASON_STORAGE_KEY, seasonFilter);
-  }, [preferencesReady, seasonFilter]);
+    const timer = window.setTimeout(() => {
+      void updateFeedViewPreferences({ showDismissed, hideApplied, seasonFilter });
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [hideApplied, preferencesReady, seasonFilter, showDismissed]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -455,7 +478,7 @@ export function LiveFeed({
   const markAllSeen = useCallback(() => {
     const now = Math.floor(Date.now() / 1000);
     setLastSeen(now);
-    localStorage.setItem(LAST_SEEN_STORAGE_KEY, String(now));
+    void updateFeedViewPreferences({ lastSeenUnix: now });
   }, []);
 
   const headerActions = (

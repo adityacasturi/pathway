@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { isCuratedSectorSlug } from "@/lib/alerts/curated-sectors";
 import {
   ALERTS_PREVIEW_LOCKED_MESSAGE,
   isAlertsLaunched,
@@ -102,8 +101,17 @@ export async function addSectorAlert(sectorSlug: string) {
     return { error: "Not authenticated" };
   }
 
-  const slug = sectorSlug.trim();
-  if (!isCuratedSectorSlug(slug)) {
+  const slug = sectorSlug.trim().toLowerCase();
+  const { data: sectorRow, error: sectorError } = await supabase
+    .from("alert_curated_sectors")
+    .select("slug")
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (sectorError) {
+    return { error: formatSupabaseMutationError(sectorError, "Unable to verify sector.") };
+  }
+  if (!sectorRow) {
     return { error: "Sector not found." };
   }
 

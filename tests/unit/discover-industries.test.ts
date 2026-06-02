@@ -51,6 +51,7 @@ function card(
     openCount,
     lastSuccessAt: null,
     lastFailureAt: null,
+    logoAssetKey: null,
   };
 }
 

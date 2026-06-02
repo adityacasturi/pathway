@@ -7,7 +7,11 @@ import { cn, formatDate } from "@/lib/utils";
 import { safeExternalHref } from "@/lib/url";
 import { CompanyLogo } from "@/components/company-logo";
 import {
+  lookupCompanyLogoAssetKey,
+  lookupCompanySlug,
   lookupCompanyWebsiteUrl,
+  type CompanyLogoAssetByName,
+  type CompanySlugByName,
   type CompanyWebsiteByName,
 } from "@/lib/logo/company-website-lookup";
 import { MetaSeparator, PostingMetaLine } from "@/components/posting-meta-line";
@@ -16,6 +20,8 @@ import { StatusBadge } from "@/components/status-badge";
 interface Props {
   application: Application;
   companyWebsiteByName?: CompanyWebsiteByName;
+  companySlugByName?: CompanySlugByName;
+  companyLogoAssetByName?: CompanyLogoAssetByName;
   archived: boolean;
   onOpen: () => void;
   onContextMenu: (event: MouseEvent) => void;
@@ -24,6 +30,8 @@ interface Props {
 export function ApplicationRow({
   application,
   companyWebsiteByName = {},
+  companySlugByName = {},
+  companyLogoAssetByName = {},
   archived,
   onOpen,
   onContextMenu,
@@ -48,6 +56,8 @@ export function ApplicationRow({
       >
         <CompanyLogo
           company={application.company}
+          companySlug={lookupCompanySlug(application.company, companySlugByName)}
+          logoAssetKey={lookupCompanyLogoAssetKey(application.company, companyLogoAssetByName)}
           websiteUrl={lookupCompanyWebsiteUrl(application.company, companyWebsiteByName)}
           size={36}
         />

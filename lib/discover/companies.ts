@@ -13,6 +13,7 @@ interface CompanyRow {
   slug: string;
   name: string;
   website_url: string | null;
+  logo_asset_key: string | null;
   industry: string | null;
   company_sources: Array<{
     last_success_at: string | null;
@@ -115,6 +116,7 @@ export async function loadDiscoverCompanies(
         slug,
         name,
         website_url,
+        logo_asset_key,
         industry,
         company_sources!inner (
           last_success_at,
@@ -161,6 +163,7 @@ export async function loadDiscoverCompanies(
       openCount: openCounts.get(company.id) ?? 0,
       lastSuccessAt: source?.last_success_at ?? null,
       lastFailureAt: source?.last_failure_at ?? null,
+      logoAssetKey: company.logo_asset_key?.trim() || null,
     };
   });
 }

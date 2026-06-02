@@ -6,6 +6,10 @@ import {
 } from "../../lib/alerts/match-postings.ts";
 import type { AlertPostingCandidate, AlertSubscription } from "../../lib/alerts/types.ts";
 
+const quantSectorMembers = new Map<string, Set<string>>([
+  ["quant", new Set(["jane-street"])],
+]);
+
 const posting: AlertPostingCandidate = {
   postingId: "p1",
   companyId: "c1",
@@ -28,7 +32,7 @@ test("matchPostingsToUsers matches company subscription", () => {
   const subs: AlertSubscription[] = [
     { id: "s1", userId: "u1", targetType: "company", targetId: "c1", cadence: "instant" },
   ];
-  const matches = matchPostingsToUsers([posting], subs, {
+  const matches = matchPostingsToUsers([posting], subs, quantSectorMembers, {
     enabledUserIds: new Set(["u1"]),
     sentKeys: new Set<string>(),
     channel: "instant",
@@ -41,7 +45,7 @@ test("matchPostingsToUsers matches sector subscription", () => {
   const subs: AlertSubscription[] = [
     { id: "s1", userId: "u1", targetType: "sector", targetId: "quant", cadence: "instant" },
   ];
-  const matches = matchPostingsToUsers([posting], subs, {
+  const matches = matchPostingsToUsers([posting], subs, quantSectorMembers, {
     enabledUserIds: new Set(["u1"]),
     sentKeys: new Set<string>(),
     channel: "instant",
@@ -53,7 +57,7 @@ test("matchPostingsToUsers skips sector when company not in group", () => {
   const subs: AlertSubscription[] = [
     { id: "s1", userId: "u1", targetType: "sector", targetId: "faang", cadence: "instant" },
   ];
-  const matches = matchPostingsToUsers([posting], subs, {
+  const matches = matchPostingsToUsers([posting], subs, quantSectorMembers, {
     enabledUserIds: new Set(["u1"]),
     sentKeys: new Set<string>(),
     channel: "instant",
@@ -65,7 +69,7 @@ test("matchPostingsToUsers matches industry subscription", () => {
   const subs: AlertSubscription[] = [
     { id: "s1", userId: "u1", targetType: "industry", targetId: "quant", cadence: "digest" },
   ];
-  const matches = matchPostingsToUsers([posting], subs, {
+  const matches = matchPostingsToUsers([posting], subs, quantSectorMembers, {
     enabledUserIds: new Set(["u1"]),
     sentKeys: new Set<string>(),
     channel: "digest",
@@ -77,7 +81,7 @@ test("matchPostingsToUsers matches instant follows for digest channel", () => {
   const subs: AlertSubscription[] = [
     { id: "s1", userId: "u1", targetType: "company", targetId: "c1", cadence: "instant" },
   ];
-  const matches = matchPostingsToUsers([posting], subs, {
+  const matches = matchPostingsToUsers([posting], subs, quantSectorMembers, {
     enabledUserIds: new Set(["u1"]),
     sentKeys: new Set<string>(),
     channel: "digest",
@@ -92,7 +96,7 @@ test("matchPostingsToUsers skips disabled users and already sent", () => {
     { id: "s1", userId: "u1", targetType: "company", targetId: "c1", cadence: "instant" },
   ];
   const sentKeys = new Set(["u1:p1:instant"]);
-  const matches = matchPostingsToUsers([posting], subs, {
+  const matches = matchPostingsToUsers([posting], subs, quantSectorMembers, {
     enabledUserIds: new Set(["u2"]),
     sentKeys,
     channel: "instant",

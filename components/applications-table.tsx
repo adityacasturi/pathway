@@ -6,7 +6,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Archive, ArchiveRestore } from "lucide-react";
 import { deleteApplication } from "@/lib/actions/applications";
 import { ApplicationRow } from "@/components/application-row";
-import type { CompanyWebsiteByName } from "@/lib/logo/company-website-lookup";
+import type {
+  CompanyLogoAssetByName,
+  CompanySlugByName,
+  CompanyWebsiteByName,
+} from "@/lib/logo/company-website-lookup";
 import { AsyncButton } from "@/components/ui/async-button";
 import { Button } from "@/components/ui/button";
 import { InlineError } from "@/components/ui/inline-error";
@@ -15,6 +19,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 interface Props {
   applications: Application[];
   companyWebsiteByName?: CompanyWebsiteByName;
+  companySlugByName?: CompanySlugByName;
+  companyLogoAssetByName?: CompanyLogoAssetByName;
   hasActiveFilters: boolean;
   searchQuery: string;
   onOpen: (app: Application) => void;
@@ -25,6 +31,8 @@ interface Props {
 export function ApplicationsTable({
   applications,
   companyWebsiteByName = {},
+  companySlugByName = {},
+  companyLogoAssetByName = {},
   hasActiveFilters,
   searchQuery,
   onOpen,
@@ -88,6 +96,8 @@ export function ApplicationsTable({
               key={app.id}
               application={app}
               companyWebsiteByName={companyWebsiteByName}
+              companySlugByName={companySlugByName}
+              companyLogoAssetByName={companyLogoAssetByName}
               archived={archivedIds.has(app.id)}
               onOpen={() => onOpen(app)}
               onContextMenu={(event) => {

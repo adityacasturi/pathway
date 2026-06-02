@@ -9,6 +9,7 @@ import {
   recordAlertSentPostings,
   upsertAlertDigestState,
 } from "@/lib/alerts/load-alert-data";
+import { loadCuratedSectorCompanyMap } from "@/lib/alerts/load-curated-sectors";
 import { matchPostingsToUsers } from "@/lib/alerts/match-postings";
 import type { AlertPostingCandidate } from "@/lib/alerts/types";
 import { DIGEST_MAX_POSTINGS } from "@/lib/config/alerts";
@@ -36,9 +37,10 @@ export async function processDigestAlerts(now = new Date()): Promise<{ sent: num
 
   const digestState = await loadAlertDigestState(supabase, digestUserIds);
   const earliestSince = getEarliestDigestSince(digestState, now);
-  const [subscriptions, postings] = await Promise.all([
+  const [subscriptions, postings, sectorMembers] = await Promise.all([
     loadAlertSubscriptions(supabase),
     loadAlertPostingCandidates(supabase, earliestSince),
+    loadCuratedSectorCompanyMap(supabase),
   ]);
 
   if (postings.length === 0) {
@@ -48,7 +50,7 @@ export async function processDigestAlerts(now = new Date()): Promise<{ sent: num
   const postingIds = postings.map((posting) => posting.postingId);
   const sentKeys = await loadAlertSentKeys(supabase, postingIds);
   const enabledUserIds = new Set(digestUserIds);
-  const rawMatches = matchPostingsToUsers(postings, subscriptions, {
+  const rawMatches = matchPostingsToUsers(postings, subscriptions, sectorMembers, {
     enabledUserIds,
     sentKeys,
     channel: "digest",

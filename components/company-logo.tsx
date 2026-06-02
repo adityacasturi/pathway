@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { fetchLogoProxy } from "@/lib/logo/client-fetch-queue";
+import { fetchLogoProxy, peekLogoProxyCache } from "@/lib/logo/client-fetch-queue";
 import { logoCacheKey, logoDomainFromWebsite, logoUrl } from "@/lib/logo";
+import { companyHasStaticLogo, companyLogoStaticUrl } from "@/lib/logo/static";
 
 /** Prefetch shortly before scroll-in; queue caps parallel `/api/logo` calls. */
 const LAZY_LOGO_ROOT_MARGIN = "120px 0px";
@@ -35,6 +36,12 @@ function initial(company: string): string {
 const FAILED_STORAGE_KEY = "pathway:logo-failed:v7";
 const failedCompanies = new Set<string>(readFailedFromStorage());
 
+/** Proxy logos that already loaded this tab — avoids initials flash on route change. */
+const loadedProxyByKey = new Map<string, string>();
+
+/** Static slugs whose PNG 404'd — skip until full page reload. */
+const brokenStaticSlugs = new Set<string>();
+
 function readFailedFromStorage(): string[] {
   if (typeof window === "undefined") return [];
   try {
@@ -60,6 +67,25 @@ function persistFailed() {
   }
 }
 
+function initialProxyLoad(
+  cacheKey: string,
+  resolvedLogoUrl: string,
+): { cacheKey: string; src: string } | null {
+  if (failedCompanies.has(cacheKey)) return null;
+
+  const remembered = loadedProxyByKey.get(cacheKey);
+  if (remembered) {
+    return { cacheKey, src: remembered };
+  }
+
+  if (peekLogoProxyCache(cacheKey) === "ok") {
+    loadedProxyByKey.set(cacheKey, resolvedLogoUrl);
+    return { cacheKey, src: resolvedLogoUrl };
+  }
+
+  return null;
+}
+
 function InitialAvatar({ company, size }: { company: string; size: number }) {
   return (
     <div
@@ -74,24 +100,51 @@ function InitialAvatar({ company, size }: { company: string; size: number }) {
 
 interface Props {
   company: string;
+  /** Discover catalog slug; when present and in the static manifest, uses /company-logos/{slug}.png */
+  companySlug?: string | null;
+  /** DB `logo_asset_key` (usually slug) — preferred static logo path when set. */
+  logoAssetKey?: string | null;
   /** When set, logos use logo.dev domain lookup (more accurate than name). */
   websiteUrl?: string | null;
   size?: number;
-  /** Defer the logo proxy fetch until the logo nears the viewport. */
+  /** Defer proxy fetch until the logo nears the viewport. Static logos still render immediately. */
   lazy?: boolean;
 }
 
-export function CompanyLogo({ company, websiteUrl, size = 20, lazy = false }: Props) {
+export function CompanyLogo({
+  company,
+  companySlug,
+  logoAssetKey,
+  websiteUrl,
+  size = 20,
+  lazy = false,
+}: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const [shouldLoad, setShouldLoad] = useState(!lazy);
+  const [shouldLoadProxy, setShouldLoadProxy] = useState(!lazy);
+  const normalizedSlug = companySlug?.trim() ?? "";
+  const staticAssetKey = logoAssetKey?.trim() || normalizedSlug;
+  const [staticBroken, setStaticBroken] = useState(
+    () => staticAssetKey.length > 0 && brokenStaticSlugs.has(staticAssetKey),
+  );
   const domain = logoDomainFromWebsite(websiteUrl);
   const key = logoCacheKey(company, domain);
   const resolvedLogoUrl = logoUrl(company, domain);
-  const [logoLoad, setLogoLoad] = useState<{ cacheKey: string; src: string } | null>(null);
-  const src = logoLoad?.cacheKey === key ? logoLoad.src : null;
+  const staticSlug =
+    staticAssetKey &&
+    companyHasStaticLogo(normalizedSlug || staticAssetKey, logoAssetKey) &&
+    !staticBroken
+      ? staticAssetKey
+      : null;
+  const staticSrc = staticSlug ? companyLogoStaticUrl(staticSlug) : null;
+
+  const [logoLoad, setLogoLoad] = useState<{ cacheKey: string; src: string } | null>(() =>
+    staticSrc ? null : initialProxyLoad(key, resolvedLogoUrl),
+  );
+  const proxySrc = logoLoad?.cacheKey === key ? logoLoad.src : null;
+  const src = staticSrc ?? proxySrc;
 
   useEffect(() => {
-    if (!lazy || shouldLoad) {
+    if (!lazy || shouldLoadProxy) {
       return;
     }
 
@@ -103,7 +156,7 @@ export function CompanyLogo({ company, websiteUrl, size = 20, lazy = false }: Pr
     const io = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting) {
-          setShouldLoad(true);
+          setShouldLoadProxy(true);
           io.disconnect();
         }
       },
@@ -112,10 +165,16 @@ export function CompanyLogo({ company, websiteUrl, size = 20, lazy = false }: Pr
 
     io.observe(el);
     return () => io.disconnect();
-  }, [lazy, shouldLoad]);
+  }, [lazy, shouldLoadProxy]);
 
   useEffect(() => {
-    if (!shouldLoad || !company.trim() || failedCompanies.has(key)) {
+    if (staticSrc || !shouldLoadProxy || !company.trim() || failedCompanies.has(key)) {
+      return;
+    }
+
+    const cached = initialProxyLoad(key, resolvedLogoUrl);
+    if (cached) {
+      setLogoLoad(cached);
       return;
     }
 
@@ -142,6 +201,7 @@ export function CompanyLogo({ company, websiteUrl, size = 20, lazy = false }: Pr
         return;
       }
 
+      loadedProxyByKey.set(key, resolvedLogoUrl);
       setLogoLoad({ cacheKey: key, src: resolvedLogoUrl });
     }
 
@@ -151,9 +211,10 @@ export function CompanyLogo({ company, websiteUrl, size = 20, lazy = false }: Pr
       cancelled = true;
       if (retryTimer) clearTimeout(retryTimer);
     };
-  }, [company, key, resolvedLogoUrl, shouldLoad]);
+  }, [company, key, resolvedLogoUrl, shouldLoadProxy, staticSrc]);
 
-  const showInitial = !company.trim() || failedCompanies.has(key) || !src;
+  const waitingForProxy = !staticSrc && (!shouldLoadProxy || !proxySrc);
+  const showInitial = !company.trim() || failedCompanies.has(key) || waitingForProxy;
 
   return (
     <div
@@ -164,18 +225,22 @@ export function CompanyLogo({ company, websiteUrl, size = 20, lazy = false }: Pr
       {showInitial ? (
         <InitialAvatar company={company} size={size} />
       ) : (
-        // Plain <img> (not next/image) because /api/logo is already a small,
-        // cacheable first-party proxy. `logoUrl` returns a single canonical URL
-        // per company so every surface hits the same browser cache entry.
+        // Plain <img> (not next/image): static files and /api/logo are small,
+        // cacheable URLs. Proxy path shares one URL per company for HTTP cache.
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={src}
+          src={src!}
           alt={`${company} logo`}
           width={size}
           height={size}
-          loading="lazy"
+          loading={staticSrc ? "eager" : lazy ? "lazy" : "eager"}
           decoding="async"
           className="block size-full rounded-sm object-contain object-center"
+          onError={() => {
+            if (!staticSlug) return;
+            brokenStaticSlugs.add(staticSlug);
+            setStaticBroken(true);
+          }}
         />
       )}
     </div>

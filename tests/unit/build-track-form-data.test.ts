@@ -39,6 +39,7 @@ test("buildTrackApplicationFormData joins feed posting locations", () => {
     sourceId: "source-1",
     company: "Acme",
     companyWebsiteUrl: "https://acme.com",
+    companyLogoAssetKey: null,
     title: "SWE Intern",
     url: "https://example.com/job",
     locations: ["NYC", "Remote"],

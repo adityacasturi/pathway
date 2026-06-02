@@ -28,6 +28,7 @@ npm run test:e2e         # Playwright
 npm run test:preprod     # typecheck + audit + unit + build
 npm run test:preprod:full # lint + test:preprod + e2e
 npm run scrape           # scrape → scraped_postings (service role)
+npm run company-logos    # static PNGs in public/company-logos + manifest
 npm run discover-queue   # onboarding queue CLI
 npm run verify           # lint + test:preprod
 ```

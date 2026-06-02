@@ -662,7 +662,13 @@ export function DiscoverCompanies({
             <div className="shrink-0 border-b border-border/80 px-6 pb-5 pt-5">
               <DialogHeader className="pb-0">
                 <DialogTitle className="flex items-center gap-4">
-                  <CompanyLogo company={selected.name} websiteUrl={selected.websiteUrl} size={44} />
+                  <CompanyLogo
+                    company={selected.name}
+                    companySlug={selected.slug}
+                    logoAssetKey={selected.logoAssetKey}
+                    websiteUrl={selected.websiteUrl}
+                    size={44}
+                  />
                   <span className="display-serif text-[1.75rem] leading-tight text-foreground">
                     {selected.name}
                   </span>
@@ -757,6 +763,7 @@ export function DiscoverCompanies({
                     posting,
                     selected.name,
                     selected.websiteUrl,
+                    selected.logoAssetKey,
                   );
                   return (
                     <PostingRow
@@ -829,6 +836,8 @@ function CompanyCard({
       >
         <CompanyLogo
           company={company.name}
+          companySlug={company.slug}
+          logoAssetKey={company.logoAssetKey}
           websiteUrl={company.websiteUrl}
           size={36}
           lazy={lazyLogo}

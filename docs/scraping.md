@@ -29,6 +29,16 @@ Environment:
 
 Cron (production): `GET/POST` `/api/cron/scrape-postings` with `Authorization: Bearer $CRON_SECRET` — scheduled hourly via GitHub Actions (see `.github/workflows/production-cron.yml`). Local: `npm run scrape`.
 
+### Company logos (static)
+
+```bash
+npm run company-logos              # all active companies → public/company-logos/{slug}.png
+npm run company-logos -- --slug acme
+npm run company-logos -- --manifest-only   # rebuild lib/logo/static-slug-manifest.json from PNGs
+```
+
+Requires `LOGO_DEV_TOKEN`. After Discover onboarding, run per slug (see discover-queue skill). The app serves static logos when the slug is listed in the manifest; otherwise it falls back to `/api/logo`.
+
 ## Pipeline
 
 ```text

@@ -8,6 +8,7 @@ import { MetaSeparator, PostingMetaLine } from "@/components/posting-meta-line";
 import { formatCompactLocationSegments } from "@/lib/feed/us-locations";
 import { safeExternalHref } from "@/lib/url";
 import { cn } from "@/lib/utils";
+import { parseCompanySlugFromSourceId } from "@/lib/feed/company-slug";
 import type { FeedPosting } from "@/lib/feed/source";
 
 type PostingRowDensity = "compact" | "comfortable";
@@ -121,6 +122,8 @@ export const PostingRow = memo(function PostingRow({
       >
         <CompanyLogo
           company={posting.company}
+          companySlug={parseCompanySlugFromSourceId(posting.sourceId)}
+          logoAssetKey={posting.companyLogoAssetKey}
           websiteUrl={posting.companyWebsiteUrl}
           size={rowStyle.logo}
           lazy

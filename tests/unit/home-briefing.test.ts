@@ -23,6 +23,7 @@ function samplePosting(overrides: Partial<FeedPosting> = {}): FeedPosting {
     sourceId: "company:acme",
     company: "Acme Corp",
     companyWebsiteUrl: null,
+    companyLogoAssetKey: null,
     title: "Software Engineer Intern",
     url: "https://example.com/jobs/1",
     locations: ["San Francisco, CA"],

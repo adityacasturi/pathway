@@ -32,6 +32,7 @@ export interface SectorAlertView {
 export interface CompanyAlertView {
   id: string;
   companyId: string;
+  companySlug: string | null;
   name: string;
   websiteUrl: string | null;
 }
@@ -275,6 +276,7 @@ export function AlertsPage({
                         <span className="flex min-w-0 items-center gap-2 pl-4 pr-1">
                           <CompanyLogo
                             company={alert.name}
+                            companySlug={alert.companySlug}
                             websiteUrl={alert.websiteUrl}
                             size={24}
                           />
@@ -488,6 +490,7 @@ function CompanySearchDropdown({
                     >
                       <CompanyLogo
                         company={company.name}
+                        companySlug={company.slug}
                         websiteUrl={company.websiteUrl}
                         size={28}
                       />

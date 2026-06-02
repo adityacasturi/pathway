@@ -158,6 +158,18 @@ where c.slug = '<slug>' and p.status = 'open';
 
 ---
 
+## Step 6b — Company logo (static asset)
+
+After live scrape succeeds, download the logo into `public/company-logos/` and refresh the slug manifest:
+
+```bash
+npm run company-logos -- --slug <slug>
+```
+
+Requires `LOGO_DEV_TOKEN` in `.env.local`. Skips if the PNG already exists (use `--force` to replace). Failures here do not undo onboarding — note in `complete` and fix later.
+
+---
+
 ## Step 7 — Complete
 
 ```bash

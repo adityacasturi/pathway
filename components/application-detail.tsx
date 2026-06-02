@@ -25,7 +25,11 @@ import { LocationField, PostingUrlField, SeasonField } from "@/components/applic
 import { FloatingSyncToast, SyncState } from "@/components/application-detail/sync-toast";
 import { CompanyLogo } from "@/components/company-logo";
 import {
+  lookupCompanyLogoAssetKey,
+  lookupCompanySlug,
   lookupCompanyWebsiteUrl,
+  type CompanyLogoAssetByName,
+  type CompanySlugByName,
   type CompanyWebsiteByName,
 } from "@/lib/logo/company-website-lookup";
 import { EventTimeline } from "@/components/event-timeline";
@@ -40,6 +44,8 @@ function todayISO(): string {
 interface Props {
   application: Application | null;
   companyWebsiteByName?: CompanyWebsiteByName;
+  companySlugByName?: CompanySlugByName;
+  companyLogoAssetByName?: CompanyLogoAssetByName;
   onClose: () => void;
 }
 
@@ -69,6 +75,8 @@ function buildTempEvent(
 export function ApplicationDetail({
   application,
   companyWebsiteByName = {},
+  companySlugByName = {},
+  companyLogoAssetByName = {},
   onClose,
 }: Props) {
   // Form state for the "Add event" panel. Reset whenever the user opens a
@@ -338,6 +346,8 @@ export function ApplicationDetail({
               application={optimisticApplication}
               displayCompany={application?.company ?? optimisticApplication.company}
               companyWebsiteByName={companyWebsiteByName}
+              companySlugByName={companySlugByName}
+              companyLogoAssetByName={companyLogoAssetByName}
               onSaveField={commitApplicationFields}
               onClose={onClose}
             />
@@ -392,12 +402,16 @@ function DetailHeader({
   application,
   displayCompany,
   companyWebsiteByName,
+  companySlugByName,
+  companyLogoAssetByName,
   onSaveField,
   onClose,
 }: {
   application: Application;
   displayCompany: string;
   companyWebsiteByName: CompanyWebsiteByName;
+  companySlugByName: CompanySlugByName;
+  companyLogoAssetByName: CompanyLogoAssetByName;
   onSaveField: (fields: {
     company?: string;
     role?: string;
@@ -415,6 +429,8 @@ function DetailHeader({
       <div className="flex items-start gap-5">
         <CompanyLogo
           company={displayCompany}
+          companySlug={lookupCompanySlug(displayCompany, companySlugByName)}
+          logoAssetKey={lookupCompanyLogoAssetKey(displayCompany, companyLogoAssetByName)}
           websiteUrl={lookupCompanyWebsiteUrl(displayCompany, companyWebsiteByName)}
           size={52}
         />

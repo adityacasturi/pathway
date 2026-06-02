@@ -4,6 +4,7 @@ import { fetchFeed } from "@/lib/feed/source";
 import { normalizeUrl } from "@/lib/url";
 import { LiveFeed } from "@/components/live-feed";
 import { isMissingPreferenceColumnError } from "@/lib/config/user-preferences";
+import { loadUserViewPreferences } from "@/lib/user-preferences/load-view-preferences";
 import { assertSupabaseOk } from "@/lib/supabase/errors";
 
 export const dynamic = "force-dynamic";
@@ -21,13 +22,15 @@ export default async function LivePage({ searchParams }: LivePageProps) {
   const initialQuery = typeof params.q === "string" ? params.q : "";
   const initialSavedOnly = params.saved !== undefined;
 
-  const [userResult, postings, interactionsRes, appsRes, preferencesRes] = await Promise.all([
-    supabase.auth.getUser(),
-    fetchFeed(),
-    supabase.from("feed_interactions").select("posting_id, kind"),
-    supabase.from("applications").select("posting_url").is("archived_at", null),
-    supabase.from("user_preferences").select("quick_track_enabled").maybeSingle(),
-  ]);
+  const [userResult, postings, interactionsRes, appsRes, preferencesRes, viewPrefs] =
+    await Promise.all([
+      supabase.auth.getUser(),
+      fetchFeed(),
+      supabase.from("feed_interactions").select("posting_id, kind"),
+      supabase.from("applications").select("posting_url").is("archived_at", null),
+      supabase.from("user_preferences").select("quick_track_enabled").maybeSingle(),
+      loadUserViewPreferences(supabase),
+    ]);
 
   if (!userResult.data.user) redirect("/");
 
@@ -59,6 +62,7 @@ export default async function LivePage({ searchParams }: LivePageProps) {
       initialQuery={initialQuery}
       initialSavedOnly={initialSavedOnly}
       quickTrackEnabled={preferencesRes.data?.quick_track_enabled ?? false}
+      initialFeedPrefs={viewPrefs.feed}
     />
   );
 }

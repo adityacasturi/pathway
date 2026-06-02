@@ -10,6 +10,7 @@ function posting(overrides: Partial<FeedPosting> & Pick<FeedPosting, "id" | "sou
     interactionIds: [],
     company: "Acme",
     companyWebsiteUrl: null,
+    companyLogoAssetKey: null,
     title: "SWE Intern",
     url: `https://example.com/${overrides.id}`,
     locations: ["San Francisco, CA"],

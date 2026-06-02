@@ -36,6 +36,7 @@ npm run discover-queue -- complete --id 3 --result '{"migration":"add_etsy_disco
 npm run discover-queue -- fail --id 3 --result '{"error":"...","stage":"probe"}'
 npm run discover-queue -- list --status pending
 npm run discover-queue -- stats
+npm run company-logos -- --slug <slug>   # after onboard: static logo PNG + manifest
 ```
 
 Environment: `DISCOVER_QUEUE_WORKER` — stable id per agent (`cursor-1`, …).

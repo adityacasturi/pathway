@@ -7,6 +7,10 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { writeStaticSlugManifest } from "../lib/logo/download.ts";
+import { buildLogoDevImageUrl, LANDING_LOGO_PX } from "../lib/logo/logo-dev-url.ts";
+import { logoDevReferer } from "../lib/logo/upstream.ts";
+import { loadDotEnvLocal } from "./discover-queue/env.ts";
 
 /** slug → logo.dev domain (preferred) or company name fallback */
 const LANDING_LOGOS: ReadonlyArray<{ slug: string; domain?: string; company?: string }> = [
@@ -37,19 +41,9 @@ const LANDING_LOGOS: ReadonlyArray<{ slug: string; domain?: string; company?: st
   { slug: "figma", domain: "figma.com" },
 ];
 
-const SIZE = 512;
 const OUT_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "../public/company-logos");
 
-function logoDevUrl(entry: (typeof LANDING_LOGOS)[number], token: string): string {
-  const params = `token=${encodeURIComponent(token)}&size=${SIZE}&format=png`;
-  if (entry.domain) {
-    return `https://img.logo.dev/${encodeURIComponent(entry.domain)}?${params}`;
-  }
-  if (entry.company) {
-    return `https://img.logo.dev/name/${encodeURIComponent(entry.company)}?${params}`;
-  }
-  throw new Error(`No domain or company for slug ${entry.slug}`);
-}
+loadDotEnvLocal();
 
 async function main() {
   const token = process.env.LOGO_DEV_TOKEN?.trim();
@@ -63,8 +57,17 @@ async function main() {
   let failed = 0;
   for (const entry of LANDING_LOGOS) {
     const outPath = path.join(OUT_DIR, `${entry.slug}.png`);
-    const url = logoDevUrl(entry, token);
-    const res = await fetch(url);
+    const url = buildLogoDevImageUrl(
+      { domain: entry.domain, company: entry.company },
+      token,
+      LANDING_LOGO_PX,
+    );
+    if (!url) {
+      console.error(`FAIL ${entry.slug}: no domain or company`);
+      failed += 1;
+      continue;
+    }
+    const res = await fetch(url, { headers: { Referer: logoDevReferer() } });
     if (!res.ok) {
       console.error(`FAIL ${entry.slug}: HTTP ${res.status}`);
       failed += 1;
@@ -74,6 +77,9 @@ async function main() {
     await writeFile(outPath, buf);
     console.log(`OK ${entry.slug} (${buf.length} bytes)`);
   }
+
+  const slugs = await writeStaticSlugManifest(OUT_DIR);
+  console.log(`Manifest updated (${slugs.length} slugs)`);
 
   if (failed > 0) {
     console.error(`${failed} logo(s) failed`);

@@ -28,4 +28,6 @@ export interface DiscoverCompanyCard {
   openCount: number;
   lastSuccessAt: string | null;
   lastFailureAt: string | null;
+  /** Set when a static PNG is available at /company-logos/{slug}.png */
+  logoAssetKey: string | null;
 }

@@ -4,11 +4,8 @@ import {
   type CompanyAlertView,
   type SectorAlertView,
 } from "@/components/alerts-page";
-import {
-  CURATED_ALERT_SECTORS,
-  resolveSectorCompanies,
-  type SectorCompanyDisplay,
-} from "@/lib/alerts/curated-sectors";
+import { loadCuratedAlertSectors } from "@/lib/alerts/load-curated-sectors";
+import { resolveSectorCompanies, type SectorCompanyDisplay } from "@/lib/alerts/curated-sectors";
 import { loadDiscoverCompanies } from "@/lib/discover/companies";
 import { loadDiscoverIndustryCatalog } from "@/lib/discover/catalog";
 import { isAlertsLaunched } from "@/lib/config/alerts-launch";
@@ -31,8 +28,9 @@ export default async function AlertsRoute() {
   }
 
   const industryCatalog = await loadDiscoverIndustryCatalog(supabase);
-  const [companies, preferencesRes, subscriptionsRes] = await Promise.all([
+  const [companies, curatedAlertSectors, preferencesRes, subscriptionsRes] = await Promise.all([
     loadDiscoverCompanies(supabase, industryCatalog),
+    loadCuratedAlertSectors(supabase),
     supabase.from("alert_preferences").select("emails_enabled, digest_enabled").maybeSingle(),
     supabase
       .from("alert_subscriptions")
@@ -47,6 +45,7 @@ export default async function AlertsRoute() {
 
   const companyNameById = new Map(companies.map((company) => [company.id, company.name]));
   const companyWebsiteById = new Map(companies.map((company) => [company.id, company.websiteUrl]));
+  const companySlugById = new Map(companies.map((company) => [company.id, company.slug]));
   const companiesBySlug = new Map<string, SectorCompanyDisplay>(
     companies.map((company) => [
       company.slug,
@@ -66,12 +65,13 @@ export default async function AlertsRoute() {
     companyAlerts.push({
       id: row.id,
       companyId: row.target_id,
+      companySlug: companySlugById.get(row.target_id) ?? null,
       name: companyNameById.get(row.target_id) ?? "Company",
       websiteUrl: companyWebsiteById.get(row.target_id) ?? null,
     });
   }
 
-  const curatedSectors = CURATED_ALERT_SECTORS.map((sector) => ({
+  const curatedSectors = curatedAlertSectors.map((sector) => ({
     slug: sector.slug,
     label: sector.label,
     description: sector.description,

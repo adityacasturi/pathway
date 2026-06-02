@@ -12,6 +12,8 @@ export interface FeedPosting {
   company: string;
   /** Company site for logo.dev domain lookup; null when unknown. */
   companyWebsiteUrl: string | null;
+  /** Static logo at /company-logos/{slug}.png when set in catalog. */
+  companyLogoAssetKey: string | null;
   title: string;
   url: string;
   locations: string[];

@@ -6,6 +6,7 @@ export function scrapedPostingToFeedPosting(
   posting: ScrapedPostingRow,
   companyName: string,
   companyWebsiteUrl: string | null = null,
+  companyLogoAssetKey: string | null = null,
 ): FeedPosting {
   const locations = posting.location ? [posting.location] : [];
 
@@ -15,6 +16,7 @@ export function scrapedPostingToFeedPosting(
     sourceId: "",
     company: companyName,
     companyWebsiteUrl,
+    companyLogoAssetKey,
     title: posting.roleName,
     url: posting.postingUrl,
     locations,

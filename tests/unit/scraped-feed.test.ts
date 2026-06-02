@@ -20,7 +20,7 @@ function sampleRow(overrides: Partial<ScrapedPostingFeedRow> = {}): ScrapedPosti
     first_seen_at: "2026-04-02T00:00:00.000Z",
     last_seen_at: "2026-05-01T00:00:00.000Z",
     updated_at: "2026-05-01T00:00:00.000Z",
-    companies: { slug: "acme", website_url: "https://www.acme.com" },
+    companies: { slug: "acme", website_url: "https://www.acme.com", logo_asset_key: "acme" },
     ...overrides,
   };
 }
