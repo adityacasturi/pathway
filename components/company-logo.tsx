@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { fetchLogoProxy } from "@/lib/logo/client-fetch-queue";
 import { logoCacheKey, logoDomainFromWebsite, logoUrl } from "@/lib/logo";
 
-const LAZY_LOGO_ROOT_MARGIN = "240px 0px";
+/** Prefetch shortly before scroll-in; queue caps parallel `/api/logo` calls. */
+const LAZY_LOGO_ROOT_MARGIN = "120px 0px";
 
 // Deterministic color per company name so the same company always gets the
 // same avatar color across renders.
@@ -30,7 +32,7 @@ function initial(company: string): string {
 // us from hammering logo.dev every time a known-bad logo scrolls back into
 // view, or after a navigation re-mounts the component. Seeded from
 // sessionStorage on load so a same-tab refresh doesn't retry every failure.
-const FAILED_STORAGE_KEY = "pathway:logo-failed:v6";
+const FAILED_STORAGE_KEY = "pathway:logo-failed:v7";
 const failedCompanies = new Set<string>(readFailedFromStorage());
 
 function readFailedFromStorage(): string[] {
@@ -121,34 +123,26 @@ export function CompanyLogo({ company, websiteUrl, size = 20, lazy = false }: Pr
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
 
     async function load(attempt: number) {
-      try {
-        const response = await fetch(resolvedLogoUrl, { credentials: "include" });
-        if (cancelled) return;
+      const outcome = await fetchLogoProxy(resolvedLogoUrl, key);
+      if (cancelled) return;
 
-        if (response.status === 404) {
-          failedCompanies.add(key);
-          persistFailed();
-          setLogoLoad(null);
-          return;
-        }
-
-        if (!response.ok) {
-          if (attempt < 1) {
-            retryTimer = setTimeout(() => void load(attempt + 1), 1500);
-          } else {
-            setLogoLoad(null);
-          }
-          return;
-        }
-
-        setLogoLoad({ cacheKey: key, src: resolvedLogoUrl });
-      } catch {
-        if (!cancelled && attempt < 1) {
-          retryTimer = setTimeout(() => void load(attempt + 1), 1500);
-        } else if (!cancelled) {
-          setLogoLoad(null);
-        }
+      if (outcome === "missing") {
+        failedCompanies.add(key);
+        persistFailed();
+        setLogoLoad(null);
+        return;
       }
+
+      if (outcome === "retryable") {
+        if (attempt < 2) {
+          retryTimer = setTimeout(() => void load(attempt + 1), 1500 * (attempt + 1));
+        } else {
+          setLogoLoad(null);
+        }
+        return;
+      }
+
+      setLogoLoad({ cacheKey: key, src: resolvedLogoUrl });
     }
 
     void load(0);

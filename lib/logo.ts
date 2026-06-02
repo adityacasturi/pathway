@@ -29,7 +29,7 @@ export function logoCacheKey(company: string, domain?: string | null): string {
 export function logoUrl(company: string, domain?: string | null): string {
   const params = new URLSearchParams({
     company: company.trim(),
-    v: "6",
+    v: "7",
   });
   const host = domain?.trim().toLowerCase().replace(/^www\./, "");
   if (host && host.includes(".")) {

@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { logoDevReferer, logoProxyStatusFromUpstream } from "@/lib/logo/upstream";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
 
 const LOGO_DEV_TOKEN = process.env.LOGO_DEV_TOKEN;
@@ -31,6 +32,7 @@ async function fetchWithTimeout(url: string): Promise<Response> {
   try {
     return await fetch(url, {
       signal: controller.signal,
+      headers: { Referer: logoDevReferer() },
       next: { revalidate: CACHE_SECONDS, tags: ["company-logos"] },
     });
   } finally {
@@ -88,12 +90,16 @@ export async function GET(request: NextRequest) {
 
   try {
     const upstream = await fetchWithTimeout(upstreamUrl);
-    if (!upstream.ok || !upstream.body) {
+    const proxyStatus = logoProxyStatusFromUpstream(upstream.status);
+
+    if (proxyStatus !== 200 || !upstream.body) {
+      const cacheControl =
+        proxyStatus === 404
+          ? `private, max-age=${NEGATIVE_CACHE_SECONDS}`
+          : TRANSIENT_CACHE;
       return new Response(null, {
-        status: 404,
-        headers: {
-          "Cache-Control": `private, max-age=${NEGATIVE_CACHE_SECONDS}`,
-        },
+        status: proxyStatus,
+        headers: { "Cache-Control": cacheControl },
       });
     }
 

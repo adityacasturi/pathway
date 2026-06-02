@@ -61,10 +61,13 @@ Do not put hourly crons in `vercel.json` on the Hobby plan — deploy will fail 
 **Optional:**
 
 ```bash
-LOGO_DEV_TOKEN=...              # /api/logo
+LOGO_DEV_TOKEN=...              # /api/logo — publishable pk_ for img.logo.dev
+NEXT_PUBLIC_SITE_URL=https://www.trypathway.app   # Referer sent to logo.dev (required if key has domain restrictions)
 UPSTASH_REDIS_REST_URL=...      # Distributed rate limits (server actions, unsubscribe)
 UPSTASH_REDIS_REST_TOKEN=...    # Falls back to in-memory limits when unset
 ```
+
+**Logos 403 in production:** Pathway does not rate-limit `/api/logo`. Intermittent **403** on logo requests is usually logo.dev rejecting the server-side fetch: publishable key + **Allowed domains only** without a matching `Referer`, or a wrong token. Ensure `NEXT_PUBLIC_SITE_URL` matches an allowed domain in the [logo.dev dashboard](https://www.logo.dev/dashboard) (include `www` if users hit that host), or disable domain restrictions for the key used in `LOGO_DEV_TOKEN`. After fixing env/dashboard, hard-refresh Discover (clears `pathway:logo-failed:v7` in session storage if logos were cached as missing).
 
 Never prefix secrets with `NEXT_PUBLIC_`.
 
