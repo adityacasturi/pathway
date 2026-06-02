@@ -1,0 +1,91 @@
+-- Additional Discover companies (Greenhouse + Ashby). Board tokens verified via public APIs.
+
+insert into public.companies (slug, name, website_url, careers_url, priority)
+values
+  ('tailscale', 'Tailscale', 'https://tailscale.com', 'https://tailscale.com/careers', 83),
+  ('tripadvisor', 'Tripadvisor', 'https://www.tripadvisor.com', 'https://careers.tripadvisor.com', 84),
+  ('gemini', 'Gemini', 'https://www.gemini.com', 'https://www.gemini.com/careers', 85),
+  ('sofi', 'SoFi', 'https://www.sofi.com', 'https://www.sofi.com/careers', 86),
+  ('samsara', 'Samsara', 'https://www.samsara.com', 'https://www.samsara.com/company/careers', 87),
+  ('squarespace', 'Squarespace', 'https://www.squarespace.com', 'https://www.squarespace.com/about/careers', 88),
+  ('nextdoor', 'Nextdoor', 'https://nextdoor.com', 'https://about.nextdoor.com/careers', 89),
+  ('coursera', 'Coursera', 'https://www.coursera.org', 'https://about.coursera.org/careers', 90),
+  ('marqeta', 'Marqeta', 'https://www.marqeta.com', 'https://www.marqeta.com/careers', 91),
+  ('pure-storage', 'Pure Storage', 'https://www.purestorage.com', 'https://www.purestorage.com/company/careers', 92),
+  ('aurora', 'Aurora', 'https://aurora.tech', 'https://aurora.tech/careers', 93),
+  ('bill-com', 'Bill.com', 'https://www.bill.com', 'https://www.bill.com/company/careers', 94),
+  ('calendly', 'Calendly', 'https://calendly.com', 'https://careers.calendly.com', 95),
+  ('box', 'Box', 'https://www.box.com', 'https://www.box.com/careers', 96),
+  ('carvana', 'Carvana', 'https://www.carvana.com', 'https://www.carvana.com/careers', 97),
+  ('yext', 'Yext', 'https://www.yext.com', 'https://www.yext.com/careers', 98),
+  ('pagerduty', 'PagerDuty', 'https://www.pagerduty.com', 'https://www.pagerduty.com/careers', 99),
+  ('new-relic', 'New Relic', 'https://newrelic.com', 'https://newrelic.com/careers', 100),
+  ('1password', '1Password', 'https://1password.com', 'https://1password.com/careers', 101),
+  ('character-ai', 'Character.AI', 'https://character.ai', 'https://character.ai/careers', 102),
+  ('deel', 'Deel', 'https://www.deel.com', 'https://www.deel.com/careers', 103),
+  ('elevenlabs', 'ElevenLabs', 'https://elevenlabs.io', 'https://elevenlabs.io/careers', 104),
+  ('neon', 'Neon', 'https://neon.com', 'https://neon.com/careers', 105),
+  ('resend', 'Resend', 'https://resend.com', 'https://resend.com/careers', 106),
+  ('watershed', 'Watershed', 'https://watershed.com', 'https://watershed.com/careers', 107),
+  ('sierra', 'Sierra', 'https://sierra.ai', 'https://sierra.ai/careers', 108),
+  ('merge', 'Merge', 'https://merge.dev', 'https://merge.dev/careers', 109),
+  ('loom', 'Loom', 'https://www.loom.com', 'https://www.loom.com/careers', 110)
+on conflict (slug) do update set
+  name = excluded.name,
+  website_url = excluded.website_url,
+  careers_url = excluded.careers_url,
+  priority = excluded.priority,
+  is_active = true,
+  updated_at = now();
+
+insert into public.company_sources (
+  company_id,
+  source_type,
+  adapter_key,
+  source_url,
+  board_token,
+  enabled,
+  scrape_interval_minutes
+)
+values
+  ((select id from public.companies where slug = 'tailscale'), 'greenhouse', 'tailscale-greenhouse', 'https://job-boards.greenhouse.io/tailscale', 'tailscale', true, 240),
+  ((select id from public.companies where slug = 'tripadvisor'), 'greenhouse', 'tripadvisor-greenhouse', 'https://job-boards.greenhouse.io/tripadvisor', 'tripadvisor', true, 240),
+  ((select id from public.companies where slug = 'gemini'), 'greenhouse', 'gemini-greenhouse', 'https://job-boards.greenhouse.io/gemini', 'gemini', true, 240),
+  ((select id from public.companies where slug = 'sofi'), 'greenhouse', 'sofi-greenhouse', 'https://job-boards.greenhouse.io/sofi', 'sofi', true, 240),
+  ((select id from public.companies where slug = 'samsara'), 'greenhouse', 'samsara-greenhouse', 'https://job-boards.greenhouse.io/samsara', 'samsara', true, 240),
+  ((select id from public.companies where slug = 'squarespace'), 'greenhouse', 'squarespace-greenhouse', 'https://job-boards.greenhouse.io/squarespace', 'squarespace', true, 240),
+  ((select id from public.companies where slug = 'nextdoor'), 'greenhouse', 'nextdoor-greenhouse', 'https://job-boards.greenhouse.io/nextdoor', 'nextdoor', true, 240),
+  ((select id from public.companies where slug = 'coursera'), 'greenhouse', 'coursera-greenhouse', 'https://job-boards.greenhouse.io/coursera', 'coursera', true, 240),
+  ((select id from public.companies where slug = 'marqeta'), 'greenhouse', 'marqeta-greenhouse', 'https://job-boards.greenhouse.io/marqeta', 'marqeta', true, 240),
+  ((select id from public.companies where slug = 'pure-storage'), 'greenhouse', 'pure-storage-greenhouse', 'https://job-boards.greenhouse.io/purestorage', 'purestorage', true, 240),
+  ((select id from public.companies where slug = 'aurora'), 'greenhouse', 'aurora-greenhouse', 'https://job-boards.greenhouse.io/aurorainnovation', 'aurorainnovation', true, 240),
+  ((select id from public.companies where slug = 'bill-com'), 'greenhouse', 'bill-com-greenhouse', 'https://job-boards.greenhouse.io/billcom', 'billcom', true, 240),
+  ((select id from public.companies where slug = 'calendly'), 'greenhouse', 'calendly-greenhouse', 'https://job-boards.greenhouse.io/calendly', 'calendly', true, 240),
+  ((select id from public.companies where slug = 'box'), 'greenhouse', 'box-greenhouse', 'https://job-boards.greenhouse.io/boxinc', 'boxinc', true, 240),
+  ((select id from public.companies where slug = 'carvana'), 'greenhouse', 'carvana-greenhouse', 'https://job-boards.greenhouse.io/carvana', 'carvana', true, 240),
+  ((select id from public.companies where slug = 'yext'), 'greenhouse', 'yext-greenhouse', 'https://job-boards.greenhouse.io/yext', 'yext', true, 240),
+  ((select id from public.companies where slug = 'pagerduty'), 'greenhouse', 'pagerduty-greenhouse', 'https://job-boards.greenhouse.io/pagerduty', 'pagerduty', true, 240),
+  ((select id from public.companies where slug = 'new-relic'), 'greenhouse', 'new-relic-greenhouse', 'https://job-boards.greenhouse.io/newrelic', 'newrelic', true, 240),
+  ((select id from public.companies where slug = '1password'), 'ashby', '1password-ashby', 'https://jobs.ashbyhq.com/1password', '1password', true, 240),
+  ((select id from public.companies where slug = 'character-ai'), 'ashby', 'character-ai-ashby', 'https://jobs.ashbyhq.com/character', 'character', true, 240),
+  ((select id from public.companies where slug = 'deel'), 'ashby', 'deel-ashby', 'https://jobs.ashbyhq.com/deel', 'deel', true, 240),
+  ((select id from public.companies where slug = 'elevenlabs'), 'ashby', 'elevenlabs-ashby', 'https://jobs.ashbyhq.com/elevenlabs', 'elevenlabs', true, 240),
+  ((select id from public.companies where slug = 'neon'), 'ashby', 'neon-ashby', 'https://jobs.ashbyhq.com/neon', 'neon', true, 240),
+  ((select id from public.companies where slug = 'resend'), 'ashby', 'resend-ashby', 'https://jobs.ashbyhq.com/resend', 'resend', true, 240),
+  ((select id from public.companies where slug = 'watershed'), 'ashby', 'watershed-ashby', 'https://jobs.ashbyhq.com/watershed', 'watershed', true, 240),
+  ((select id from public.companies where slug = 'sierra'), 'ashby', 'sierra-ashby', 'https://jobs.ashbyhq.com/sierra', 'sierra', true, 240),
+  ((select id from public.companies where slug = 'merge'), 'ashby', 'merge-ashby', 'https://jobs.ashbyhq.com/merge', 'merge', true, 240),
+  ((select id from public.companies where slug = 'loom'), 'ashby', 'loom-ashby', 'https://jobs.ashbyhq.com/loom', 'loom', true, 240)
+on conflict (
+  company_id,
+  source_type,
+  adapter_key,
+  coalesce(board_token, ''),
+  coalesce(source_url, '')
+) do update set
+  source_url = excluded.source_url,
+  board_token = excluded.board_token,
+  enabled = true,
+  last_error_code = null,
+  scrape_interval_minutes = excluded.scrape_interval_minutes,
+  updated_at = now();
