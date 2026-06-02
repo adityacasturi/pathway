@@ -147,7 +147,7 @@ Loader: `lib/discover/companies.ts`. UI: `components/discover-companies.tsx`.
 
 ## Scraping (summary)
 
-- Cron: `vercel.json` → `/api/cron/scrape-postings` every hour; `/api/cron/send-alert-digests` daily at 14:00 UTC (~9 AM ET).
+- Cron: GitHub Actions [`.github/workflows/production-cron.yml`](../.github/workflows/production-cron.yml) calls `/api/cron/scrape-postings` hourly and `/api/cron/send-alert-digests` daily at 14:00 UTC (~9 AM ET). Vercel Hobby cannot schedule hourly crons in `vercel.json`.
 - Local: `npm run scrape` (needs `SUPABASE_SERVICE_ROLE_KEY`).
 - Adapters: `lib/scraping/registry.ts` keyed by `company_sources.source_type` (`lib/scraping/types.ts`).
 - Full detail: [scraping.md](./scraping.md).

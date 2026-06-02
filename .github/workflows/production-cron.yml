@@ -1,0 +1,66 @@
+# Scheduled production crons (Hobby cannot run hourly jobs in vercel.json).
+# Requires repo secrets: CRON_SECRET, CRON_BASE_URL (e.g. https://www.trypathway.app).
+# Schedules run only from the repository default branch (usually main).
+
+name: Production cron
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+    - cron: "0 14 * * *"
+  workflow_dispatch:
+    inputs:
+      job:
+        description: Which job to run
+        type: choice
+        options:
+          - scrape
+          - digest
+          - both
+        default: both
+
+jobs:
+  scrape:
+    if: >-
+      github.event.schedule == '0 * * * *' ||
+      (github.event_name == 'workflow_dispatch' &&
+      (inputs.job == 'scrape' || inputs.job == 'both'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: production-cron-scrape
+      cancel-in-progress: false
+    steps:
+      - name: Scrape postings and send instant alerts
+        env:
+          CRON_BASE_URL: ${{ secrets.CRON_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_BASE_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "Missing CRON_BASE_URL or CRON_SECRET repository secrets." >&2
+            exit 1
+          fi
+          curl -fsS --max-time 840 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "${CRON_BASE_URL%/}/api/cron/scrape-postings"
+
+  digest:
+    if: >-
+      github.event.schedule == '0 14 * * *' ||
+      (github.event_name == 'workflow_dispatch' &&
+      (inputs.job == 'digest' || inputs.job == 'both'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Send daily alert digests
+        env:
+          CRON_BASE_URL: ${{ secrets.CRON_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_BASE_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "Missing CRON_BASE_URL or CRON_SECRET repository secrets." >&2
+            exit 1
+          fi
+          curl -fsS --max-time 540 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "${CRON_BASE_URL%/}/api/cron/send-alert-digests"

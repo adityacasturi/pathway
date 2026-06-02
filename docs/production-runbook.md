@@ -45,6 +45,19 @@ ALERT_UNSUBSCRIBE_SECRET=...    # Random secret for signed unsubscribe tokens
 - Omit `ALERTS_LAUNCHED` (or set anything other than `true` / `1` / `yes`) on dev/staging so `/alerts` stays preview-only and crons skip outbound email.
 - Set `ALERTS_LAUNCHED=true` only when Resend is verified and you want real subscriptions + delivery.
 
+**GitHub Actions cron (production schedules):**
+
+Repository secrets (Settings → Secrets and variables → Actions):
+
+| Secret | Example | Purpose |
+| --- | --- | --- |
+| `CRON_SECRET` | same as Vercel | `Authorization: Bearer` for cron routes |
+| `CRON_BASE_URL` | `https://www.trypathway.app` | Production deployment URL (no trailing slash) |
+
+Workflow: [`.github/workflows/production-cron.yml`](../.github/workflows/production-cron.yml). Schedules run only from the **default branch** (merge `dev` → `main` before relying on cron). Manual run: Actions → **Production cron** → **Run workflow**.
+
+Do not put hourly crons in `vercel.json` on the Hobby plan — deploy will fail with no build logs.
+
 **Optional:**
 
 ```bash
@@ -123,7 +136,7 @@ Use a dedicated QA account — not a personal user.
 ### Empty or stale Live / Discover
 
 1. **Live/Discover read `scraped_postings`** — UI refresh does not scrape.
-2. Check Vercel cron for `/api/cron/scrape-postings` (hourly).
+2. Check GitHub Actions **Production cron** workflow (hourly scrape) or run `curl` against `/api/cron/scrape-postings` with `CRON_SECRET`.
 3. Inspect `company_sources.last_success_at` / `last_failure_at` for failing companies.
 4. Run `npm run scrape -- --verbose <slug>` locally with service role to reproduce.
 5. After deploy, run `npm run scrape` once if data is needed before the next cron tick.

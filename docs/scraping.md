@@ -27,7 +27,7 @@ Environment:
 | `SCRAPER_VERBOSE=1` | Same as `--verbose` |
 | `SCRAPE_COMPANY_CONCURRENCY` | Parallel companies (default 8, max 16) |
 
-Cron (production): `GET/POST` `/api/cron/scrape-postings` with `Authorization: Bearer $CRON_SECRET` — scheduled hourly in `vercel.json`.
+Cron (production): `GET/POST` `/api/cron/scrape-postings` with `Authorization: Bearer $CRON_SECRET` — scheduled hourly via GitHub Actions (see `.github/workflows/production-cron.yml`). Local: `npm run scrape`.
 
 ## Pipeline
 
