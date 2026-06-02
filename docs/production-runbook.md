@@ -1,93 +1,100 @@
-# Production Runbook
+# Production runbook
 
-## Pre-Deploy
+## Pre-deploy checklist
 
-- Use Node.js 22.x.
-- Run `npm run verify`.
-- Run public e2e with `npm run test:e2e`.
-- Run authenticated e2e with `E2E_USER_EMAIL` and `E2E_USER_PASSWORD`.
-- Run mutation e2e with `E2E_ALLOW_MUTATION=1` against a dedicated QA account.
-- Confirm all new migrations have been applied through Supabase migration history, not only through raw SQL execution.
-- Confirm `select * from app_private.production_integrity_check();` returns zero rows.
-- Review Supabase security and performance advisors.
-- Confirm production env vars are present and correctly scoped.
+- [ ] Node.js 22.x in CI and Vercel
+- [ ] `npm run verify` green
+- [ ] `npm run test:unit` green
+- [ ] `npm run test:e2e` (public)
+- [ ] Authenticated e2e with `E2E_USER_EMAIL` / `E2E_USER_PASSWORD`
+- [ ] Optional mutation e2e: `E2E_ALLOW_MUTATION=1` on a **dedicated QA account only**
+- [ ] New DB changes present in Supabase `list_migrations` (not ad-hoc SQL only)
+- [ ] `select * from app_private.production_integrity_check();` → **0 rows**
+- [ ] Supabase security/performance advisors reviewed
+- [ ] Production env vars set (see below)
 
-## Migration Procedure
+## Database changes
 
-For every durable database change:
+1. `apply_migration` (MCP or CLI) with a descriptive name.
+2. Confirm `list_migrations`.
+3. `select * from app_private.production_integrity_check();` → 0 rows.
+4. Run advisors; document accepted warnings.
+5. Optional: commit SQL under `supabase/migrations/` for review-worthy schema/RLS only.
 
-1. Add a new append-only SQL file under `supabase/migrations/`.
-2. Apply it with the Supabase connector `_apply_migration` tool or Supabase CLI migration flow.
-3. Verify `_list_migrations` includes the new migration.
-4. Run:
+Details: [supabase/README.md](../supabase/README.md). Do not replay `supabase/migrations_archive/`.
 
-   ```sql
-   select * from app_private.production_integrity_check();
-   ```
+Emergency SQL in the dashboard must be followed by `apply_migration` if the change is durable.
 
-5. Run Supabase advisors and record any accepted warnings.
+## Environment variables
 
-Use `_execute_sql` or the SQL editor for inspection and emergency operations only. If an emergency operation changes durable schema or data rules, follow it with a proper migration that records the intended final state.
-
-Known history note: some older migrations were manually applied in the SQL editor, so remote migration history may not include every old local file. Future changes should not continue that pattern.
-
-## Environment
-
-Required production variables:
+**Required (production):**
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 NEXT_PUBLIC_SITE_URL=https://...
+SUPABASE_SERVICE_ROLE_KEY=...   # server/cron only — never NEXT_PUBLIC_
+CRON_SECRET=...                 # /api/cron/scrape-postings, /api/cron/send-alert-digests
+RESEND_API_KEY=...              # Email alerts (Resend)
+RESEND_FROM_EMAIL=...           # Verified sender, e.g. Pathway Alerts <alerts@yourdomain.com>
+ALERT_UNSUBSCRIBE_SECRET=...    # Random secret for signed unsubscribe tokens
 ```
 
-Optional variables:
+**Alerts launch (preview vs live):**
+
+- Omit `ALERTS_LAUNCHED` (or set anything other than `true` / `1` / `yes`) on dev/staging so `/alerts` stays preview-only and crons skip outbound email.
+- Set `ALERTS_LAUNCHED=true` only when Resend is verified and you want real subscriptions + delivery.
+
+**Optional:**
 
 ```bash
-LOGO_DEV_TOKEN=...
+LOGO_DEV_TOKEN=...              # /api/logo
+UPSTASH_REDIS_REST_URL=...      # Distributed rate limits (server actions, unsubscribe)
+UPSTASH_REDIS_REST_TOKEN=...    # Falls back to in-memory limits when unset
 ```
 
-Rules:
+Never prefix secrets with `NEXT_PUBLIC_`.
 
-- Never expose secrets with `NEXT_PUBLIC_`.
+## Supabase advisors (run before deploy)
 
-## Supabase Dashboard Checks
+Via MCP or dashboard:
 
-The connector can run migrations, SQL checks, migration listing, and advisors. The dashboard still needs manual review for product/auth settings:
+1. `get_advisors` **security** — fix any ERROR-level lints.
+2. `get_advisors` **performance** — address WARN on hot paths (e.g. RLS `auth.uid()` initplan).
+3. `select * from app_private.production_integrity_check();` — expect **0 violations** on every row.
+4. `list_migrations` — confirm latest migration (e.g. `harden_alert_rls`) is applied remotely.
 
-### Auth and signup (defense in depth)
+**Current dashboard item (Auth):** enable [leaked password protection](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection).
 
-Pathway validates `.edu` emails in server actions (`lib/actions/auth.ts`). That does **not** stop a client from calling `supabase.auth.signUp()` directly with the public anon key unless Auth enforces the same rule.
+### Known advisor findings (review before launch)
 
-Before production launch, confirm at least one of:
+Last verified against the hosted project during the v2 pre-launch sweep:
 
-- A Supabase **Auth Hook** (e.g. `before-user-created`) that rejects signups whose email domain does not end with `.edu`, or
-- An equivalent **signup restriction** configured in the Supabase dashboard for your project.
+- **Alert RPCs executable by `anon`** — **resolved** (migration `revoke_public_execute_on_alert_rpcs`). `EXECUTE` was revoked from `PUBLIC`/`anon` and granted only to `authenticated` for `add_alert_company_subscription`, `add_alert_sector_subscription`, `delete_alert_subscription`, `set_alert_emails_enabled`, `set_alert_digest_enabled`. The residual WARN-level `authenticated_security_definer_function_executable` lints on those five functions are expected: they are intended for signed-in users and enforce `auth.uid()` internally.
+- **`alert_unsubscribe_nonces` has RLS enabled with no policy** — intentional (service-role writes only; deny-all to clients). No action needed.
+- **Leaked-password protection disabled** — enable in the Auth dashboard (see above).
 
-Treat app-side validation as defense in depth, not the only gate.
+## Supabase dashboard (manual)
 
-Also confirm:
+Automate via MCP where possible (`list_migrations`, integrity SQL, advisors). Still verify in the dashboard:
 
-- Auth signups enabled only for the intended student population (`.edu` policy above).
-- Email confirmation enabled for public signup.
-- Password policy: minimum 8 characters plus lowercase, uppercase, digit, and symbol requirements.
-- Leaked password protection enabled when the project plan supports it.
-- Custom SMTP configured for production email.
-- Site URL and redirect allow-list limited to real production/preview domains.
+### Auth
 
-### Database and platform
+Signup is open to any valid email address. App code (`lib/auth/validation.ts`, used by `lib/actions/auth.ts`) still enforces basic hygiene: format checks and a disposable-domain blocklist. If you later need to restrict the audience (e.g. to `.edu`), add the rule in `getSignupEmailValidationError` **and** at the Auth layer (hook or signup restriction) so the anon key cannot bypass app rules.
 
-- Migration `078_drop_dormant_waitlist` removed the stale waitlist tables/RPC/data after the waitlist UI was removed and public `.edu` signup became the supported path.
-- Migration `077_drop_discover_cutoff_preference` dropped unused `user_preferences.discover_cutoff_date`; Discover cutoff is fixed in app code (March 31 default).
-- Backups/PITR enabled for the project plan, with a restore drill documented.
-- API grants and RLS reviewed after every migration.
-- Project runtime/platform posture checked for Supabase 2026 changes: supported Postgres version after July 1, 2026, and Node.js 22+ before Node.js 20 support ends on June 30, 2026.
+- Email confirmation on
+- Password policy: min 8 + mixed case, digit, symbol
+- Leaked-password protection (if plan supports)
+- Production SMTP
+- Site URL + redirect allow-list for real domains only
 
-Proposal for recurring checks: automate what the connector exposes in a release checklist (`_list_migrations`, integrity SQL, advisors), and keep dashboard-only items as a short manual launch gate. Do not block deploys on expected advisor noise such as unused indexes on brand-new zero-row tables; document why the warning is accepted.
+### Platform
 
-## E2E Environment
+- Backups / PITR per plan; occasional restore drill
+- RLS and grants reviewed after schema changes
+- Postgres and Node runtime versions within Supabase support windows
 
-Authenticated smoke:
+## E2E
 
 ```bash
 E2E_USER_EMAIL="pathway.qa.20260513@uw.edu" \
@@ -95,22 +102,48 @@ E2E_USER_PASSWORD="..." \
 npm run test:e2e
 ```
 
-Mutation smoke:
+Mutation (single worker):
 
 ```bash
-E2E_USER_EMAIL="pathway.qa.20260513@uw.edu" \
-E2E_USER_PASSWORD="..." \
 E2E_ALLOW_MUTATION=1 \
+E2E_USER_EMAIL="..." \
+E2E_USER_PASSWORD="..." \
 npm run test:e2e
 ```
 
-Use a dedicated QA account. Do not run mutation tests with a personal user.
+Use a dedicated QA account — not a personal user.
 
-## Incident Checks
+## Incidents
 
-- Check app logs for structured `launchpad` events: `server.boot`, `supabase.query_error`, `supabase.mutation_error`, and `feed.*`.
-- Discover postings come from upstream GitHub feeds at request/cache time; there is no scraper job or board sync to inspect.
-- Check Supabase Auth logs for spikes in failed sign-ins/signups.
-- Check `public.rate_limits` for hot buckets.
-- Run the production integrity SQL after any manual database fix.
-- If a manual SQL fix was durable, add a migration that records the intended final state.
+### App / API
+
+- Vercel function logs and build output
+- Structured log events: `server.boot`, `supabase.query_error`, `supabase.mutation_error`, `feed.*`
+
+### Empty or stale Live / Discover
+
+1. **Live/Discover read `scraped_postings`** — UI refresh does not scrape.
+2. Check Vercel cron for `/api/cron/scrape-postings` (hourly).
+3. Inspect `company_sources.last_success_at` / `last_failure_at` for failing companies.
+4. Run `npm run scrape -- --verbose <slug>` locally with service role to reproduce.
+5. After deploy, run `npm run scrape` once if data is needed before the next cron tick.
+
+### Discover industry labels / grouping
+
+Taxonomy lives in `discover_industries`; `companies.industry` must be a valid FK slug. To fix misclassified companies or add slugs, see [discover-industries.md](./discover-industries.md) (migration + optional `scripts/generate-discover-industry-migration.mjs`).
+
+### Posted date confusion
+
+See [scraped-posted-dates.md](./scraped-posted-dates.md). **NEW** on Live = `first_seen_at`, not ATS `updated_at`.
+
+### Auth spikes
+
+Supabase Auth logs for failed sign-in/signup.
+
+### Rate limits
+
+`public.rate_limits` for hot buckets.
+
+### After manual DB fixes
+
+Run `production_integrity_check()`. If the fix was durable, record it with `apply_migration`.

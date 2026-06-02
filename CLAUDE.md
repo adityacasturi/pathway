@@ -1,88 +1,88 @@
 # CLAUDE.md
 
-Guidance for Claude Code and other coding agents working on Pathway.
+Guidance for Claude Code and agents on Pathway.
+
+## Documentation
+
+| File | Contents |
+| --- | --- |
+| [docs/README.md](docs/README.md) | Doc index |
+| [docs/architecture.md](docs/architecture.md) | System design |
+| [docs/scraping.md](docs/scraping.md) | Scrape + Discover catalog |
+| [docs/discover-industries.md](docs/discover-industries.md) | Industry taxonomy (`discover_industries`) |
+| [docs/production-runbook.md](docs/production-runbook.md) | Launch / incidents |
+| [supabase/README.md](supabase/README.md) | DB workflow |
+| [AGENTS.md](AGENTS.md) | Agent rules (start here) |
 
 ## Commands
 
 ```bash
-npm run dev          # local dev server
-npm run build        # production build
-npm run start        # start production build
-npm run lint         # ESLint
-npm run typecheck    # TypeScript
-npm run test:e2e     # Playwright e2e
-npm run verify       # lint, typecheck, audit, build
+npm run dev              # dev server
+npm run build            # production build
+npm run start            # run build
+npm run lint
+npm run typecheck
+npm run test:unit        # unit tests (tests/unit/**/*.test.ts)
+npm run test:unit:coverage
+npm run test:e2e         # Playwright
+npm run test:preprod     # typecheck + audit + unit + build
+npm run test:preprod:full # lint + test:preprod + e2e
+npm run scrape           # scrape → scraped_postings (service role)
+npm run discover-queue   # onboarding queue CLI
+npm run verify           # lint + test:preprod
 ```
 
-Authenticated e2e requires `E2E_USER_EMAIL` and `E2E_USER_PASSWORD`. Mutation tests require `E2E_ALLOW_MUTATION=1`; the Playwright config uses one worker in that mode because tests share a QA account.
+E2e: `E2E_USER_EMAIL`, `E2E_USER_PASSWORD`. Mutations: `E2E_ALLOW_MUTATION=1` (one worker). Scrape/cron: `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`.
 
-## Next.js 16 Note
+## Next.js 16
 
-This project uses Next.js 16. Read the relevant local guide in `node_modules/next/dist/docs/` before changing routing, Server Components, Server Actions, metadata, caching, `proxy.ts`, or build/runtime behavior.
+Read `node_modules/next/dist/docs/` before changing routing, Server Components, Server Actions, metadata, caching, or `proxy.ts`.
 
-## Architecture Snapshot
+## Product snapshot
 
-Pathway is an internship tracker and discover feed for students with `.edu` email addresses. Authenticated users sign in with Supabase Auth and manage applications through event timelines.
+Public signup (any valid email) · application tracker with event-derived status · **Home** briefing snapshot · **Live** flat feed · **Discover** company catalog · **Stats** (metrics + market) · **Alerts** (email digests) · **Settings** (accent, quick track).
 
-Core surfaces:
+| Route | Purpose |
+| --- | --- |
+| `/` | Landing |
+| `/login`, `/register` | Auth (`/register` → signup mode) |
+| `/set-password` | Set/reset password |
+| `/auth/confirm` | OTP / email-link verification handler (public) |
+| `/home` | Overview briefing (snapshot, since-yesterday, starred) |
+| `/applications` | Tracker |
+| `/live` | Scraped roles feed |
+| `/discover` | Companies + postings on demand |
+| `/stats` | Application metrics + market analytics |
+| `/alerts` | Email alert subscriptions (company + curated sectors) |
+| `/alerts/unsubscribe` | One-click unsubscribe (HMAC token, public) |
+| `/settings` | Preferences |
+| `/api/logo` | Authenticated logo proxy (logo.dev) |
+| `/api/cron/scrape-postings` | Hourly scrape + instant alerts (cron secret) |
+| `/api/cron/send-alert-digests` | Daily digest send (cron secret) |
 
-- `/` public landing page
-- `/login` sign in and signup UI
-- `/home` authenticated overview
-- `/applications` tracker table and detail modal
-- `/discover` live internship feed
-- `/stats` recruiting metrics
-- `/settings` account and accent preferences
+`proxy.ts`: unauthenticated → `/` (except public routes); authenticated cannot stay on `/login`.
 
-## Data Model
+## Data (Supabase)
 
-Important Supabase tables:
+- User: `applications`, `application_events`, `feed_interactions`, `discover_company_favorites`, `user_preferences`
+- Alerts: `alert_preferences`, `alert_subscriptions`, `alert_sent_postings`, `alert_digest_state`, `alert_curated_sectors`, `alert_unsubscribe_nonces`
+- Scrape: `companies` (`industry` → `discover_industries`), `company_sources`, `scraped_postings`
+- Status from events: `lib/config/events.ts`
+- Alert writes go through `SECURITY DEFINER` RPCs (direct table writes revoked); see `lib/actions/alerts.ts`.
 
-- `applications`: per-user application rows, archived state, posting URL, status snapshot
-- `application_events`: per-application timeline events and OA deadlines
-- `feed_interactions`: per-user saved/dismissed discover posting ids
-- `user_preferences`: accent color and quick-track preferences
-- `rate_limits`: private backing table for database-side write throttles
+Clients: `lib/supabase/server.ts` (user, RLS), `lib/supabase/admin.ts` (service role, bypasses RLS — server/cron/scripts only).
 
-Application status is derived from events. Client helpers live in `lib/config/application-state.ts`; canonical event/status config is in `lib/config/events.ts`. Database triggers also protect status consistency for direct Supabase calls.
+## Feeds
 
-## Data Flow
+- **Home:** `lib/home/briefing.ts` → `components/home/*` — snapshot pipeline counts, "since yesterday", starred, "for later".
+- **Live:** `lib/feed/scraped-postings.ts` — `feed_interactions`, hide applied URLs, refresh does not scrape.
+- **Discover:** `lib/discover/companies.ts` + `lib/discover/catalog.ts` — same scrape store; industries from `discover_industries`; cron hourly `/api/cron/scrape-postings`; local `npm run scrape`.
+- **Alerts:** `lib/alerts/*` — match new postings to subscriptions, instant emails (hourly cron) + daily digest, Resend delivery, launch-gated by `lib/config/alerts-launch.ts`.
 
-Server components fetch user-scoped data through `lib/supabase/server.ts`. RLS scopes reads and writes. Mutations go through Server Actions in `lib/actions/`, then call `revalidatePath()` for affected surfaces.
+## Database
 
-Supabase clients:
+Remote migration history is truth. `apply_migration` → `list_migrations` → `production_integrity_check()` → advisors. Optional git SQL in `supabase/migrations/` for schema review only. Ignore `supabase/migrations_archive/` for agent context.
 
-- `lib/supabase/server.ts`: cookie-aware server client
-- `lib/supabase/auth.ts`: authenticated user helper
+## UI
 
-`proxy.ts` is the route gate: unauthenticated users are redirected to `/`; authenticated users are redirected away from `/login`.
-
-## Discover Feed
-
-`lib/feed/source.ts` fetches upstream internship feeds, filters active visible Summer/Fall roles, dedupes postings, and returns normalized `FeedPosting` objects. Postings are not mirrored into Supabase. User-specific state is stored in `feed_interactions`.
-
-Discover hides applied postings by default. A posting is considered applied/tracked when its normalized URL matches an active application posting URL.
-
-## UI Conventions
-
-- Default accent is midnight (`lib/config/accent.ts`).
-- Tailwind v4 tokens live in `app/globals.css`.
-- App shell navigation lives in `components/sidebar.tsx` and `components/app-chrome.tsx`.
-- Dashboard rows should stay simple and stable, matching Discover's restrained row behavior.
-- Prefer existing UI primitives in `components/ui/`.
-
-## Database Workflow
-
-SQL migrations live in `supabase/migrations/` and are append-only. For durable database changes:
-
-1. Add a new migration file.
-2. Apply it with the Supabase connector `_apply_migration` tool or Supabase CLI migration flow.
-3. Confirm it appears in `_list_migrations`.
-4. Run `select * from app_private.production_integrity_check();`.
-5. Review Supabase security and performance advisors.
-
-Do not use the SQL editor as the only place a schema change exists. `_execute_sql` is fine for inspection and operational checks, not durable production DDL.
-
-## More Detail
-
-See `docs/architecture.md` for a fuller walkthrough and `docs/production-runbook.md` for launch/incident checks.
+Midnight default accent · `components/ui/` · `components/sidebar.tsx` · simple dashboard/Discover rows.

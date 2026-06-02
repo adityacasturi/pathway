@@ -1,16 +1,28 @@
 # Pathway
 
-Pathway is a focused internship search workspace for students with `.edu` email addresses. Public signup is enabled; authenticated users can track applications, manage event timelines, review stats, and browse live internship postings in Discover.
+Internship search and application tracking for students. Get a daily **Home** briefing, track applications and timelines, browse scraped roles on **Live**, explore employers on **Discover**, see trends on **Stats**, and get **email alerts** for new roles.
 
-Built with Next.js 16 App Router, React 19, Server Actions, Supabase Auth/Postgres/RLS, Tailwind CSS v4, Playwright, and shadcn-style UI primitives on `@base-ui/react`.
+**Stack:** Next.js 16 · React 19 · Supabase · Tailwind v4 · Playwright
+
+## Documentation
+
+| Doc | When to read |
+| --- | --- |
+| [docs/README.md](docs/README.md) | Index of all documentation |
+| [docs/architecture.md](docs/architecture.md) | Routes, data model, feeds, actions |
+| [docs/scraping.md](docs/scraping.md) | Scrape runner, adapters, onboarding companies |
+| [docs/discover-industries.md](docs/discover-industries.md) | Discover industry taxonomy (Supabase) |
+| [docs/production-runbook.md](docs/production-runbook.md) | Deploy and incident checks |
+| [supabase/README.md](supabase/README.md) | Database changes (remote-first) |
+| [AGENTS.md](AGENTS.md) | Rules for coding agents |
 
 ## Requirements
 
-- Node.js 22.x
-- npm 10.x
-- A Supabase project with the migrations in `supabase/migrations/` formally applied
+- Node.js **22.x**
+- npm **10.x**
+- Access to the team Supabase project (current schema already applied — see [supabase/README.md](supabase/README.md))
 
-## Local Setup
+## Local setup
 
 1. Install dependencies:
 
@@ -21,83 +33,123 @@ Built with Next.js 16 App Router, React 19, Server Actions, Supabase Auth/Postgr
 2. Create `.env.local`:
 
    ```bash
-   NEXT_PUBLIC_SUPABASE_URL=...
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+   # Supabase (required)
+   NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
    NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
-   # Optional: cached company logos via https://logo.dev.
-   LOGO_DEV_TOKEN=...
+   # Scraping (required for npm run scrape and cron parity)
+   SUPABASE_SERVICE_ROLE_KEY=eyJ...
+   CRON_SECRET=any-long-random-string-for-local-cron-tests
 
+   # Email alerts (required for /alerts sends; see docs/production-runbook.md)
+   RESEND_API_KEY=...
+   RESEND_FROM_EMAIL="Pathway <alerts@yourdomain.com>"
+   ALERT_UNSUBSCRIBE_SECRET=any-long-random-string
+   ALERTS_LAUNCHED=true            # gate: omit to keep /alerts preview-only
+
+   # Distributed rate limiting (recommended in production)
+   UPSTASH_REDIS_REST_URL=...
+   UPSTASH_REDIS_REST_TOKEN=...
+
+   # Optional
+   LOGO_DEV_TOKEN=...
    ```
 
-3. Apply database migrations through the Supabase connector/CLI migration flow. Do not paste durable DDL into the SQL editor as an ad hoc change; see [Agent And Migration Rules](#agent-and-migration-rules).
-
-4. Start the app:
+3. Start the app:
 
    ```bash
    npm run dev
    ```
 
-   Visit [http://localhost:3000](http://localhost:3000).
+   Open [http://localhost:3000](http://localhost:3000). Sign up with any valid email on the linked project.
+
+4. (Optional) Populate scraped roles:
+
+   ```bash
+   npm run scrape
+   ```
+
+   Or scrape one company: `npm run scrape -- stripe`
+
+You do **not** need to run SQL files from git — the hosted database is already migrated.
 
 ## Scripts
 
-| Command | What it does |
+| Command | Description |
 | --- | --- |
-| `npm run dev` | Start the local Next.js dev server |
-| `npm run build` | Create a production build |
-| `npm run start` | Start the production build |
-| `npm run lint` | Run ESLint |
-| `npm run typecheck` | Run TypeScript without emitting files |
-| `npm run test:e2e` | Run Playwright e2e tests |
-| `npm run test:e2e:ui` | Run Playwright in UI mode |
-| `npm run verify` | Lint, typecheck, audit, and build |
+| `npm run dev` | Dev server |
+| `npm run build` | Production build |
+| `npm run start` | Run production build |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | TypeScript |
+| `npm run test:unit` | Unit tests (`tests/unit/`) |
+| `npm run test:e2e` | Playwright |
+| `npm run test:e2e:ui` | Playwright UI mode |
+| `npm run scrape` | Scrape boards → `scraped_postings` |
+| `npm run discover-queue` | Discover onboarding queue CLI |
+| `npm run verify` | lint + typecheck + audit + unit + build |
 
-Authenticated e2e tests require a QA account:
+### E2E
+
+Public tests run without credentials.
+
+Authenticated:
 
 ```bash
-E2E_USER_EMAIL="pathway.qa.20260513@uw.edu" \
+E2E_USER_EMAIL="your-qa@example.com" \
 E2E_USER_PASSWORD="..." \
 npm run test:e2e
 ```
 
-Mutation coverage is opt-in and intentionally single-worker because it uses one shared QA account:
+Mutation tests (shared QA account, single worker):
 
 ```bash
-E2E_USER_EMAIL="pathway.qa.20260513@uw.edu" \
-E2E_USER_PASSWORD="..." \
 E2E_ALLOW_MUTATION=1 \
+E2E_USER_EMAIL="..." \
+E2E_USER_PASSWORD="..." \
 npm run test:e2e
 ```
 
-## Project Layout
+Live tests expect open rows in `scraped_postings` on the linked project.
+
+## Project layout
 
 ```text
-app/                  Next.js routes, layouts, loading/error states, logo API
-components/           Product UI for landing, app shell, dashboard, discover, stats
-components/ui/        Reusable primitives
-lib/actions/          Server Actions for auth, apps, events, feed, settings
-lib/auth/             Signup state and auth validation rules
-lib/config/           Event/status, deadlines, accent theme, application state helpers
-lib/feed/             Upstream internship feed ingestion and normalization
-lib/supabase/         Browser/server Supabase client factories and error helpers
-supabase/migrations/  Append-only database migrations
-tests/e2e/            Playwright public and authenticated smoke tests
-types/                Shared TypeScript domain types
+app/                    Routes, layouts, cron + logo API
+components/             Product UI (incl. landing/ and ui/ primitives)
+components/ui/          Design-system primitives
+lib/actions/            Server Actions
+lib/auth/               Signup / login validation helpers
+lib/config/             Events, accent, season filter, nav, status colors, alerts launch gate
+lib/discover/           Discover loaders (catalog from discover_industries)
+lib/feed/               Live feed types and loaders
+lib/home/               Home briefing aggregation
+lib/alerts/             Email alert matching, digest/instant send, unsubscribe tokens
+lib/email/              Resend client + email templates
+lib/stats/              Application + market analytics
+lib/scraping/           Adapters, upsert, scrape runner
+lib/supabase/           Supabase clients (user + service role)
+discover-queue/         Onboarding queue (SQLite + inbox.json)
+docs/                   Architecture, scraping, runbook
+supabase/               DB workflow + archived SQL history
+tests/e2e/              Playwright
+tests/unit/             Node unit tests
 ```
 
-See [docs/architecture.md](./docs/architecture.md) for the system walkthrough and [docs/production-runbook.md](./docs/production-runbook.md) for launch checks.
+## Product notes
 
-## Agent And Migration Rules
+- Public signup: open to any valid email. App-level hygiene (format + disposable-domain blocklist) lives in `lib/auth/validation.ts`. To restrict the audience later, enforce both in app code and at the Auth layer — see [docs/production-runbook.md](docs/production-runbook.md).
+- Default accent: **midnight** (`user_preferences`).
+- Discover hides postings you already applied to (by normalized posting URL).
+- Scrape ingestion: hourly cron in production; local `npm run scrape`.
+- Email alerts (`/alerts`) are launch-gated by `ALERTS_LAUNCHED` / `lib/config/alerts-launch.ts`.
 
-- Read `AGENTS.md` before making changes. For Next.js work, read the relevant guide in `node_modules/next/dist/docs/` first.
-- Every database schema, RLS, function, trigger, grant, index, or durable data backfill change must be represented as a new append-only file in `supabase/migrations/`.
-- Apply durable database changes with the Supabase connector migration tool (`_apply_migration`) or the Supabase CLI migration flow so the migration appears in the Supabase migration list.
-- Use raw SQL execution only for read-only inspection, one-off QA account setup, and temporary checks. Do not use the SQL editor or `_execute_sql` for production DDL that should be tracked as a migration.
-- After applying migrations, verify `_list_migrations`, run `select * from app_private.production_integrity_check();`, and review Supabase advisors.
+## Agents and database work
 
-## Production Notes
+Read [AGENTS.md](AGENTS.md). Summary:
 
-- Public signup requires a `.edu` email.
-- Default UI accent is midnight. User preferences are stored in `public.user_preferences`.
-- Supabase dashboard checks that are not fully automatable from this repo still matter: Auth password policy, email confirmation, SMTP, redirect allow-list, leaked password protection, backups/PITR, and advisor review.
+- **Supabase remote** = source of truth for schema and migration history.
+- Apply changes with `apply_migration`; verify integrity check and advisors.
+- Do **not** grep `supabase/migrations_archive/` (historical, ignored by Cursor).
+- Onboard Discover companies via [discover-queue/](discover-queue/) and [docs/scraping.md](docs/scraping.md).

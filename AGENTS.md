@@ -4,52 +4,76 @@
 This version has breaking changes -- APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
-# Agent Instructions
+# Agent instructions
 
-Pathway is a Next.js 16, React 19, Supabase-backed internship tracker. Treat this file as the first stop for agents working in the repo.
+Pathway: Next.js 16, React 19, Supabase internship tracker. **Read this file first.**
 
-## Required Checks
+## Documentation map
 
-- Before editing Next.js routes, layouts, metadata, Server Actions, proxy behavior, caching, or Server Components, read the relevant local docs in `node_modules/next/dist/docs/`.
-- Use Node.js 22.x. The production target and Supabase platform guidance assume Node 22.
-- Prefer existing patterns in `app/`, `components/`, `lib/actions/`, `lib/config/`, and `lib/supabase/`.
-- Run focused checks while working and `npm run verify` before claiming production readiness when feasible.
-- For e2e, run `npm run test:e2e`; set `E2E_USER_EMAIL` and `E2E_USER_PASSWORD` for authenticated coverage, and `E2E_ALLOW_MUTATION=1` for mutation smoke tests.
+| Doc | Use for |
+| --- | --- |
+| [docs/README.md](docs/README.md) | Index |
+| [docs/architecture.md](docs/architecture.md) | Routes, tables, Live/Discover, actions |
+| [docs/scraping.md](docs/scraping.md) | Scrape, adapters, company onboarding |
+| [docs/discover-industries.md](docs/discover-industries.md) | `discover_industries` taxonomy; `companies.industry` FK |
+| [docs/production-runbook.md](docs/production-runbook.md) | Deploy / incidents |
+| [supabase/README.md](supabase/README.md) | Database changes |
+| [discover-queue/README.md](discover-queue/README.md) | Bulk Discover onboarding |
+| [.cursor/skills/discover-queue/SKILL.md](.cursor/skills/discover-queue/SKILL.md) | Discover queue worker steps |
 
-## Supabase Migration Rules
+Do **not** search `supabase/migrations_archive/` for current schema or whether a company exists.
 
-Formal migrations are mandatory.
+## Required checks
 
-- Add a new append-only SQL file in `supabase/migrations/` for every schema, RLS policy, database function, trigger, grant, index, constraint, or durable data backfill.
-- Apply durable database changes with the Supabase connector `_apply_migration` tool, or an equivalent Supabase CLI migration command, using the same migration name as the file. This is what makes the change appear in Supabase's migration list.
-- Do not paste production DDL into the Supabase SQL editor as the only record of the change.
-- Do not use `_execute_sql` for durable DDL. Reserve it for read-only inspection, temporary verification, and one-off operational tasks such as QA account setup.
-- After applying a migration, check `_list_migrations`, run `select * from app_private.production_integrity_check();`, and review security/performance advisors.
-- If remote history is missing older migrations because they were manually applied, do not rewrite existing migration files. Add new migrations going forward and document any drift in the runbook or PR notes.
+- Next.js routes, layouts, metadata, Server Actions, `proxy.ts`, caching, Server Components → read `node_modules/next/dist/docs/` for that topic.
+- Node.js **22.x**.
+- Match patterns in `app/`, `components/`, `lib/actions/`, `lib/config/`, `lib/supabase/`.
+- `npm run test:unit` / `npm run test:preprod` before claiming production readiness; `npm run test:preprod:full` when e2e credentials are available.
+- `npm run verify` = `lint` + `test:preprod` (i.e. lint, typecheck, `npm audit`, unit tests, build).
+- E2e: `npm run test:e2e` with `E2E_USER_EMAIL` / `E2E_USER_PASSWORD`; mutations need `E2E_ALLOW_MUTATION=1`.
 
-## Security And Data Rules
+## Discover queue
 
-- Keep privileged database logic in narrow private-schema RPCs or server-only modules.
-- Never expose secrets through `NEXT_PUBLIC_` variables.
-- RLS is part of the product contract. Do not broaden grants or policies without a migration and a clear reason.
-- Authenticated user data must remain scoped by `auth.uid()` or trusted server-side user lookup.
-- Signup requires a school `.edu` email and durable anti-abuse checks.
+`npm run discover-queue` — see [discover-queue/README.md](discover-queue/README.md) and [.cursor/skills/discover-queue/SKILL.md](.cursor/skills/discover-queue/SKILL.md).
 
-## Product State
+- `complete` with `openPostings: 0` is success.
+- Custom adapters when standard ATS fails.
+- `fail` only for missing env/MCP, migration/integrity failure, no scrapeable source, or scrape crash.
+- Distinct `DISCOVER_QUEUE_WORKER` per parallel subagent.
+- Catalog check: `npm run discover-queue -- catalog-check --slug <slug>`.
 
-- Public account creation is enabled for students with `.edu` email addresses.
-- Default accent theme is midnight.
+## Supabase database
+
+**Hosted Supabase is authoritative.**
+
+- Apply durable DDL/DML with MCP `apply_migration` (descriptive name, e.g. `add_acme_discover`).
+- Inspect with `list_tables`, `execute_sql`, or `catalog-check` — not archive SQL greps.
+- After apply: `list_migrations`, `select * from app_private.production_integrity_check();` (0 rows), advisors.
+- `execute_sql` for read-only / QA / temporary checks — not durable DDL alone.
+- Optional git file under `supabase/migrations/` only for review-worthy schema/RLS (`supabase migration new <name>`). Routine Discover seeds usually need no repo SQL.
+
+## Security and data
+
+- Privileged logic in narrow `app_private` RPCs or server-only modules.
+- No secrets in `NEXT_PUBLIC_*`.
+- Do not broaden RLS without a migration and clear reason.
+- User data scoped by `auth.uid()` or trusted server lookup.
+- Signup: open to any valid email + anti-abuse (format checks + disposable-domain blocklist in `lib/auth/validation.ts`).
+
+## Product state
+
+- Public signup enabled for any valid email (app-level format + disposable-domain checks only).
+- Default accent: midnight.
 - Discover hides applied postings by default.
-- Dashboard rows should stay simple and consistent with Discover rather than adding page-row animation flourishes.
+- Dashboard rows: simple, consistent with Discover (no row animation flourishes).
+- Email alerts (`/alerts`) are launch-gated by `lib/config/alerts-launch.ts`; pre-launch the page renders a preview gate.
 
-## UI Consistency
+## UI
 
-- Treat `components/ui/` as the app's design-system boundary. Prefer existing primitives before adding one-off Tailwind class clusters.
-- Use `PageShell`, `PageMain`, `PageHeader`, and `PageSection` from `components/ui/page.tsx` for authenticated page structure, spacing, and section rhythm.
-- Keep page-level spacing on those primitives instead of repeating `max-w-*`, `px-*`, `pt-*`, `pb-*`, and header margin classes in feature components.
-- Prefer shadcn/Base UI-style local primitives that can be owned and themed in this repo. Avoid adding MUI, Magic UI, Aceternity UI, or similar broad UI libraries unless the product direction explicitly calls for that surface.
+- Prefer `components/ui/` primitives.
+- Page shell: `PageShell`, `PageMain`, `PageHeader`, `PageSection` from `components/ui/page.tsx`.
+- No new broad UI libraries (MUI, etc.) unless product asks.
 
-## Documentation
+## Docs maintenance
 
-- Keep `README.md`, `docs/architecture.md`, and `docs/production-runbook.md` current when changing architecture, setup, database workflow, env vars, or launch checks.
-- If you add a migration, mention the verification performed and whether it has been applied remotely.
+When changing architecture, env, scraping, or DB workflow, update the relevant file under `docs/` or `supabase/README.md`. Note migration name and verification in PR text when you apply remote migrations.
