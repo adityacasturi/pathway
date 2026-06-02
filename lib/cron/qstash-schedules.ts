@@ -93,5 +93,10 @@ export function normalizeQstashSchedulesUrl(qstashUrl: string): string {
 }
 
 function encodeQstashDestination(destination: string): string {
-  return encodeURIComponent(destination).replaceAll("%3A", ":").replaceAll("%2F", "/");
+  return encodeURIComponent(destination)
+    .replaceAll("%3A", ":")
+    .replaceAll("%2F", "/")
+    .replaceAll("%3F", "?")
+    .replaceAll("%26", "&")
+    .replaceAll("%3D", "=");
 }

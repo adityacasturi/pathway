@@ -45,7 +45,7 @@ describe("buildQstashScheduleRequest", () => {
 
     assert.equal(
       request.url,
-      "https://qstash.upstash.io/v2/schedules/https://www.trypathway.app/api/cron/scrape-postings%3Fshard%3D0%26shards%3D4%26alerts%3D0",
+      "https://qstash.upstash.io/v2/schedules/https://www.trypathway.app/api/cron/scrape-postings?shard=0&shards=4&alerts=0",
     );
     assert.deepEqual(request.headers, {
       "Content-Type": "text/plain",

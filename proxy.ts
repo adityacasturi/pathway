@@ -21,6 +21,7 @@ export async function proxy(request: NextRequest) {
     pathname === "/register" ||
     pathname === "/auth/confirm" ||
     pathname === "/api/cron/scrape-postings" ||
+    pathname === "/api/cron/send-instant-alerts" ||
     pathname === "/api/cron/send-alert-digests" ||
     pathname.startsWith("/alerts/unsubscribe") ||
     pathname.startsWith("/brand/") ||
