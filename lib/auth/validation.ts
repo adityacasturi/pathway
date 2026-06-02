@@ -86,16 +86,13 @@ export function getEmailValidationError(email: string): string | null {
   return null;
 }
 
+/**
+ * Validation applied specifically at signup. Currently identical to
+ * {@link getEmailValidationError}; kept as a distinct seam so signup-only rules
+ * (e.g. domain allow/deny lists) can be reintroduced without touching callers.
+ */
 export function getSignupEmailValidationError(email: string): string | null {
-  const emailError = getEmailValidationError(email);
-  if (emailError) return emailError;
-
-  const domain = normalizeEmail(email).split("@")[1];
-  if (!domain?.endsWith(".edu")) {
-    return "Use your school .edu email.";
-  }
-
-  return null;
+  return getEmailValidationError(email);
 }
 
 export function getSignupPasswordRules(password: string, email: string): PasswordRule[] {

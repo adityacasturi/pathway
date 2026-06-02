@@ -10,7 +10,7 @@ import { NextResponse, type NextRequest } from "next/server";
  *   round-trip entirely. This is what makes public navigation snappy.
  * - Otherwise refreshes the Supabase session via cookies on each request.
  * - Redirects unauthenticated users to the public landing page (except public routes).
- * - Logo proxy and static company logo assets require authentication.
+ * - `/api/logo` requires authentication; `/company-logos/` is public (landing).
  * - Redirects already-signed-in users away from public auth/landing routes back to the app.
  */
 export async function proxy(request: NextRequest) {
@@ -20,8 +20,12 @@ export async function proxy(request: NextRequest) {
     pathname === "/login" ||
     pathname === "/register" ||
     pathname === "/auth/confirm" ||
+    pathname === "/api/cron/scrape-postings" ||
+    pathname === "/api/cron/send-alert-digests" ||
+    pathname.startsWith("/alerts/unsubscribe") ||
     pathname.startsWith("/brand/") ||
     pathname.startsWith("/school-logos/") ||
+    pathname.startsWith("/company-logos/") ||
     pathname.startsWith("/product-screenshots/") ||
     pathname === "/favicon.ico" ||
     pathname === "/icon.png" ||
