@@ -5,13 +5,16 @@ import { normalizeUrl } from "@/lib/url";
 import { Home } from "@/components/home";
 import { normalizeApplicationState } from "@/lib/config/application-state";
 import { isMissingPreferenceColumnError } from "@/lib/config/user-preferences";
+import { loadDiscoverCompanyFavoriteSlugs } from "@/lib/discover/favorites";
+import {
+  buildHomeBriefing,
+  HOME_NEW_WINDOW_SECONDS,
+} from "@/lib/home/briefing";
 import { assertSupabaseOk } from "@/lib/supabase/errors";
 import type { FeedPosting } from "@/lib/feed/source";
 import type { Application } from "@/types/application";
 
 export const dynamic = "force-dynamic";
-
-const NEW_WINDOW_SECONDS = 24 * 60 * 60;
 
 function hasInteraction(ids: Set<string>, posting: FeedPosting): boolean {
   return posting.interactionIds.some((id) => ids.has(id));
@@ -29,20 +32,24 @@ function interactionDate(savedAtById: Map<string, string>, posting: FeedPosting)
 export default async function HomePage() {
   const supabase = await createClient();
 
-  // One parallel fan-out for everything Home needs. RLS means we can fire
-  // user-scoped Supabase calls without waiting on auth first — the auth check
-  // happens inline below once all four responses are back.
-  const [userResult, postings, appsRes, interactionsRes, preferencesRes] = await Promise.all([
-    supabase.auth.getUser(),
-    fetchFeed(),
-    supabase
-      .from("applications")
-      .select("*, application_events(*)"),
-    supabase.from("feed_interactions").select("posting_id, kind, created_at"),
-    supabase.from("user_preferences").select("quick_track_enabled").maybeSingle(),
-  ]);
+  const [userResult, postings, appsRes, interactionsRes, preferencesRes] =
+    await Promise.all([
+      supabase.auth.getUser(),
+      fetchFeed(),
+      supabase
+        .from("applications")
+        .select("*, application_events(*)"),
+      supabase.from("feed_interactions").select("posting_id, kind, created_at"),
+      supabase.from("user_preferences").select("quick_track_enabled").maybeSingle(),
+    ]);
 
   if (!userResult.data.user) redirect("/");
+
+  const favoriteSlugs = await loadDiscoverCompanyFavoriteSlugs(
+    supabase,
+    userResult.data.user.id,
+  );
+
   assertSupabaseOk(appsRes.error, "Load applications");
   assertSupabaseOk(interactionsRes.error, "Load feed interactions");
   if (!isMissingPreferenceColumnError(preferencesRes.error, "quick_track_enabled")) {
@@ -75,11 +82,9 @@ export default async function HomePage() {
     if (normalized) trackedUrls.add(normalized);
   }
 
-  // "New" = posted in the last 24h and not explicitly dismissed. We keep the
-  // window tight so the home surface stays a quick glance; Discover is where
-  // the user goes for the full firehose.
   // eslint-disable-next-line react-hooks/purity
-  const cutoff = Math.floor(Date.now() / 1000) - NEW_WINDOW_SECONDS;
+  const nowUnix = Math.floor(Date.now() / 1000);
+  const cutoff = nowUnix - HOME_NEW_WINDOW_SECONDS;
   const newPostings = postings
     .filter((p) => p.datePosted >= cutoff && !hasInteraction(dismissedSet, p))
     .sort((a, b) => b.datePosted - a.datePosted);
@@ -91,9 +96,19 @@ export default async function HomePage() {
       return bSavedAt.localeCompare(aSavedAt);
     });
 
+  const briefing = buildHomeBriefing({
+    postings,
+    nowUnix,
+    favoriteSlugs: new Set(favoriteSlugs),
+    dismissedIds: dismissedSet,
+    trackedUrls,
+  });
+
   return (
     <Home
       applications={activeApplications}
+      briefing={briefing}
+      starredCompanyCount={favoriteSlugs.length}
       newPostings={newPostings}
       dismissedIds={dismissedIds}
       savedIds={Array.from(savedAtById.keys())}
