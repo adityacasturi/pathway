@@ -154,8 +154,6 @@ export default function RegisterPage() {
                   type="email"
                   required
                   autoComplete="email"
-                  pattern=".+\.[eE][dD][uU]"
-                  title="Use your school .edu email."
                   disabled={isPending}
                   value={email}
                   onChange={(event) => {
@@ -165,14 +163,14 @@ export default function RegisterPage() {
                   }}
                   aria-invalid={Boolean(signupEmailError)}
                   aria-describedby="signup-email-help"
-                  placeholder="you@school.edu"
+                  placeholder="you@example.com"
                   className={AUTH_INPUT_CLASS}
                 />
                 <AuthHelpText
                   id="signup-email-help"
                   tone={signupEmailError ? "error" : "muted"}
                 >
-                  {signupEmailError ?? "Use your school .edu email."}
+                  {signupEmailError ?? "We'll send a confirmation link to this address."}
                 </AuthHelpText>
               </div>
 

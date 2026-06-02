@@ -107,7 +107,7 @@ export default function LoginPage() {
                 if (state === "error") setState("idle");
                 setError(null);
               }}
-              placeholder="you@school.edu"
+              placeholder="you@example.com"
               className={AUTH_INPUT_CLASS}
             />
           </div>
