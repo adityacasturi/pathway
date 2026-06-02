@@ -31,6 +31,10 @@
 *.pem
 .claude/
 
+# macOS Finder duplicates (e.g. "file 2.tsx" after "Copy")
+**/* 2.*
+**/* 2
+
 # debug
 npm-debug.log*
 yarn-debug.log*
