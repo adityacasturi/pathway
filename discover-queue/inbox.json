@@ -1,0 +1,1115 @@
+[
+  {
+    "slug": "github",
+    "name": "GitHub",
+    "websiteUrl": "https://github.com",
+    "hints": [
+      "lever"
+    ],
+    "notes": "Probe Lever token github; distinct from gitlab",
+    "priority": 10
+  },
+  {
+    "slug": "arista",
+    "name": "Arista Networks",
+    "websiteUrl": "https://www.arista.com",
+    "hints": [
+      "greenhouse",
+      "workday"
+    ],
+    "priority": 10
+  },
+  {
+    "slug": "suno",
+    "name": "Suno",
+    "websiteUrl": "https://suno.com",
+    "hints": [
+      "greenhouse",
+      "ashby"
+    ],
+    "priority": 9
+  },
+  {
+    "slug": "cognition",
+    "name": "Cognition",
+    "websiteUrl": "https://cognition.ai",
+    "hints": [
+      "greenhouse",
+      "ashby"
+    ],
+    "priority": 9
+  },
+  {
+    "slug": "runway",
+    "name": "Runway",
+    "websiteUrl": "https://runwayml.com",
+    "hints": [
+      "greenhouse",
+      "ashby"
+    ],
+    "notes": "Not Rent the Runway (already in Discover as rent-the-runway)",
+    "priority": 8
+  },
+  {
+    "slug": "glean",
+    "name": "Glean",
+    "websiteUrl": "https://www.glean.com",
+    "hints": [
+      "ashby"
+    ],
+    "priority": 8
+  },
+  {
+    "slug": "adept-ai",
+    "name": "Adept AI",
+    "websiteUrl": "https://www.adept.ai",
+    "hints": [
+      "greenhouse",
+      "ashby"
+    ],
+    "priority": 8
+  },
+  {
+    "slug": "stability-ai",
+    "name": "Stability AI",
+    "websiteUrl": "https://stability.ai",
+    "hints": [
+      "greenhouse",
+      "lever"
+    ],
+    "priority": 8
+  },
+  {
+    "slug": "pika",
+    "name": "Pika",
+    "websiteUrl": "https://pika.art",
+    "hints": [
+      "greenhouse",
+      "ashby"
+    ],
+    "priority": 8
+  },
+  {
+    "slug": "servicenow",
+    "name": "ServiceNow",
+    "websiteUrl": "https://www.servicenow.com",
+    "hints": [
+      "workday"
+    ],
+    "priority": 8
+  },
+  {
+    "slug": "splunk",
+    "name": "Splunk",
+    "websiteUrl": "https://www.splunk.com",
+    "hints": [
+      "workday",
+      "greenhouse"
+    ],
+    "priority": 8
+  },
+  {
+    "slug": "grammarly",
+    "name": "Grammarly",
+    "websiteUrl": "https://www.grammarly.com",
+    "hints": [
+      "greenhouse"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "docker",
+    "name": "Docker",
+    "websiteUrl": "https://www.docker.com",
+    "hints": [
+      "greenhouse",
+      "lever"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "digitalocean",
+    "name": "DigitalOcean",
+    "websiteUrl": "https://www.digitalocean.com",
+    "hints": [
+      "greenhouse",
+      "lever"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "akamai",
+    "name": "Akamai",
+    "websiteUrl": "https://www.akamai.com",
+    "hints": [
+      "greenhouse",
+      "workday"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "canva",
+    "name": "Canva",
+    "websiteUrl": "https://www.canva.com",
+    "hints": [
+      "lever"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "sourcegraph",
+    "name": "Sourcegraph",
+    "websiteUrl": "https://sourcegraph.com",
+    "hints": [
+      "greenhouse"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "snyk",
+    "name": "Snyk",
+    "websiteUrl": "https://snyk.io",
+    "hints": [
+      "greenhouse",
+      "lever"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "cohesity",
+    "name": "Cohesity",
+    "websiteUrl": "https://www.cohesity.com",
+    "hints": [
+      "lever"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "juniper-networks",
+    "name": "Juniper Networks",
+    "websiteUrl": "https://www.juniper.net",
+    "hints": [
+      "workday",
+      "greenhouse"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "nutanix",
+    "name": "Nutanix",
+    "websiteUrl": "https://www.nutanix.com",
+    "hints": [
+      "lever"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "broadcom",
+    "name": "Broadcom",
+    "websiteUrl": "https://www.broadcom.com",
+    "hints": [
+      "workday"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "marvell",
+    "name": "Marvell",
+    "websiteUrl": "https://www.marvell.com",
+    "hints": [
+      "workday",
+      "greenhouse"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "texas-instruments",
+    "name": "Texas Instruments",
+    "websiteUrl": "https://www.ti.com",
+    "hints": [
+      "workday"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "analog-devices",
+    "name": "Analog Devices",
+    "websiteUrl": "https://www.analog.com",
+    "hints": [
+      "workday"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "vmware",
+    "name": "VMware",
+    "websiteUrl": "https://www.vmware.com",
+    "hints": [
+      "lever",
+      "workday"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "western-digital",
+    "name": "Western Digital",
+    "websiteUrl": "https://www.westerndigital.com",
+    "hints": [
+      "workday"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "seagate",
+    "name": "Seagate",
+    "websiteUrl": "https://www.seagate.com",
+    "hints": [
+      "workday"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "f5",
+    "name": "F5",
+    "websiteUrl": "https://www.f5.com",
+    "hints": [
+      "greenhouse",
+      "workday"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "sap",
+    "name": "SAP",
+    "websiteUrl": "https://www.sap.com",
+    "hints": [
+      "workday"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "teradata",
+    "name": "Teradata",
+    "websiteUrl": "https://www.teradata.com",
+    "hints": [
+      "greenhouse",
+      "workday"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "wolverine-trading",
+    "name": "Wolverine Trading",
+    "websiteUrl": "https://www.wolve.com",
+    "hints": [
+      "greenhouse"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "belvedere-trading",
+    "name": "Belvedere Trading",
+    "websiteUrl": "https://www.belvederetrading.com",
+    "hints": [
+      "greenhouse"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "peak6",
+    "name": "Peak6",
+    "websiteUrl": "https://peak6.com",
+    "hints": [
+      "greenhouse",
+      "lever"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "old-mission",
+    "name": "Old Mission",
+    "websiteUrl": "https://www.oldmissioncapital.com",
+    "hints": [
+      "greenhouse"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "teza-technologies",
+    "name": "Teza Technologies",
+    "websiteUrl": "https://www.teza.com",
+    "hints": [
+      "greenhouse"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "quantlab",
+    "name": "Quantlab",
+    "websiteUrl": "https://www.quantlab.com",
+    "hints": [
+      "greenhouse"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "maven-securities",
+    "name": "Maven Securities",
+    "websiteUrl": "https://www.maven-securities.com",
+    "hints": [
+      "greenhouse"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "northrop-grumman",
+    "name": "Northrop Grumman",
+    "websiteUrl": "https://www.northropgrumman.com",
+    "hints": [
+      "workday"
+    ],
+    "notes": "May need custom adapter like Lockheed if Workday CXS is gated",
+    "priority": 6
+  },
+  {
+    "slug": "general-dynamics",
+    "name": "General Dynamics",
+    "websiteUrl": "https://www.gd.com",
+    "hints": [
+      "workday"
+    ],
+    "priority": 6
+  },
+  {
+    "slug": "l3harris",
+    "name": "L3Harris",
+    "websiteUrl": "https://www.l3harris.com",
+    "hints": [
+      "workday"
+    ],
+    "priority": 6
+  },
+  {
+    "slug": "leidos",
+    "name": "Leidos",
+    "websiteUrl": "https://www.leidos.com",
+    "hints": [
+      "workday"
+    ],
+    "priority": 6
+  },
+  {
+    "slug": "bae-systems",
+    "name": "BAE Systems",
+    "websiteUrl": "https://www.baesystems.com",
+    "hints": [
+      "workday"
+    ],
+    "priority": 6
+  },
+  {
+    "slug": "electronic-arts",
+    "name": "Electronic Arts",
+    "websiteUrl": "https://www.ea.com",
+    "hints": [
+      "greenhouse",
+      "lever"
+    ],
+    "priority": 6
+  },
+  {
+    "slug": "valve",
+    "name": "Valve",
+    "websiteUrl": "https://www.valvesoftware.com",
+    "hints": [
+      "greenhouse",
+      "lever"
+    ],
+    "notes": "Non-standard careers site; expect fail or custom scrape",
+    "priority": 5
+  },
+  {
+    "slug": "etsy",
+    "name": "Etsy",
+    "websiteUrl": "https://www.etsy.com",
+    "hints": [
+      "greenhouse"
+    ],
+    "priority": 6
+  },
+  {
+    "slug": "wayfair",
+    "name": "Wayfair",
+    "websiteUrl": "https://www.wayfair.com",
+    "hints": [
+      "greenhouse"
+    ],
+    "priority": 6
+  },
+  {
+    "slug": "chewy",
+    "name": "Chewy",
+    "websiteUrl": "https://www.chewy.com",
+    "hints": [
+      "greenhouse"
+    ],
+    "priority": 6
+  },
+  {
+    "slug": "zillow",
+    "name": "Zillow",
+    "websiteUrl": "https://www.zillow.com",
+    "hints": [
+      "greenhouse"
+    ],
+    "priority": 6
+  },
+  {
+    "slug": "zendesk",
+    "name": "Zendesk",
+    "websiteUrl": "https://www.zendesk.com",
+    "hints": [
+      "greenhouse",
+      "lever"
+    ],
+    "priority": 6
+  },
+  {
+    "slug": "grubhub",
+    "name": "Grubhub",
+    "websiteUrl": "https://www.grubhub.com",
+    "hints": [
+      "greenhouse"
+    ],
+    "priority": 6
+  },
+  {
+    "slug": "imbue",
+    "name": "Imbue",
+    "websiteUrl": "https://imbue.com",
+    "hints": [
+      "greenhouse",
+      "ashby"
+    ],
+    "priority": 6
+  },
+  {
+    "slug": "poolside",
+    "name": "Poolside",
+    "websiteUrl": "https://poolside.ai",
+    "hints": [
+      "greenhouse",
+      "ashby"
+    ],
+    "priority": 6
+  },
+  {
+    "slug": "deepmind",
+    "name": "DeepMind",
+    "websiteUrl": "https://deepmind.google",
+    "industry": "ai-research",
+    "hints": [
+      "greenhouse",
+      "workday"
+    ],
+    "notes": "May route via Google careers; probe GH/Workday before custom adapter",
+    "priority": 10
+  },
+  {
+    "slug": "thinking-machines",
+    "name": "Thinking Machines",
+    "websiteUrl": "https://thinkingmachines.ai",
+    "industry": "ai-research",
+    "hints": [
+      "greenhouse",
+      "ashby",
+      "lever"
+    ],
+    "priority": 10
+  },
+  {
+    "slug": "safe-superintelligence",
+    "name": "Safe Superintelligence",
+    "websiteUrl": "https://ssi.inc",
+    "industry": "ai-research",
+    "hints": [
+      "greenhouse",
+      "ashby",
+      "lever"
+    ],
+    "priority": 10
+  },
+  {
+    "slug": "world-labs",
+    "name": "World Labs",
+    "websiteUrl": "https://worldlabs.ai",
+    "industry": "ai-research",
+    "hints": [
+      "greenhouse",
+      "ashby",
+      "lever"
+    ],
+    "priority": 10
+  },
+  {
+    "slug": "physical-intelligence",
+    "name": "Physical Intelligence",
+    "websiteUrl": "https://physicalintelligence.company",
+    "industry": "ai-research",
+    "hints": [
+      "greenhouse",
+      "ashby",
+      "lever"
+    ],
+    "priority": 10
+  },
+  {
+    "slug": "isomorphic-labs",
+    "name": "Isomorphic Labs",
+    "websiteUrl": "https://www.isomorphiclabs.com",
+    "industry": "ai-research",
+    "hints": [
+      "greenhouse",
+      "workday",
+      "lever"
+    ],
+    "priority": 9
+  },
+  {
+    "slug": "neuralink",
+    "name": "Neuralink",
+    "websiteUrl": "https://neuralink.com",
+    "industry": "robotics",
+    "hints": [
+      "greenhouse",
+      "lever"
+    ],
+    "priority": 9
+  },
+  {
+    "slug": "g-research",
+    "name": "G-Research",
+    "websiteUrl": "https://www.gresearch.com",
+    "industry": "quant",
+    "hints": [
+      "greenhouse",
+      "workday"
+    ],
+    "priority": 9
+  },
+  {
+    "slug": "midjourney",
+    "name": "Midjourney",
+    "websiteUrl": "https://www.midjourney.com",
+    "industry": "ai-products",
+    "hints": [
+      "greenhouse",
+      "lever"
+    ],
+    "priority": 9
+  },
+  {
+    "slug": "reflection-ai",
+    "name": "Reflection AI",
+    "websiteUrl": "https://www.reflection.ai",
+    "industry": "ai-research",
+    "hints": [
+      "greenhouse",
+      "ashby",
+      "lever"
+    ],
+    "priority": 9
+  },
+  {
+    "slug": "sakana-ai",
+    "name": "Sakana AI",
+    "websiteUrl": "https://sakana.ai",
+    "industry": "ai-research",
+    "hints": [
+      "greenhouse",
+      "ashby",
+      "lever"
+    ],
+    "priority": 9
+  },
+  {
+    "slug": "skild-ai",
+    "name": "Skild AI",
+    "websiteUrl": "https://www.skild.ai",
+    "industry": "robotics",
+    "hints": [
+      "greenhouse",
+      "ashby",
+      "lever"
+    ],
+    "priority": 9
+  },
+  {
+    "slug": "ideogram",
+    "name": "Ideogram",
+    "websiteUrl": "https://ideogram.ai",
+    "industry": "ai-products",
+    "hints": [
+      "greenhouse",
+      "ashby"
+    ],
+    "priority": 8
+  },
+  {
+    "slug": "luma-ai",
+    "name": "Luma AI",
+    "websiteUrl": "https://lumalabs.ai",
+    "industry": "ai-products",
+    "hints": [
+      "greenhouse",
+      "ashby",
+      "lever"
+    ],
+    "priority": 8
+  },
+  {
+    "slug": "fireworks-ai",
+    "name": "Fireworks AI",
+    "websiteUrl": "https://fireworks.ai",
+    "industry": "ai-infrastructure",
+    "hints": [
+      "greenhouse",
+      "ashby",
+      "lever"
+    ],
+    "priority": 8
+  },
+  {
+    "slug": "weights-biases",
+    "name": "Weights & Biases",
+    "websiteUrl": "https://wandb.ai",
+    "industry": "ai-infrastructure",
+    "hints": [
+      "greenhouse",
+      "ashby",
+      "lever"
+    ],
+    "priority": 8
+  },
+  {
+    "slug": "replicate",
+    "name": "Replicate",
+    "websiteUrl": "https://replicate.com",
+    "industry": "ai-infrastructure",
+    "hints": [
+      "greenhouse",
+      "ashby",
+      "lever"
+    ],
+    "priority": 8
+  },
+  {
+    "slug": "magic",
+    "name": "Magic",
+    "websiteUrl": "https://magic.dev",
+    "industry": "ai-products",
+    "hints": [
+      "greenhouse",
+      "ashby",
+      "lever"
+    ],
+    "notes": "AI codegen (Magic.dev); not to be confused with Block",
+    "priority": 8
+  },
+  {
+    "slug": "waabi",
+    "name": "Waabi",
+    "websiteUrl": "https://waabi.ai",
+    "industry": "autonomous-vehicles",
+    "hints": [
+      "greenhouse",
+      "ashby",
+      "lever"
+    ],
+    "priority": 8
+  },
+  {
+    "slug": "tenstorrent",
+    "name": "Tenstorrent",
+    "websiteUrl": "https://tenstorrent.com",
+    "industry": "ai-infrastructure",
+    "hints": [
+      "greenhouse",
+      "lever",
+      "workday"
+    ],
+    "priority": 8
+  },
+  {
+    "slug": "sambanova",
+    "name": "SambaNova Systems",
+    "websiteUrl": "https://sambanova.ai",
+    "industry": "ai-infrastructure",
+    "hints": [
+      "greenhouse",
+      "workday",
+      "lever"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "lightmatter",
+    "name": "Lightmatter",
+    "websiteUrl": "https://lightmatter.co",
+    "industry": "ai-infrastructure",
+    "hints": [
+      "greenhouse",
+      "lever",
+      "ashby"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "windsurf",
+    "name": "Windsurf",
+    "websiteUrl": "https://windsurf.com",
+    "industry": "devtools",
+    "hints": [
+      "greenhouse",
+      "ashby",
+      "lever"
+    ],
+    "notes": "Codeium / Windsurf IDE",
+    "priority": 7
+  },
+  {
+    "slug": "covariant",
+    "name": "Covariant",
+    "websiteUrl": "https://covariant.ai",
+    "industry": "robotics",
+    "hints": [
+      "greenhouse",
+      "lever",
+      "ashby"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "1x-technologies",
+    "name": "1X Technologies",
+    "websiteUrl": "https://www.1x.tech",
+    "industry": "robotics",
+    "hints": [
+      "greenhouse",
+      "lever",
+      "ashby"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "postman",
+    "name": "Postman",
+    "websiteUrl": "https://www.postman.com",
+    "industry": "devtools",
+    "hints": [
+      "greenhouse",
+      "lever",
+      "ashby"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "x-corp",
+    "name": "X",
+    "websiteUrl": "https://x.com",
+    "industry": "social",
+    "hints": [
+      "greenhouse",
+      "lever",
+      "workday"
+    ],
+    "notes": "Former Twitter; probe GH/Lever tokens before custom adapter",
+    "priority": 9
+  },
+  {
+    "slug": "samsung",
+    "name": "Samsung",
+    "websiteUrl": "https://www.samsung.com",
+    "industry": "semiconductor",
+    "hints": [
+      "workday",
+      "greenhouse"
+    ],
+    "notes": "US semiconductor and mobile SWE roles",
+    "priority": 8
+  },
+  {
+    "slug": "dell",
+    "name": "Dell Technologies",
+    "websiteUrl": "https://www.dell.com",
+    "industry": "platform",
+    "hints": [
+      "workday",
+      "greenhouse"
+    ],
+    "priority": 8
+  },
+  {
+    "slug": "hp",
+    "name": "HP Inc.",
+    "websiteUrl": "https://www.hp.com",
+    "industry": "platform",
+    "hints": [
+      "workday",
+      "greenhouse"
+    ],
+    "priority": 8
+  },
+  {
+    "slug": "slack",
+    "name": "Slack",
+    "websiteUrl": "https://slack.com",
+    "industry": "productivity",
+    "hints": [
+      "greenhouse",
+      "lever",
+      "workday"
+    ],
+    "notes": "Salesforce subsidiary; may route via Salesforce careers",
+    "priority": 8
+  },
+  {
+    "slug": "synopsys",
+    "name": "Synopsys",
+    "websiteUrl": "https://www.synopsys.com",
+    "industry": "semiconductor",
+    "hints": [
+      "workday",
+      "greenhouse"
+    ],
+    "priority": 9
+  },
+  {
+    "slug": "cadence",
+    "name": "Cadence",
+    "websiteUrl": "https://www.cadence.com",
+    "industry": "semiconductor",
+    "hints": [
+      "workday",
+      "greenhouse"
+    ],
+    "priority": 9
+  },
+  {
+    "slug": "ansys",
+    "name": "Ansys",
+    "websiteUrl": "https://www.ansys.com",
+    "industry": "semiconductor",
+    "hints": [
+      "workday",
+      "greenhouse"
+    ],
+    "priority": 9
+  },
+  {
+    "slug": "arm",
+    "name": "Arm",
+    "websiteUrl": "https://www.arm.com",
+    "industry": "semiconductor",
+    "hints": [
+      "greenhouse",
+      "workday",
+      "lever"
+    ],
+    "priority": 9
+  },
+  {
+    "slug": "squarepoint",
+    "name": "Squarepoint Capital",
+    "websiteUrl": "https://www.squarepoint-capital.com",
+    "industry": "quant",
+    "hints": [
+      "greenhouse"
+    ],
+    "priority": 8
+  },
+  {
+    "slug": "walleye-trading",
+    "name": "Walleye Trading",
+    "websiteUrl": "https://www.walleyetrading.com",
+    "industry": "quant",
+    "hints": [
+      "greenhouse"
+    ],
+    "priority": 8
+  },
+  {
+    "slug": "transmarket-group",
+    "name": "TransMarket Group",
+    "websiteUrl": "https://www.transmarketgroup.com",
+    "industry": "quant",
+    "hints": [
+      "greenhouse"
+    ],
+    "priority": 8
+  },
+  {
+    "slug": "eclipse-trading",
+    "name": "Eclipse Trading",
+    "websiteUrl": "https://www.eclipsetrading.com",
+    "industry": "quant",
+    "hints": [
+      "greenhouse"
+    ],
+    "priority": 8
+  },
+  {
+    "slug": "capula",
+    "name": "Capula Investment Management",
+    "websiteUrl": "https://www.capula.com",
+    "industry": "quant",
+    "hints": [
+      "greenhouse",
+      "workday"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "gelber-group",
+    "name": "Gelber Group",
+    "websiteUrl": "https://www.gelbergroup.com",
+    "industry": "quant",
+    "hints": [
+      "greenhouse"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "klarna",
+    "name": "Klarna",
+    "websiteUrl": "https://www.klarna.com",
+    "industry": "fintech",
+    "hints": [
+      "greenhouse",
+      "lever"
+    ],
+    "priority": 8
+  },
+  {
+    "slug": "revolut",
+    "name": "Revolut",
+    "websiteUrl": "https://www.revolut.com",
+    "industry": "fintech",
+    "hints": [
+      "greenhouse",
+      "ashby",
+      "lever"
+    ],
+    "priority": 8
+  },
+  {
+    "slug": "wise",
+    "name": "Wise",
+    "websiteUrl": "https://wise.com",
+    "industry": "fintech",
+    "hints": [
+      "greenhouse",
+      "lever"
+    ],
+    "priority": 8
+  },
+  {
+    "slug": "mastercard",
+    "name": "Mastercard",
+    "websiteUrl": "https://www.mastercard.com",
+    "industry": "payments",
+    "hints": [
+      "workday",
+      "greenhouse"
+    ],
+    "priority": 8
+  },
+  {
+    "slug": "american-express",
+    "name": "American Express",
+    "websiteUrl": "https://www.americanexpress.com",
+    "industry": "banking",
+    "hints": [
+      "workday",
+      "greenhouse"
+    ],
+    "priority": 8
+  },
+  {
+    "slug": "modular",
+    "name": "Modular",
+    "websiteUrl": "https://www.modular.com",
+    "industry": "ai-infrastructure",
+    "hints": [
+      "greenhouse",
+      "ashby",
+      "lever"
+    ],
+    "priority": 8
+  },
+  {
+    "slug": "inflection",
+    "name": "Inflection AI",
+    "websiteUrl": "https://inflection.ai",
+    "industry": "ai-products",
+    "hints": [
+      "greenhouse",
+      "ashby",
+      "lever"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "bank-of-america",
+    "name": "Bank of America",
+    "websiteUrl": "https://www.bankofamerica.com",
+    "industry": "banking",
+    "hints": [
+      "workday"
+    ],
+    "priority": 8
+  },
+  {
+    "slug": "wells-fargo",
+    "name": "Wells Fargo",
+    "websiteUrl": "https://www.wellsfargo.com",
+    "industry": "banking",
+    "hints": [
+      "workday"
+    ],
+    "priority": 8
+  },
+  {
+    "slug": "barclays",
+    "name": "Barclays",
+    "websiteUrl": "https://www.barclays.com",
+    "industry": "banking",
+    "hints": [
+      "workday",
+      "greenhouse"
+    ],
+    "priority": 7
+  },
+  {
+    "slug": "sony",
+    "name": "Sony",
+    "websiteUrl": "https://www.sony.com",
+    "industry": "gaming",
+    "hints": [
+      "greenhouse",
+      "workday"
+    ],
+    "priority": 6
+  },
+  {
+    "slug": "disney",
+    "name": "The Walt Disney Company",
+    "websiteUrl": "https://www.disney.com",
+    "industry": "streaming",
+    "hints": [
+      "workday",
+      "greenhouse"
+    ],
+    "priority": 6
+  }
+]

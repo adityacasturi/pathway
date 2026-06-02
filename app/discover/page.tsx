@@ -1,59 +1,41 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { fetchFeed } from "@/lib/feed/source";
-import { normalizeUrl } from "@/lib/url";
-import { DiscoverFeed } from "@/components/discover-feed";
+import { DiscoverCompanies } from "@/components/discover-companies";
+import { loadDiscoverIndustryCatalog } from "@/lib/discover/catalog";
+import { loadDiscoverCompanies } from "@/lib/discover/companies";
+import { loadDiscoverCompanyFavoriteIds } from "@/lib/discover/favorites";
 import { isMissingPreferenceColumnError } from "@/lib/config/user-preferences";
 import { assertSupabaseOk } from "@/lib/supabase/errors";
-import { resolveDiscoverCutoffDate } from "@/lib/config/discover";
+import { createClient } from "@/lib/supabase/server";
+import { normalizeUrl } from "@/lib/url";
 
 export const dynamic = "force-dynamic";
 
-interface DiscoverPageProps {
-  searchParams: Promise<{
-    q?: string | string[];
-    saved?: string | string[];
-  }>;
-}
-
-export default async function DiscoverPage({ searchParams }: DiscoverPageProps) {
+export default async function DiscoverPage() {
   const supabase = await createClient();
-  const params = await searchParams;
-  const initialQuery = typeof params.q === "string" ? params.q : "";
-  const initialSavedOnly = params.saved !== undefined;
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) redirect("/");
 
-  // Auth, feed fetch, and user-scoped queries all race in parallel. RLS
-  // scopes the two Supabase queries without us needing user.id first, so
-  // we avoid the auth-then-data waterfall (~100ms saved per load). The
-  // feed fetch is ISR-cached in fetchFeed() so it rarely hits GitHub.
-  const [userResult, postings, interactionsRes, appsRes, preferencesRes] = await Promise.all([
-    supabase.auth.getUser(),
-    fetchFeed(),
-    supabase.from("feed_interactions").select("posting_id, kind"),
-    supabase.from("applications").select("posting_url").is("archived_at", null),
-    supabase.from("user_preferences").select("quick_track_enabled").maybeSingle(),
-  ]);
+  const industryCatalog = await loadDiscoverIndustryCatalog(supabase);
+  const [companies, starredCompanyIds, interactionsRes, appsRes, preferencesRes] =
+    await Promise.all([
+      loadDiscoverCompanies(supabase, industryCatalog),
+      loadDiscoverCompanyFavoriteIds(supabase, userData.user.id),
+      supabase.from("feed_interactions").select("posting_id, kind"),
+      supabase.from("applications").select("posting_url").is("archived_at", null),
+      supabase.from("user_preferences").select("quick_track_enabled").maybeSingle(),
+    ]);
 
-  if (!userResult.data.user) redirect("/");
   assertSupabaseOk(interactionsRes.error, "Load feed interactions");
   assertSupabaseOk(appsRes.error, "Load tracked applications");
   if (!isMissingPreferenceColumnError(preferencesRes.error, "quick_track_enabled")) {
     assertSupabaseOk(preferencesRes.error, "Load preferences");
   }
 
-  const cutoff = resolveDiscoverCutoffDate();
-  const visiblePostings = postings.filter((posting) => posting.datePosted >= cutoff.cutoffUnix);
-
-  const dismissedIds = new Set<string>();
   const savedIds = new Set<string>();
   for (const row of interactionsRes.data ?? []) {
-    if (row.kind === "dismissed") dismissedIds.add(row.posting_id);
     if (row.kind === "saved") savedIds.add(row.posting_id);
   }
 
-  // Cross-reference tracked postings by normalized URL. This is why "tracked"
-  // isn't its own interaction kind — adding an application from the feed
-  // writes the url, and the next render picks it up automatically.
   const trackedUrls = new Set<string>();
   for (const row of appsRes.data ?? []) {
     const normalized = normalizeUrl(row.posting_url);
@@ -61,13 +43,12 @@ export default async function DiscoverPage({ searchParams }: DiscoverPageProps) 
   }
 
   return (
-    <DiscoverFeed
-      postings={visiblePostings}
-      dismissedIds={Array.from(dismissedIds)}
+    <DiscoverCompanies
+      companies={companies}
+      industryCatalog={industryCatalog}
+      initialStarredCompanyIds={starredCompanyIds}
       savedIds={Array.from(savedIds)}
       trackedUrls={Array.from(trackedUrls)}
-      initialQuery={initialQuery}
-      initialSavedOnly={initialSavedOnly}
       quickTrackEnabled={preferencesRes.data?.quick_track_enabled ?? false}
     />
   );
