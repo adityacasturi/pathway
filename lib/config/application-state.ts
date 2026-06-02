@@ -1,5 +1,5 @@
 import { deriveStatus } from "@/lib/config/events";
-import { Application, ApplicationEvent } from "@/types/application";
+import type { Application, ApplicationEvent } from "@/types/application";
 
 /**
  * Sorts events for the timeline. Primary key is `event_date` (chronological).

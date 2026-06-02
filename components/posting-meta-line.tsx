@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { SeasonPill } from "@/components/season-pill";
+import type { FeedSeason } from "@/lib/feed/types";
 
 export function MetaSeparator() {
   return <span className="shrink-0 text-muted-foreground/50">/</span>;
@@ -11,7 +12,7 @@ export function PostingMetaLine({
   children,
 }: {
   company: string;
-  season?: string | null;
+  season?: FeedSeason | null;
   children?: ReactNode;
 }) {
   return (

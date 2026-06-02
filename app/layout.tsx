@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Instrument_Serif, Inter, JetBrains_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import { AppChrome } from "@/components/app-chrome";
 import {
@@ -9,14 +9,6 @@ import {
 } from "@/lib/config/accent";
 import { createClient } from "@/lib/supabase/server";
 import "./globals.css";
-
-const instrumentSerif = Instrument_Serif({
-  variable: "--font-instrument-serif",
-  subsets: ["latin"],
-  style: ["normal", "italic"],
-  weight: "400",
-  display: "swap",
-});
 
 const inter = Inter({
   variable: "--font-inter",
@@ -108,7 +100,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       lang="en"
       data-accent={accent}
       data-scroll-behavior="smooth"
-      className={`${instrumentSerif.variable} ${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <AppChrome />

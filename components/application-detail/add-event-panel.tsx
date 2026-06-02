@@ -10,26 +10,22 @@ import { EventType } from "@/types/application";
 export function AddEventPanel({
   eventType,
   eventDate,
-  deadlineDate,
   notes,
   addingEvent,
   error,
   onEventTypeChange,
   onEventDateChange,
-  onDeadlineDateChange,
   onNotesChange,
   onSubmitEvent,
   onClearError,
 }: {
   eventType: EventType;
   eventDate: string;
-  deadlineDate: string;
   notes: string;
   addingEvent: boolean;
   error: string | null;
   onEventTypeChange: (type: EventType) => void;
   onEventDateChange: (date: string) => void;
-  onDeadlineDateChange: (date: string) => void;
   onNotesChange: (notes: string) => void;
   onSubmitEvent: (event: React.FormEvent) => void;
   onClearError: () => void;
@@ -37,17 +33,7 @@ export function AddEventPanel({
   return (
     <form onSubmit={onSubmitEvent} className="add-event-panel">
       <EventTypePicker value={eventType} onChange={onEventTypeChange} layout="row" />
-      <div className={eventType === "oa" ? "grid grid-cols-2 gap-2" : undefined}>
-        <EventDateField value={eventDate} onChange={onEventDateChange} />
-        {eventType === "oa" && (
-          <EventDateField
-            label="Deadline"
-            value={deadlineDate}
-            onChange={onDeadlineDateChange}
-            optional
-          />
-        )}
-      </div>
+      <EventDateField value={eventDate} onChange={onEventDateChange} />
       <label className="block space-y-1.5">
         <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
           Notes <span className="normal-case tracking-normal text-muted-foreground/45">(optional)</span>

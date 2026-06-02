@@ -8,25 +8,56 @@ import {
   Compass,
   Home as HomeIcon,
   LayoutGrid,
+  Mail,
+  Radio,
   Settings,
 } from "lucide-react";
 import { NavLink } from "@/components/nav-link";
 import {
+  AlertsSkeleton,
   DashboardSkeleton,
-  DiscoverSkeleton,
+  DiscoverBoardSkeleton,
   HomeSkeleton,
+  LiveSkeleton,
   SettingsSkeleton,
   StatsSkeleton,
 } from "@/components/route-skeletons";
-import { getActiveNavHref, isActiveNavHref } from "@/lib/config/nav";
+import { getActiveNavHref, getPageLabel, isActiveNavHref, type NavHref } from "@/lib/config/nav";
 
-const NAV_ITEMS = [
-  { href: "/home", label: "Home", icon: HomeIcon, skeleton: <HomeSkeleton /> },
-  { href: "/applications", label: "Applications", icon: LayoutGrid, skeleton: <DashboardSkeleton /> },
-  { href: "/discover", label: "Discover", icon: Compass, skeleton: <DiscoverSkeleton /> },
-  { href: "/stats", label: "Stats", icon: ChartNoAxesCombined, skeleton: <StatsSkeleton /> },
-  { href: "/settings", label: "Settings", icon: Settings, skeleton: <SettingsSkeleton /> },
-] as const;
+const NAV_ITEMS: Array<{
+  href: NavHref;
+  label: string;
+  icon: typeof HomeIcon;
+  skeleton: React.ReactNode;
+}> = [
+  { href: "/home", label: getPageLabel("/home"), icon: HomeIcon, skeleton: <HomeSkeleton /> },
+  {
+    href: "/applications",
+    label: getPageLabel("/applications"),
+    icon: LayoutGrid,
+    skeleton: <DashboardSkeleton />,
+  },
+  { href: "/live", label: getPageLabel("/live"), icon: Radio, skeleton: <LiveSkeleton /> },
+  {
+    href: "/discover",
+    label: getPageLabel("/discover"),
+    icon: Compass,
+    skeleton: <DiscoverBoardSkeleton />,
+  },
+  { href: "/alerts", label: getPageLabel("/alerts"), icon: Mail, skeleton: <AlertsSkeleton /> },
+  {
+    href: "/stats",
+    label: getPageLabel("/stats"),
+    icon: ChartNoAxesCombined,
+    skeleton: <StatsSkeleton />,
+  },
+  {
+    href: "/settings",
+    label: getPageLabel("/settings"),
+    icon: Settings,
+    skeleton: <SettingsSkeleton />,
+  },
+];
 
 type PillPosition = {
   left: number;
@@ -118,7 +149,7 @@ export function Sidebar() {
     <nav
       ref={navRef}
       aria-label="Pages"
-      className="fixed top-5 left-1/2 -translate-x-1/2 z-40 flex items-center gap-0.5 overflow-hidden rounded-full border bg-card p-1"
+      className="fixed top-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-0.5 overflow-hidden rounded-full border bg-card p-1"
       style={{
         borderColor: "var(--rule-strong)",
         boxShadow: "0 1px 0 color-mix(in oklab, var(--ink) 4%, transparent)",

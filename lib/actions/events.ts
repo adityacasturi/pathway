@@ -112,7 +112,6 @@ export async function createEvent(
   eventType: EventType,
   eventDate: string,
   notes?: string,
-  deadlineDate?: string | null,
 ) {
   const rateLimit = await limitEventWrite();
   if (!rateLimit.ok) return { error: rateLimit.error };
@@ -126,22 +125,16 @@ export async function createEvent(
   if (!isEventType(eventType)) return { error: "Invalid event type." };
   if (eventType === "applied") return { error: "The applied event is created with the application." };
   if (!isIsoDate(eventDate)) return { error: "Invalid event date." };
-  if (deadlineDate != null && deadlineDate !== "" && !isIsoDate(deadlineDate)) {
-    return { error: "Invalid deadline date." };
-  }
-  if (eventType !== "oa" && deadlineDate) {
-    return { error: "Deadlines can only be added to OA events." };
-  }
   if (notes !== undefined && typeof notes !== "string") return { error: "Invalid notes." };
   const cleanedNotes = notes?.trim() ?? "";
-  const cleanedDeadlineDate = eventType === "oa" && deadlineDate ? deadlineDate : null;
   if (cleanedNotes.length > MAX_NOTES_LENGTH) return { error: "Notes are too long." };
+
   const { data, error } = await supabase.rpc("create_application_event", {
     p_application_id: applicationId,
     p_event_type: eventType,
     p_event_date: eventDate,
     p_notes: cleanedNotes || null,
-    p_deadline_date: cleanedDeadlineDate,
+    p_deadline_date: null,
   });
 
   if (error) return { error: formatSupabaseMutationError(error, "Unable to add event.") };
@@ -153,74 +146,6 @@ export async function createEvent(
 
   revalidateApplicationSurfaces();
   return { event: payload.event as ApplicationEvent, status: payload.status as Status };
-}
-
-export async function updateEventDeadline(
-  eventId: string,
-  applicationId: string,
-  deadlineDate: string | null,
-) {
-  const rateLimit = await limitEventWrite();
-  if (!rateLimit.ok) return { error: rateLimit.error };
-
-  const { supabase, user } = await getAuthenticatedUser();
-  if (!user) return { error: "Not authenticated" };
-  if (!isUuid(applicationId)) return { error: "Invalid application id." };
-  if (deadlineDate !== null && !isIsoDate(deadlineDate)) {
-    return { error: "Invalid deadline date." };
-  }
-
-  const event = await resolveOwnedEvent(supabase, user.id, eventId, applicationId);
-  if (event && "error" in event) return event;
-  if (!event) return { error: "Event not found" };
-  if (event.event_type !== "oa") return { error: "Deadlines can only be added to OA events." };
-
-  const patch = deadlineDate === null
-    ? { deadline_date: null, deadline_completed_at: null }
-    : { deadline_date: deadlineDate };
-
-  const { data: updatedEvent, error } = await supabase
-    .from("application_events")
-    .update(patch)
-    .eq("id", event.id)
-    .eq("user_id", user.id)
-    .select("*")
-    .single();
-
-  if (error) return { error: formatSupabaseMutationError(error, "Unable to save deadline.") };
-  revalidateApplicationSurfaces();
-  return { event: updatedEvent as ApplicationEvent };
-}
-
-export async function updateEventDeadlineCompletion(
-  eventId: string,
-  applicationId: string,
-  completed: boolean,
-) {
-  const rateLimit = await limitEventWrite();
-  if (!rateLimit.ok) return { error: rateLimit.error };
-
-  const { supabase, user } = await getAuthenticatedUser();
-  if (!user) return { error: "Not authenticated" };
-  if (!isUuid(applicationId)) return { error: "Invalid application id." };
-  if (typeof completed !== "boolean") return { error: "Invalid deadline state." };
-
-  const event = await resolveOwnedEvent(supabase, user.id, eventId, applicationId);
-  if (event && "error" in event) return event;
-  if (!event) return { error: "Event not found" };
-  if (event.event_type !== "oa") return { error: "Deadlines can only be completed for OA events." };
-
-  const { data: updatedEvent, error } = await supabase
-    .from("application_events")
-    .update({ deadline_completed_at: completed ? new Date().toISOString() : null })
-    .eq("id", event.id)
-    .eq("user_id", user.id)
-    .select("*")
-    .single();
-
-  if (error) return { error: formatSupabaseMutationError(error, "Unable to update deadline.") };
-  revalidateApplicationSurfaces();
-  return { event: updatedEvent as ApplicationEvent };
 }
 
 export async function updateEventDate(eventId: string, applicationId: string, newDate: string) {
@@ -236,7 +161,6 @@ export async function updateEventDate(eventId: string, applicationId: string, ne
   if (thisEvent && "error" in thisEvent) return thisEvent;
   if (!thisEvent) return { error: "Event not found" };
 
-  // Only applied events have a constraint: they can't be set after any other event
   if (thisEvent.event_type === "applied") {
     const { data: others } = await supabase
       .from("application_events")

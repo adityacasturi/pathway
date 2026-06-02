@@ -9,8 +9,6 @@ import {
   createEvent,
   deleteEvent,
   updateEventDate,
-  updateEventDeadline,
-  updateEventDeadlineCompletion,
   updateEventNotes,
 } from "@/lib/actions/events";
 import { updateApplicationFields } from "@/lib/actions/applications";
@@ -26,6 +24,10 @@ import { AddEventPanel } from "@/components/application-detail/add-event-panel";
 import { LocationField, PostingUrlField, SeasonField } from "@/components/application-detail/detail-fields";
 import { FloatingSyncToast, SyncState } from "@/components/application-detail/sync-toast";
 import { CompanyLogo } from "@/components/company-logo";
+import {
+  lookupCompanyWebsiteUrl,
+  type CompanyWebsiteByName,
+} from "@/lib/logo/company-website-lookup";
 import { EventTimeline } from "@/components/event-timeline";
 import { InlineEdit } from "@/components/ui/inline-edit";
 import { motionVariants, transitions } from "@/lib/ui/motion";
@@ -37,6 +39,7 @@ function todayISO(): string {
 
 interface Props {
   application: Application | null;
+  companyWebsiteByName?: CompanyWebsiteByName;
   onClose: () => void;
 }
 
@@ -50,7 +53,6 @@ function buildTempEvent(
   eventType: EventType,
   eventDate: string,
   notes: string,
-  deadlineDate: string | null,
 ): ApplicationEvent {
   return {
     id: `temp-${crypto.randomUUID()}`,
@@ -60,18 +62,19 @@ function buildTempEvent(
     event_date: eventDate,
     notes: notes.trim() || null,
     round_number: eventType === "interview" ? getNextInterviewRound(application.events) : null,
-    deadline_date: eventType === "oa" ? deadlineDate : null,
-    deadline_completed_at: null,
     created_at: new Date().toISOString(),
   };
 }
 
-export function ApplicationDetail({ application, onClose }: Props) {
+export function ApplicationDetail({
+  application,
+  companyWebsiteByName = {},
+  onClose,
+}: Props) {
   // Form state for the "Add event" panel. Reset whenever the user opens a
   // different application so values from the previous detail don't leak in.
   const [eventType, setEventType] = useState<EventType>("oa");
   const [eventDate, setEventDate] = useState<string>(todayISO);
-  const [deadlineDate, setDeadlineDate] = useState("");
   const [notes, setNotes] = useState("");
   const [addingEvent, setAddingEvent] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,7 +101,6 @@ export function ApplicationDetail({ application, onClose }: Props) {
     setOptimisticApplication(normalizeApplicationState(application));
     setEventType("oa");
     setEventDate(todayISO());
-    setDeadlineDate("");
     setNotes("");
     setError(null);
     setSyncState({ status: "idle", label: null });
@@ -194,11 +196,10 @@ export function ApplicationDetail({ application, onClose }: Props) {
     startSync("Adding event");
 
     const previous = optimisticApplication;
-    const cleanedDeadlineDate = eventType === "oa" && deadlineDate ? deadlineDate : null;
-    const tempEvent = buildTempEvent(previous, eventType, eventDate, notes, cleanedDeadlineDate);
+    const tempEvent = buildTempEvent(previous, eventType, eventDate, notes);
     setOptimisticApplication(addEvent(previous, tempEvent));
 
-    const result = await createEvent(previous.id, eventType, eventDate, notes, cleanedDeadlineDate);
+    const result = await createEvent(previous.id, eventType, eventDate, notes);
     if ("error" in result) {
       const message = result.error ?? "Unable to add event.";
       setOptimisticApplication(previous);
@@ -214,7 +215,6 @@ export function ApplicationDetail({ application, onClose }: Props) {
       });
       setNotes("");
       setEventDate(todayISO());
-      setDeadlineDate("");
       finishSync();
     }
     setAddingEvent(false);
@@ -292,59 +292,6 @@ export function ApplicationDetail({ application, onClose }: Props) {
     return null;
   }
 
-  async function handleUpdateEventDeadline(event: ApplicationEvent, nextDeadlineDate: string | null): Promise<string | null> {
-    if (!optimisticApplication) return "Application not loaded";
-
-    const previous = optimisticApplication;
-    startSync(nextDeadlineDate ? "Saving deadline" : "Removing deadline");
-    setOptimisticApplication(applyEventPatch(previous, event.id, {
-      deadline_date: nextDeadlineDate,
-      deadline_completed_at: nextDeadlineDate ? event.deadline_completed_at : null,
-    }));
-
-    const result = await updateEventDeadline(event.id, previous.id, nextDeadlineDate);
-    if ("error" in result) {
-      const message = result.error ?? "Unable to save deadline.";
-      setOptimisticApplication(previous);
-      finishSync(message);
-      return message;
-    }
-
-    const updatedEvent = result.event;
-    setOptimisticApplication((current) => {
-      if (!current || !updatedEvent) return current;
-      return replaceEvent(current, event.id, updatedEvent);
-    });
-    finishSync();
-    return null;
-  }
-
-  async function handleUpdateEventDeadlineCompletion(event: ApplicationEvent, completed: boolean): Promise<string | null> {
-    if (!optimisticApplication) return "Application not loaded";
-
-    const previous = optimisticApplication;
-    startSync(completed ? "Completing deadline" : "Reopening deadline");
-    setOptimisticApplication(applyEventPatch(previous, event.id, {
-      deadline_completed_at: completed ? new Date().toISOString() : null,
-    }));
-
-    const result = await updateEventDeadlineCompletion(event.id, previous.id, completed);
-    if ("error" in result) {
-      const message = result.error ?? "Unable to update deadline.";
-      setOptimisticApplication(previous);
-      finishSync(message);
-      return message;
-    }
-
-    const updatedEvent = result.event;
-    setOptimisticApplication((current) => {
-      if (!current || !updatedEvent) return current;
-      return replaceEvent(current, event.id, updatedEvent);
-    });
-    finishSync();
-    return null;
-  }
-
   if (!mounted || !optimisticApplication) return null;
 
   return createPortal(
@@ -390,6 +337,7 @@ export function ApplicationDetail({ application, onClose }: Props) {
             <DetailHeader
               application={optimisticApplication}
               displayCompany={application?.company ?? optimisticApplication.company}
+              companyWebsiteByName={companyWebsiteByName}
               onSaveField={commitApplicationFields}
               onClose={onClose}
             />
@@ -409,8 +357,6 @@ export function ApplicationDetail({ application, onClose }: Props) {
                     onDeleteEvent={handleDeleteEvent}
                     onUpdateEventDate={handleUpdateEventDate}
                     onUpdateEventNotes={handleUpdateEventNotes}
-                    onUpdateEventDeadline={handleUpdateEventDeadline}
-                    onUpdateEventDeadlineCompletion={handleUpdateEventDeadlineCompletion}
                   />
                 </div>
                 <FloatingSyncToast
@@ -423,13 +369,11 @@ export function ApplicationDetail({ application, onClose }: Props) {
                 application={optimisticApplication}
                 eventType={eventType}
                 eventDate={eventDate}
-                deadlineDate={deadlineDate}
                 notes={notes}
                 addingEvent={addingEvent}
                 error={error}
                 onEventTypeChange={setEventType}
                 onEventDateChange={setEventDate}
-                onDeadlineDateChange={setDeadlineDate}
                 onNotesChange={setNotes}
                 onSubmitEvent={handleAddEvent}
                 onClearError={() => setError(null)}
@@ -447,11 +391,13 @@ export function ApplicationDetail({ application, onClose }: Props) {
 function DetailHeader({
   application,
   displayCompany,
+  companyWebsiteByName,
   onSaveField,
   onClose,
 }: {
   application: Application;
   displayCompany: string;
+  companyWebsiteByName: CompanyWebsiteByName;
   onSaveField: (fields: {
     company?: string;
     role?: string;
@@ -467,7 +413,11 @@ function DetailHeader({
       style={{ borderColor: "var(--rule)" }}
     >
       <div className="flex items-start gap-5">
-        <CompanyLogo company={displayCompany} size={52} />
+        <CompanyLogo
+          company={displayCompany}
+          websiteUrl={lookupCompanyWebsiteUrl(displayCompany, companyWebsiteByName)}
+          size={52}
+        />
 
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-start justify-between gap-4">
@@ -506,13 +456,11 @@ function DetailSidebar({
   application,
   eventType,
   eventDate,
-  deadlineDate,
   notes,
   addingEvent,
   error,
   onEventTypeChange,
   onEventDateChange,
-  onDeadlineDateChange,
   onNotesChange,
   onSubmitEvent,
   onClearError,
@@ -521,13 +469,11 @@ function DetailSidebar({
   application: Application;
   eventType: EventType;
   eventDate: string;
-  deadlineDate: string;
   notes: string;
   addingEvent: boolean;
   error: string | null;
   onEventTypeChange: (type: EventType) => void;
   onEventDateChange: (date: string) => void;
-  onDeadlineDateChange: (date: string) => void;
   onNotesChange: (notes: string) => void;
   onSubmitEvent: (event: React.FormEvent) => void;
   onClearError: () => void;
@@ -575,13 +521,11 @@ function DetailSidebar({
           <AddEventPanel
             eventType={eventType}
             eventDate={eventDate}
-            deadlineDate={deadlineDate}
             notes={notes}
             addingEvent={addingEvent}
             error={error}
             onEventTypeChange={onEventTypeChange}
             onEventDateChange={onEventDateChange}
-            onDeadlineDateChange={onDeadlineDateChange}
             onNotesChange={onNotesChange}
             onSubmitEvent={onSubmitEvent}
             onClearError={onClearError}

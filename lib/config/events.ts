@@ -1,4 +1,5 @@
-import { EventType, Status, ApplicationEvent } from "@/types/application";
+import type { ApplicationEvent, EventType, Status } from "@/types/application";
+import { EVENT_TYPE_COLORS } from "@/lib/config/status-colors";
 
 export const STATUSES: Status[] = ["applied", "oa", "interview", "offer", "rejected"];
 
@@ -12,22 +13,20 @@ export const STATUS_LABELS: Record<Status, string> = {
 
 export const ADDABLE_EVENT_TYPES: EventType[] = ["oa", "interview", "offer", "rejected"];
 
-// Canonical color per event type. Single source of truth for dots, halos,
-// and any other event-tinted UI. Pills/badges use a richer palette derived
-// from these in `components/status-badge.tsx`.
-//   - applied   → muted slate (neutral starting state, on every timeline)
-//   - oa        → blue (first signal)
-//   - interview → purple (deeper engagement)
-//   - offer     → green (positive outcome / success state)
+// Canonical color per event type — see `lib/config/status-colors.ts`.
+//   - applied   → muted slate
+//   - oa        → blue
+//   - interview → orange
+//   - offer     → green
 //   - rejected  → red
-//   - note      → soft gray (annotation, not a status)
+//   - note      → soft gray
 export const EVENT_CONFIG: Record<EventType, { label: string; color: string }> = {
-  applied:   { label: "Applied",   color: "#94a3b8" },
-  oa:        { label: "OA",        color: "#60a5fa" },
-  interview: { label: "Interview", color: "#a78bfa" },
-  offer:     { label: "Offer",     color: "#4ade80" },
-  rejected:  { label: "Rejected",  color: "#f87171" },
-  note:      { label: "Note",      color: "#cbd5e1" },
+  applied:   { label: "Applied",   color: EVENT_TYPE_COLORS.applied },
+  oa:        { label: "OA",        color: EVENT_TYPE_COLORS.oa },
+  interview: { label: "Interview", color: EVENT_TYPE_COLORS.interview },
+  offer:     { label: "Offer",     color: EVENT_TYPE_COLORS.offer },
+  rejected:  { label: "Rejected",  color: EVENT_TYPE_COLORS.rejected },
+  note:      { label: "Note",      color: EVENT_TYPE_COLORS.note },
 };
 
 export function eventLabel(event: ApplicationEvent): string {

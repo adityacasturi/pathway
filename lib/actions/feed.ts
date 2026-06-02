@@ -1,9 +1,8 @@
 "use server";
 
-import { updateTag } from "next/cache";
+import { revalidatePath } from "next/cache";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { formatSupabaseMutationError } from "@/lib/supabase/errors";
-import { clearFeedMemo } from "@/lib/feed/source";
 import { limitServerActionByIp } from "@/lib/rate-limit";
 
 const MAX_POSTING_ID_LENGTH = 300;
@@ -36,13 +35,12 @@ function cleanPostingIds(postingIds: unknown): string[] {
 }
 
 /**
- * Persisted feed interactions, keyed by upstream posting id.
+ * Persisted feed interactions, keyed by posting id (URL hash or legacy upstream id).
  *
- * Intentionally no revalidatePath here. The client tracks dismissed state
- * optimistically (see DiscoverFeed / Home dismissedSet), so revalidating the
- * whole route on every toggle would just re-fetch the feed (including a
- * 20MB SimplifyJobs payload) with no user-visible benefit. Fresh state is
- * picked up on the next navigation / refresh click.
+ * Intentionally no revalidatePath here. The client tracks dismissed/saved state
+ * optimistically, so revalidating Live on every toggle would re-query all open
+ * scraped postings with no user-visible benefit. Fresh state is picked up on
+ * navigation or Refresh.
  */
 
 export async function dismissPosting(postingIds: string | string[]) {
@@ -54,7 +52,6 @@ export async function dismissPosting(postingIds: string | string[]) {
   const cleanedPostingIds = cleanPostingIds(postingIds);
   const primaryPostingId = cleanedPostingIds[0];
   if (!primaryPostingId) return { error: "Invalid posting id." };
-
   const { error } = await supabase
     .from("feed_interactions")
     .upsert(
@@ -128,14 +125,9 @@ export async function unsavePosting(postingIds: string | string[]) {
 }
 
 /**
- * Force-bust the upstream feed cache. Under normal operation fetchFeed()'s
- * underlying fetches are ISR-cached for FEED_REVALIDATE_SECONDS via the
- * "discover-feed" tag; this server action invalidates that tag so the next
- * render pulls fresh data from each upstream source. Pair with a
- * router.refresh() on the client to trigger that render immediately.
- *
- * Uses updateTag (Next 16) rather than revalidateTag so we get
- * read-your-own-writes semantics inside this server action.
+ * Re-read scraped postings from Supabase for Live and Home. Does not run scrape
+ * jobs — ingestion stays on the hourly cron (`/api/cron/scrape-postings`).
+ * Pair with `router.refresh()` on the client.
  */
 export async function refreshFeed() {
   const rateLimit = await limitServerActionByIp("feed:refresh", 10, 600_000);
@@ -144,9 +136,7 @@ export async function refreshFeed() {
   const { user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
 
-  // Bust both caches: Next's fetch-cache (vanshb03) and our in-process memo
-  // (SimplifyJobs, whose raw payload exceeds Next's 2MB limit).
-  updateTag("discover-feed");
-  clearFeedMemo();
+  revalidatePath("/live");
+  revalidatePath("/home");
   return { ok: true };
 }

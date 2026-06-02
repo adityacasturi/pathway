@@ -53,9 +53,6 @@ export function formatSupabaseMutationError(
   if (normalized.includes("invalid rate limit bucket")) {
     return "That action is not rate-limit eligible.";
   }
-  if (normalized.includes("deadlines can only be added to oa events")) {
-    return "Deadlines can only be added to OA events.";
-  }
   if (normalized.includes("notes are too long")) {
     return "Notes are too long.";
   }

@@ -10,6 +10,7 @@ import {
   ACCENT_OPTIONS,
   type AccentColor,
 } from "@/lib/config/accent";
+import { getPageLabel } from "@/lib/config/nav";
 import { motionVariants } from "@/lib/ui/motion";
 import { saveAccentColorPreference } from "@/components/accent-theme-provider";
 import { InlineError } from "@/components/ui/inline-error";
@@ -104,7 +105,7 @@ export function SettingsPage({
     <PageShell>
       <PageMain width="md">
         <motion.div variants={motionVariants.riseIn} initial={false} animate="visible">
-          <PageHeader title="Settings" />
+          <PageHeader title={getPageLabel("/settings")} />
         </motion.div>
 
         <motion.div
@@ -182,8 +183,8 @@ export function SettingsPage({
                     onCheckedChange={onQuickTrackChange}
                     aria-label={
                       quickTrackEnabled
-                        ? "Disable quick track: add from Home or Discover without a confirmation dialog"
-                        : "Enable quick track: add from Home or Discover without a confirmation dialog"
+                        ? "Disable quick track: add from Overview or Companies without a confirmation dialog"
+                        : "Enable quick track: add from Overview or Companies without a confirmation dialog"
                     }
                   />
                 </div>

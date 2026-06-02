@@ -27,34 +27,3 @@ export function IconButton({
     </button>
   );
 }
-
-export function DeadlineActionButton({
-  children,
-  label,
-  onClick,
-  disabled,
-  tone = "neutral",
-}: {
-  children: React.ReactNode;
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-  tone?: "neutral" | "danger";
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={label}
-      title={label}
-      className={`inline-flex size-7 items-center justify-center rounded-md transition-colors duration-150 disabled:opacity-50 ${
-        tone === "danger"
-          ? "text-destructive hover:bg-destructive/10"
-          : "hover:bg-foreground/5"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}

@@ -7,8 +7,8 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter);
   --font-mono: var(--font-jetbrains-mono);
-  --font-heading: var(--font-instrument-serif);
-  --font-display: var(--font-instrument-serif);
+  --font-heading: var(--font-inter);
+  --font-display: var(--font-inter);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -154,9 +154,10 @@
   }
   h1, h2, h3, h4 {
     @apply text-foreground;
-    font-family: var(--font-instrument-serif), Georgia, serif;
-    font-feature-settings: "ss01", "lnum";
-    letter-spacing: 0;
+    font-family: var(--font-heading), system-ui, sans-serif;
+    font-feature-settings: "ss01", "cv11", "liga";
+    font-weight: 500;
+    letter-spacing: -0.03em;
   }
   ::selection {
     background: color-mix(in oklab, var(--primary) 28%, transparent);
@@ -209,13 +210,13 @@
       linear-gradient(180deg, color-mix(in oklab, white 48%, transparent), transparent 34%);
     opacity: 0.55;
   }
-  /* Display / headline type. High-contrast serif for editorial moments. */
+  /* Display headlines — Inter with tight tracking (typography test). */
   .display-serif {
-    font-family: var(--font-instrument-serif), Georgia, serif;
-    font-feature-settings: "ss01", "lnum";
-    letter-spacing: 0;
-    line-height: 0.92;
-    font-weight: 400;
+    font-family: var(--font-display), system-ui, sans-serif;
+    font-feature-settings: "ss01", "cv11", "liga";
+    letter-spacing: -0.035em;
+    line-height: 0.95;
+    font-weight: 500;
   }
   /* Small caps style micro-label. Use sparingly — meta only. */
   .label-micro {
@@ -402,16 +403,50 @@
     color: color-mix(in oklab, var(--muted-foreground) 88%, var(--foreground));
   }
   .season-pill--summer .season-pill-label {
-    color: color-mix(in oklab, oklch(0.48 0.09 155) 78%, var(--muted-foreground));
+    color: oklch(0.44 0.13 155);
   }
   .season-pill--fall .season-pill-label {
-    color: color-mix(in oklab, oklch(0.5 0.11 48) 78%, var(--muted-foreground));
+    color: oklch(0.46 0.14 52);
   }
   .season-pill--spring .season-pill-label {
-    color: color-mix(in oklab, oklch(0.48 0.1 128) 78%, var(--muted-foreground));
+    color: oklch(0.5 0.16 340);
   }
   .season-pill--winter .season-pill-label {
-    color: color-mix(in oklab, oklch(0.48 0.08 240) 78%, var(--muted-foreground));
+    color: oklch(0.46 0.12 245);
+  }
+  .season-pill--summer .season-pill-dot {
+    background: oklch(0.44 0.13 155);
+  }
+  .season-pill--fall .season-pill-dot {
+    background: oklch(0.46 0.14 52);
+  }
+  .season-pill--spring .season-pill-dot {
+    background: oklch(0.5 0.16 340);
+  }
+  .season-pill--winter .season-pill-dot {
+    background: oklch(0.46 0.12 245);
+  }
+
+  /* Application row status — matches toolbar-pill shell, status-colored dot + label. */
+  .status-pill {
+    display: inline-flex;
+    height: 1.75rem;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 9999px;
+    border: 1px solid var(--rule);
+    padding: 0 0.625rem;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+    box-shadow: 0 1px 0 color-mix(in oklab, var(--ink) 3%, transparent);
+  }
+  .status-pill--compact {
+    width: 6.25rem;
+    justify-content: center;
+    padding-inline: 0.5rem;
   }
 
   /* Application detail — anchored add-event form at timeline foot. */
@@ -533,42 +568,13 @@
     background: var(--card);
   }
   .landing-hero {
-    min-height: calc(100vh - 18rem);
-    display: flex;
-    align-items: center;
+    display: block;
     position: relative;
   }
   .landing-hero-copy {
     font-family: var(--font-sans);
     letter-spacing: 0;
     font-weight: 400;
-  }
-  .landing-scroll-cue {
-    position: absolute;
-    left: 50%;
-    bottom: -42px;
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    transform: translateX(-50%);
-    font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: color-mix(in oklab, var(--primary) 58%, var(--muted-foreground));
-    transition:
-      color 160ms var(--motion-ease-standard),
-      opacity 180ms var(--motion-ease-standard),
-      transform 180ms var(--motion-ease-standard);
-  }
-  .landing-scroll-cue:hover {
-    color: var(--foreground);
-    transform: translateX(-50%) translateY(2px);
-  }
-  .landing-scroll-cue-hidden {
-    pointer-events: none;
-    opacity: 0;
-    transform: translateX(-50%) translateY(8px);
   }
   .landing-feature {
     display: grid;
@@ -580,7 +586,7 @@
     border-top: 0;
   }
   .landing-feature-copy {
-    max-width: 28rem;
+    max-width: 34rem;
     align-self: center;
   }
   .landing-feature .label-micro {
@@ -601,7 +607,7 @@
   .landing-offer {
     position: relative;
     display: inline-flex;
-    align-self: flex-start;
+    align-self: center;
     width: fit-content;
     max-width: 100%;
     align-items: center;
@@ -644,18 +650,19 @@
     letter-spacing: 0;
     font-feature-settings: "ss01", "lnum";
   }
-  .landing-hero-title span {
+  .landing-hero-title > span {
     display: block;
+    white-space: nowrap;
   }
   @media (min-width: 1024px) {
     .landing-feature {
-      grid-template-columns: minmax(0, 1fr) minmax(18rem, 0.36fr);
+      grid-template-columns: minmax(0, 1.15fr) minmax(22rem, 0.42fr);
       align-items: center;
-      gap: 48px;
+      gap: 56px;
       padding: 68px 0 82px;
     }
     .landing-feature-reverse {
-      grid-template-columns: minmax(18rem, 0.36fr) minmax(0, 1fr);
+      grid-template-columns: minmax(22rem, 0.42fr) minmax(0, 1.15fr);
     }
     .landing-feature-reverse .landing-product-frame {
       order: 2;
@@ -677,17 +684,90 @@
       margin-left: -160px;
     }
   }
-  .school-logo-img {
-    filter: grayscale(1);
-    opacity: 0.62;
-    transition: filter 200ms var(--motion-ease-smooth),
-                opacity 200ms var(--motion-ease-smooth);
+  .brand-wordmark {
+    display: block;
+    width: auto;
   }
-  .school-logo-img:hover {
-    filter: none;
-    opacity: 1;
+  .landing-offer {
+    position: relative;
+    display: inline-flex;
+    align-self: center;
+    width: fit-content;
+    max-width: 100%;
+    align-items: center;
+    border: 1px solid color-mix(in oklab, var(--primary) 26%, var(--rule));
+    border-radius: 999px;
+    background:
+      linear-gradient(180deg, color-mix(in oklab, white 58%, transparent), transparent),
+      color-mix(in oklab, var(--card) 86%, var(--primary) 8%);
+    padding: 8px 14px;
+    box-shadow: 0 1px 0 color-mix(in oklab, white 80%, transparent) inset;
   }
-
+  .landing-offer-title {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 5px;
+    font-size: 14px;
+    line-height: 1.35;
+    color: var(--muted-foreground);
+  }
+  .landing-offer-title span {
+    min-width: 0;
+  }
+  .landing-offer-title em {
+    color: color-mix(in oklab, var(--primary) 78%, var(--foreground));
+    font-style: normal;
+    font-weight: 500;
+  }
+  .landing-shell {
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-color: var(--background);
+  }
+  .landing-hero-title {
+    font-family: var(--font-display), system-ui, sans-serif;
+    font-style: normal;
+    font-weight: 500;
+    line-height: 0.94;
+    letter-spacing: -0.045em;
+    font-feature-settings: "ss01", "cv11", "liga";
+  }
+  .landing-hero-title > span {
+    display: block;
+    white-space: nowrap;
+  }
+  @media (min-width: 1024px) {
+    .landing-feature {
+      grid-template-columns: minmax(0, 1.15fr) minmax(22rem, 0.42fr);
+      align-items: center;
+      gap: 56px;
+      padding: 68px 0 82px;
+    }
+    .landing-feature-reverse {
+      grid-template-columns: minmax(22rem, 0.42fr) minmax(0, 1.15fr);
+    }
+    .landing-feature-reverse .landing-product-frame {
+      order: 2;
+    }
+    .landing-feature-reverse .landing-feature-copy {
+      order: 1;
+    }
+    .landing-feature-copy {
+      position: sticky;
+      top: 8rem;
+    }
+    .landing-detail-frame {
+      justify-self: start;
+    }
+    .landing-feature-detail {
+      column-gap: 26px;
+    }
+    .landing-feature-detail .landing-feature-copy {
+      margin-left: -160px;
+    }
+  }
   /*
    * Figure — a typographic block: oversized numeral sitting above its
    * lowercase label. Becomes the heart of KPI blocks; swaps the old glossy
@@ -745,8 +825,19 @@
                 transform 200ms var(--motion-ease-smooth),
                 opacity 200ms var(--motion-ease-smooth);
   }
-  .school-logo-track {
-    animation: school-logo-marquee 24s linear infinite;
+  .school-logo-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 28px 36px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .school-logo-img {
+    filter: grayscale(1);
+    opacity: 0.55;
   }
   .school-logo-fade {
     -webkit-mask-image: linear-gradient(
@@ -791,24 +882,522 @@
   .link-edit:hover::after {
     opacity: 0.9;
   }
+
+  /* ============================================================
+   * Landing page (lp-*) — hero, proof, speed, comparison, offers,
+   * final CTA. Reuses the editorial paper tokens used app-wide.
+   * ============================================================ */
+
+  .lp-hero-sub {
+    font-family: var(--font-sans);
+    font-size: 1.0625rem;
+    line-height: 1.6;
+    color: var(--muted-foreground);
+    font-weight: 400;
+  }
+  @media (min-width: 640px) {
+    .lp-hero-sub {
+      font-size: 1.1875rem;
+    }
+  }
+
+  /* Primary / secondary calls to action — larger cousins of the nav
+     buttons, sharing the same glow + sweep treatment. */
+  .lp-cta {
+    position: relative;
+    display: inline-flex;
+    height: 46px;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    overflow: hidden;
+    border-radius: 999px;
+    padding: 0 22px;
+    font-size: 15px;
+    font-weight: 500;
+    white-space: nowrap;
+    transition:
+      background-color 180ms var(--motion-ease-standard),
+      border-color 180ms var(--motion-ease-standard),
+      color 180ms var(--motion-ease-standard);
+  }
+  .lp-cta--primary {
+    background: var(--primary);
+    color: var(--primary-foreground);
+    box-shadow: var(--primary-glow);
+  }
+  .lp-cta--primary::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-110%);
+    background: linear-gradient(90deg, transparent, color-mix(in oklab, white 18%, transparent), transparent);
+    transition: transform 480ms var(--motion-ease-smooth);
+  }
+  .lp-cta--primary:hover {
+    background: color-mix(in oklab, var(--primary) 88%, white 12%);
+  }
+  .lp-cta--primary:hover::before {
+    transform: translateX(110%);
+  }
+  .lp-cta--primary > * {
+    position: relative;
+    z-index: 1;
+  }
+  .lp-cta--secondary {
+    border: 1px solid var(--rule);
+    color: var(--foreground);
+    background:
+      linear-gradient(180deg, color-mix(in oklab, white 62%, transparent), transparent),
+      color-mix(in oklab, var(--card) 92%, var(--ink) 1%);
+  }
+  .lp-cta--secondary:hover {
+    border-color: var(--rule-strong);
+    background: color-mix(in oklab, var(--card) 90%, var(--primary) 5%);
+  }
+
+  .lp-hero-media {
+    width: 100%;
+  }
+  .lp-hero-schools {
+    width: 100%;
+  }
+
+  /* ------------------------------------------------------------------
+   * Landing UI replicas (lp-mock-*) — faithful, scroll-animated copies
+   * of real product surfaces fed with fake data. Each reads as a cropped
+   * screenshot: slim nav rail + page header + clipped, fading body.
+   * ------------------------------------------------------------------ */
+  .lp-mock-screen {
+    position: relative;
+    display: flex;
+    height: 420px;
+    overflow: hidden;
+    border-radius: 6px;
+    border: 1px solid var(--rule);
+    background: var(--paper);
+  }
+  .lp-mock-screen--tall {
+    height: 540px;
+  }
+  @media (max-width: 640px) {
+    .lp-mock-screen {
+      height: 384px;
+    }
+  }
+  .lp-mock-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px 10px;
+  }
+  @media (min-width: 640px) {
+    .lp-mock-head {
+      padding: 16px 20px 10px;
+    }
+  }
+  .lp-mock-title {
+    font-size: 22px;
+    line-height: 1;
+    color: var(--foreground);
+  }
+  .lp-mock-fade {
+    pointer-events: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 52px;
+    background: linear-gradient(to bottom, transparent, var(--paper));
+  }
+  .lp-live-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    background: oklch(0.62 0.14 145);
+    animation: lp-live-pulse 1.9s var(--motion-ease-smooth) infinite;
+  }
+  .lp-feed-flash {
+    animation: lp-feed-flash 1.7s var(--motion-ease-smooth);
+  }
+  .lp-detail-card {
+    height: 462px;
+    box-shadow:
+      0 1px 0 color-mix(in oklab, white 25%, transparent) inset,
+      0 26px 80px -54px color-mix(in oklab, var(--ink) 32%, transparent);
+  }
+  @media (max-width: 768px) {
+    .lp-detail-card {
+      height: auto;
+    }
+  }
+
+  /* Trust band — facts + company marquees below the hero. */
+  .lp-trust {
+    padding-bottom: 4rem;
+  }
+  .lp-trust-companies {
+    margin-top: 4.5rem;
+  }
+
+  /* Section heads — micro label + display headline. */
+  .lp-section-head--center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .lp-section-sub {
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.65;
+    color: var(--muted-foreground);
+    max-width: 40rem;
+  }
+  .lp-section-sub--center {
+    text-align: center;
+  }
+  .lp-accent-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: color-mix(in oklab, var(--primary) 72%, var(--muted-foreground)) !important;
+  }
+
+  /* Speed section — copy beside a tall product video tile. */
+  .lp-speed-grid {
+    display: grid;
+    gap: 40px;
+  }
+  @media (min-width: 1024px) {
+    .lp-speed-grid {
+      grid-template-columns: minmax(0, 1fr) minmax(24rem, 1.05fr);
+      align-items: center;
+      gap: 72px;
+    }
+  }
+  .lp-speed-list {
+    display: flex;
+    flex-direction: column;
+  }
+  .lp-speed-item {
+    padding: 18px 0;
+    border-top: 1px solid var(--rule);
+  }
+  .lp-speed-item:first-child {
+    border-top: 0;
+    padding-top: 0;
+  }
+  .lp-speed-item-title {
+    font-family: var(--font-heading);
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--foreground);
+  }
+  .lp-speed-item-body {
+    margin-top: 5px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--muted-foreground);
+  }
+
+  /* Comparison table — hairline grid, Pathway column gently highlighted. */
+  .compare {
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: var(--card);
+  }
+  .compare-row {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr 1fr;
+    align-items: center;
+    border-top: 1px solid var(--rule);
+  }
+  .compare-row:first-child {
+    border-top: 0;
+  }
+  .compare-row--head {
+    background: color-mix(in oklab, var(--paper-sunk) 70%, var(--card));
+  }
+  .compare-feature {
+    padding: 14px 16px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--foreground);
+  }
+  .compare-row--head .compare-feature {
+    font-weight: 400;
+  }
+  .compare-col {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 10px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted-foreground);
+    border-left: 1px solid var(--rule);
+    min-height: 52px;
+  }
+  .compare-col--pathway {
+    background: color-mix(in oklab, var(--primary) 6%, var(--card));
+    color: var(--foreground);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--primary) 12%, transparent);
+  }
+  .compare-row--head .compare-col--pathway {
+    color: color-mix(in oklab, var(--primary) 80%, var(--foreground));
+    font-weight: 600;
+  }
+  .compare-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+  }
+  .compare-mark--yes {
+    color: var(--primary-foreground);
+    background: var(--primary);
+  }
+  .compare-mark--neutral {
+    color: var(--foreground);
+    background: color-mix(in oklab, var(--ink) 8%, transparent);
+  }
+  .compare-mark--no {
+    color: color-mix(in oklab, var(--muted-foreground) 70%, transparent);
+    background: color-mix(in oklab, var(--ink) 4%, transparent);
+  }
+  .compare-text--muted {
+    color: var(--muted-foreground);
+    font-weight: 400;
+  }
+  .compare-text--strong {
+    color: var(--foreground);
+    font-weight: 600;
+  }
+  @media (max-width: 640px) {
+    .compare-feature {
+      font-size: 12px;
+      padding: 12px 10px;
+    }
+    .compare-col {
+      font-size: 11px;
+      padding: 12px 4px;
+    }
+  }
+
+  /* Offer wall — two opposing logo marquees behind a soft edge fade. */
+  .offer-wall {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    overflow: hidden;
+  }
+  .offer-wall-row {
+    overflow: hidden;
+  }
+  .offer-wall-track {
+    display: flex;
+    width: max-content;
+    align-items: center;
+    gap: 12px;
+    animation: offer-wall-marquee 42s linear infinite;
+  }
+  .offer-wall-track--reverse {
+    animation-direction: reverse;
+  }
+  .offer-wall-chip {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 15px;
+    border-radius: 999px;
+    border: 1px solid var(--rule);
+    background: var(--card);
+  }
+  .offer-wall-chip-logo {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    object-position: center;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .offer-wall-chip-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: color-mix(in oklab, var(--foreground) 80%, transparent);
+    white-space: nowrap;
+  }
+
+  /* Final CTA — a quiet inset panel with a primary wash. */
+  .lp-final-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--radius-2xl);
+    padding: 56px 28px;
+    background:
+      radial-gradient(circle at 50% 0%, color-mix(in oklab, var(--primary) 10%, transparent), transparent 60%),
+      var(--card);
+    box-shadow:
+      0 1px 0 color-mix(in oklab, white 30%, transparent) inset,
+      0 30px 90px -60px color-mix(in oklab, var(--ink) 40%, transparent);
+  }
+  @media (min-width: 768px) {
+    .lp-final-card {
+      padding: 80px 40px;
+    }
+  }
+
+  /* Media placeholder — finished-looking frame for pending image/video. */
+  .media-ph {
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    padding: 8px;
+    background: var(--card);
+    border: 1px solid var(--rule-strong);
+    box-shadow:
+      0 1px 0 color-mix(in oklab, white 25%, transparent) inset,
+      0 26px 80px -54px color-mix(in oklab, var(--ink) 32%, transparent);
+  }
+  .media-ph-surface {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    overflow: hidden;
+    border-radius: 6px;
+    border: 1px solid var(--rule);
+    background:
+      linear-gradient(180deg, color-mix(in oklab, var(--card) 96%, var(--primary) 4%), var(--paper-sunk));
+  }
+  .media-ph-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(to right, color-mix(in oklab, var(--ink) 4%, transparent) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in oklab, var(--ink) 4%, transparent) 1px, transparent 1px);
+    background-size: 38px 38px;
+    mask-image: radial-gradient(circle at 50% 50%, black, transparent 78%);
+    -webkit-mask-image: radial-gradient(circle at 50% 50%, black, transparent 78%);
+  }
+  .media-ph-sheen {
+    position: absolute;
+    inset: 0;
+    transform: translateX(-120%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklab, var(--primary) 14%, transparent),
+      transparent
+    );
+    animation: media-ph-sweep 3.4s var(--motion-ease-smooth) infinite;
+  }
+  .media-ph-body {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    padding: 24px;
+    text-align: center;
+  }
+  .media-ph-play {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 999px;
+    color: var(--primary-foreground);
+    background: var(--primary);
+    box-shadow: var(--primary-glow);
+  }
+  .media-ph-frame-mark {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    border: 1.5px dashed color-mix(in oklab, var(--primary) 40%, var(--rule-strong));
+    background: color-mix(in oklab, var(--primary) 6%, transparent);
+  }
+  .media-ph-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .media-ph-label {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 500;
+    color: color-mix(in oklab, var(--foreground) 80%, transparent);
+  }
+  .media-ph-hint {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.01em;
+    color: var(--muted-foreground);
+  }
+  .media-ph-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 1;
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--rule);
+    background: color-mix(in oklab, var(--card) 80%, transparent);
+    backdrop-filter: blur(4px);
+  }
+}
+
+@keyframes offer-wall-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+@keyframes media-ph-sweep {
+  0% { transform: translateX(-120%); }
+  60%, 100% { transform: translateX(120%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .offer-wall-track,
+  .media-ph-sheen {
+    animation: none !important;
+  }
 }
 
 @keyframes skeleton-sheen {
   to { transform: translateX(110%); }
 }
-@keyframes school-logo-marquee {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-25%); }
+
+@keyframes lp-live-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in oklab, oklch(0.62 0.14 145) 55%, transparent); }
+  70% { box-shadow: 0 0 0 6px color-mix(in oklab, oklch(0.62 0.14 145) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in oklab, oklch(0.62 0.14 145) 0%, transparent); }
 }
+@keyframes lp-feed-flash {
+  0% { background-color: color-mix(in oklab, var(--primary) 18%, transparent); }
+  100% { background-color: transparent; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
     scroll-behavior: auto !important;
-  }
-  .school-logo-track {
-    animation: none !important;
   }
   .skeleton-sheen::after {
     animation: none !important;

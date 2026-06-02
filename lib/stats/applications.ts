@@ -1,4 +1,5 @@
 import type { Application, EventType, Status } from "@/types/application";
+import { STATUS_COLORS } from "@/lib/config/status-colors";
 
 export type FlowNode = {
   id: string;
@@ -30,8 +31,8 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 export const FLOW_COLORS = {
   applied: "#9b9993",
   oa: "#4e83bf",
-  interview: "#8067c9",
-  offer: "#3f9d65",
+  interview: STATUS_COLORS.interview,
+  offer: STATUS_COLORS.offer,
   rejected: "#c6684a",
   pending: "#b5b3aa",
 } as const;

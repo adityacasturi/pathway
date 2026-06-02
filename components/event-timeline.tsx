@@ -4,10 +4,8 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Pencil, Trash2 } from "lucide-react";
 import { ApplicationEvent } from "@/types/application";
-import { getOaDeadlineState } from "@/lib/config/deadlines";
 import { EVENT_CONFIG, eventLabel } from "@/lib/config/events";
 import { IconButton } from "@/components/event-timeline/action-buttons";
-import { DeadlinePanel } from "@/components/event-timeline/deadline-panel";
 import { EventEditForm, EventEditingState } from "@/components/event-timeline/event-edit-form";
 import { OfferDot } from "@/components/status-badge";
 import { InlineError } from "@/components/ui/inline-error";
@@ -20,8 +18,6 @@ interface Props {
   onDeleteEvent: (event: ApplicationEvent) => Promise<string | null>;
   onUpdateEventDate: (event: ApplicationEvent, newDate: string) => Promise<string | null>;
   onUpdateEventNotes: (event: ApplicationEvent, notes: string) => Promise<string | null>;
-  onUpdateEventDeadline: (event: ApplicationEvent, deadlineDate: string | null) => Promise<string | null>;
-  onUpdateEventDeadlineCompletion: (event: ApplicationEvent, completed: boolean) => Promise<string | null>;
 }
 
 type EditingState = EventEditingState | null;
@@ -35,11 +31,8 @@ export function EventTimeline({
   onDeleteEvent,
   onUpdateEventDate,
   onUpdateEventNotes,
-  onUpdateEventDeadline,
-  onUpdateEventDeadlineCompletion,
 }: Props) {
   const [editing, setEditing] = useState<EditingState>(null);
-  const [editingDeadline, setEditingDeadline] = useState<{ id: string; deadlineDate: string } | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null);
@@ -59,7 +52,6 @@ export function EventTimeline({
     if (event.id.startsWith("temp-")) return;
     setConfirmDeleteId(null);
     setRowError(null);
-    setEditingDeadline(null);
     setEditing({
       id: event.id,
       date: event.event_date,
@@ -69,19 +61,7 @@ export function EventTimeline({
 
   function cancelEditing() {
     setEditing(null);
-    setEditingDeadline(null);
     setRowError(null);
-  }
-
-  function startDeadlineEditing(event: ApplicationEvent) {
-    if (event.id.startsWith("temp-")) return;
-    setEditing(null);
-    setConfirmDeleteId(null);
-    setRowError(null);
-    setEditingDeadline({
-      id: event.id,
-      deadlineDate: event.deadline_date ?? "",
-    });
   }
 
   async function saveEditing(event: ApplicationEvent) {
@@ -119,40 +99,7 @@ export function EventTimeline({
     } else {
       setConfirmDeleteId(null);
       if (editing?.id === event.id) setEditing(null);
-      if (editingDeadline?.id === event.id) setEditingDeadline(null);
     }
-    setPendingId(null);
-  }
-
-  async function saveDeadline(event: ApplicationEvent) {
-    if (!editingDeadline || editingDeadline.id !== event.id || pendingId) return;
-    setPendingId(event.id);
-    setRowError(null);
-    const error = await onUpdateEventDeadline(event, editingDeadline.deadlineDate || null);
-    if (error) {
-      setRowError({ id: event.id, message: error });
-    } else {
-      setEditingDeadline(null);
-    }
-    setPendingId(null);
-  }
-
-  async function removeDeadline(event: ApplicationEvent) {
-    if (pendingId) return;
-    setPendingId(event.id);
-    setRowError(null);
-    const error = await onUpdateEventDeadline(event, null);
-    if (error) setRowError({ id: event.id, message: error });
-    else setEditingDeadline(null);
-    setPendingId(null);
-  }
-
-  async function toggleDeadlineCompletion(event: ApplicationEvent, completed: boolean) {
-    if (pendingId) return;
-    setPendingId(event.id);
-    setRowError(null);
-    const error = await onUpdateEventDeadlineCompletion(event, completed);
-    if (error) setRowError({ id: event.id, message: error });
     setPendingId(null);
   }
 
@@ -165,8 +112,6 @@ export function EventTimeline({
           const isEditing = editing?.id === event.id;
           const isPending = pendingId === event.id || event.id.startsWith("temp-");
           const canDelete = event.event_type !== "applied" && !event.id.startsWith("temp-");
-          const deadlineState = getOaDeadlineState({ events }, event);
-          const isDeadlineEditing = editingDeadline?.id === event.id;
 
           return (
             <motion.li
@@ -263,72 +208,52 @@ export function EventTimeline({
                     />
                   ) : (
                     <div>
-                        {event.notes ? (
-                          <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">
-                            {event.notes}
-                          </p>
-                        ) : (
-                          <p className="mt-2 text-xs text-muted-foreground/45">No notes.</p>
+                      {event.notes ? (
+                        <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">
+                          {event.notes}
+                        </p>
+                      ) : (
+                        <p className="mt-2 text-xs text-muted-foreground/45">No notes.</p>
+                      )}
+                      {rowError?.id === event.id && (
+                        <InlineError
+                          message={rowError.message}
+                          onRetry={() => setRowError(null)}
+                          className="mt-3"
+                        />
+                      )}
+                      <AnimatePresence initial={false}>
+                        {confirmDeleteId === event.id && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 2 }}
+                            transition={transitions.timelineFade}
+                            className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2"
+                          >
+                            <p className="text-xs text-destructive">Delete this event?</p>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteId(null)}
+                                disabled={isPending}
+                                className="h-7 px-2 text-[10px] uppercase tracking-wider text-muted-foreground hover:text-foreground disabled:opacity-50"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void confirmDelete(event)}
+                                disabled={isPending}
+                                className="inline-flex h-7 items-center gap-1 rounded-lg bg-destructive/15 px-2.5 text-[10px] uppercase tracking-wider text-destructive hover:bg-destructive/25 disabled:opacity-50"
+                              >
+                                {isPending && <InlineSpinner />}
+                                Delete
+                              </button>
+                            </div>
+                          </motion.div>
                         )}
-                        {rowError?.id === event.id && (
-                          <InlineError
-                            message={rowError.message}
-                            onRetry={() => setRowError(null)}
-                            className="mt-3"
-                          />
-                        )}
-                        {event.event_type === "oa" && (
-                          <DeadlinePanel
-                            event={event}
-                            state={deadlineState}
-                            editing={isDeadlineEditing ? editingDeadline : null}
-                            pending={isPending}
-                            onStartEdit={() => startDeadlineEditing(event)}
-                            onDraftChange={(deadlineDate) =>
-                              setEditingDeadline((current) =>
-                                current?.id === event.id ? { ...current, deadlineDate } : current,
-                              )
-                            }
-                            onSave={() => void saveDeadline(event)}
-                            onCancel={() => setEditingDeadline(null)}
-                            onRemove={() => void removeDeadline(event)}
-                            onToggleComplete={(completed) =>
-                              void toggleDeadlineCompletion(event, completed)
-                            }
-                          />
-                        )}
-                        <AnimatePresence initial={false}>
-                          {confirmDeleteId === event.id && (
-                            <motion.div
-                              initial={{ opacity: 0, y: 4 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: 2 }}
-                              transition={transitions.timelineFade}
-                              className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2"
-                            >
-                              <p className="text-xs text-destructive">Delete this event?</p>
-                              <div className="flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => setConfirmDeleteId(null)}
-                                  disabled={isPending}
-                                  className="h-7 px-2 text-[10px] uppercase tracking-wider text-muted-foreground hover:text-foreground disabled:opacity-50"
-                                >
-                                  Cancel
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => void confirmDelete(event)}
-                                  disabled={isPending}
-                                  className="inline-flex h-7 items-center gap-1 rounded-lg bg-destructive/15 px-2.5 text-[10px] uppercase tracking-wider text-destructive hover:bg-destructive/25 disabled:opacity-50"
-                                >
-                                  {isPending && <InlineSpinner />}
-                                  Delete
-                                </button>
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
+                      </AnimatePresence>
                     </div>
                   )}
                 </div>

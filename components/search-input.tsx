@@ -1,5 +1,6 @@
 "use client";
 
+import { forwardRef } from "react";
 import { Search, X } from "lucide-react";
 
 interface Props {
@@ -9,9 +10,12 @@ interface Props {
   onFocusChange?: (focused: boolean) => void;
 }
 
-export function SearchInput({ value, onChange, placeholder, onFocusChange }: Props) {
+export const SearchInput = forwardRef<HTMLDivElement, Props>(function SearchInput(
+  { value, onChange, placeholder, onFocusChange },
+  ref,
+) {
   return (
-    <div className="relative">
+    <div ref={ref} className="relative">
       <Search
         className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
         strokeWidth={1.8}
@@ -39,4 +43,4 @@ export function SearchInput({ value, onChange, placeholder, onFocusChange }: Pro
       )}
     </div>
   );
-}
+});

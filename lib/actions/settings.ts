@@ -88,7 +88,7 @@ export async function updateQuickTrackEnabled(enabled: boolean) {
 
   revalidatePath("/settings");
   revalidatePath("/home");
-  revalidatePath("/discover");
+  revalidatePath("/live");
 
   return { ok: true, quickTrackEnabled: enabled };
 }

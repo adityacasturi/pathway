@@ -2,6 +2,7 @@
 
 import { EventType, Status } from "@/types/application";
 import { STATUS_LABELS } from "@/lib/config/events";
+import { EVENT_TYPE_COLORS, STATUS_COLORS } from "@/lib/config/status-colors";
 
 /*
  * Status is expressed as a flat, editorial stamp — a restrained tint plus a
@@ -18,16 +19,20 @@ type Tone = {
 };
 
 const STATUS_TONES: Record<Status, Tone> = {
-  applied:   { color: "oklch(0.55 0.02 60)",  tintPercent: 6  },
-  oa:        { color: "oklch(0.55 0.08 240)", tintPercent: 8  },
-  interview: { color: "oklch(0.52 0.1 280)",  tintPercent: 8  },
-  offer:     { color: "oklch(0.68 0.18 150)", tintPercent: 12 },
-  rejected:  { color: "oklch(0.55 0.14 30)",  tintPercent: 8  },
+  applied:   { color: STATUS_COLORS.applied,   tintPercent: 6  },
+  oa:        { color: STATUS_COLORS.oa,        tintPercent: 8  },
+  interview: { color: STATUS_COLORS.interview, tintPercent: 8  },
+  offer:     { color: STATUS_COLORS.offer,     tintPercent: 12 },
+  rejected:  { color: STATUS_COLORS.rejected,  tintPercent: 8  },
 };
 
 const EVENT_TONES: Record<EventType, Tone> = {
-  ...STATUS_TONES,
-  note: { color: "oklch(0.55 0.02 60)", tintPercent: 6 },
+  applied:   { color: EVENT_TYPE_COLORS.applied,   tintPercent: 6 },
+  oa:        { color: EVENT_TYPE_COLORS.oa,        tintPercent: 8 },
+  interview: { color: EVENT_TYPE_COLORS.interview, tintPercent: 8 },
+  offer:     { color: EVENT_TYPE_COLORS.offer,     tintPercent: 12 },
+  rejected:  { color: EVENT_TYPE_COLORS.rejected,  tintPercent: 8 },
+  note:      { color: EVENT_TYPE_COLORS.note,      tintPercent: 6 },
 };
 
 function toneStyle(tone: Tone): React.CSSProperties {
@@ -38,6 +43,16 @@ function toneStyle(tone: Tone): React.CSSProperties {
   };
 }
 
+/** Card / panel highlight for the active pipeline stage filter. */
+export function statusSurfaceStyle(status: Status): React.CSSProperties {
+  const tone = STATUS_TONES[status];
+  return {
+    backgroundColor: `color-mix(in oklab, ${tone.color} 14%, var(--card))`,
+    borderColor: `color-mix(in oklab, ${tone.color} 32%, var(--rule))`,
+    boxShadow: `inset 0 1px 0 color-mix(in oklab, ${tone.color} 10%, transparent)`,
+  };
+}
+
 export function StatusBadge({ status, variant = "default" }: { status: Status; variant?: "default" | "compact" }) {
   const tone = STATUS_TONES[status];
   const label = STATUS_LABELS[status];
@@ -45,21 +60,17 @@ export function StatusBadge({ status, variant = "default" }: { status: Status; v
 
   if (variant === "compact") {
     return (
-      <span
-        className="inline-flex min-w-[5.75rem] items-center justify-center rounded-[3px] border px-1.5 py-[2px] font-mono text-[9.5px] font-medium uppercase tracking-[0.14em]"
-        style={baseStyle}
-      >
-        {label}
+      <span className="status-pill status-pill--compact" style={baseStyle}>
+        <StatusDot status={status} size={6} />
+        <span>{label}</span>
       </span>
     );
   }
 
   return (
-    <span
-      className="inline-flex items-center justify-center rounded-[3px] border px-2 py-[3px] font-mono text-[10.5px] font-medium uppercase tracking-[0.12em]"
-      style={{ ...baseStyle, minWidth: 84 }}
-    >
-      {label}
+    <span className="status-pill h-8 gap-1.5 px-3 text-[13px]" style={{ ...baseStyle, minWidth: 84 }}>
+      <StatusDot status={status} size={7} />
+      <span>{label}</span>
     </span>
   );
 }

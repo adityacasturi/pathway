@@ -30,11 +30,14 @@ type PageSectionProps = {
   rule?: boolean;
 };
 
-const pageWidths = {
+export const pageWidths = {
   md: "max-w-3xl",
-  lg: "max-w-6xl",
-  xl: "max-w-7xl",
-};
+  lg: "max-w-7xl",
+  xl: "max-w-[100rem]",
+} as const;
+
+/** Horizontal padding aligned with {@link PageMain}. */
+export const pageMainPadding = "px-5 sm:px-7 lg:px-9";
 
 export function PageShell({ children, className }: PageShellProps) {
   return (
@@ -48,7 +51,8 @@ export function PageMain({ children, className, width = "lg" }: PageMainProps) {
   return (
     <main
       className={cn(
-        "mx-auto px-6 pb-24 pt-20 sm:px-10 sm:pt-21 lg:px-16 lg:pt-26",
+        "mx-auto w-full pb-20 pt-20 sm:pt-21 lg:pt-24",
+        pageMainPadding,
         pageWidths[width],
         className,
       )}

@@ -2,11 +2,54 @@
 
 import { memo, useCallback, useMemo } from "react";
 import { Bookmark, Check, Plus, RotateCcw, X } from "lucide-react";
-import { formatDistanceToNowStrict } from "date-fns";
+import { formatPostingRelativeTime } from "@/lib/feed/posted-display";
 import { CompanyLogo } from "@/components/company-logo";
 import { MetaSeparator, PostingMetaLine } from "@/components/posting-meta-line";
+import { formatCompactLocationSegments } from "@/lib/feed/us-locations";
 import { safeExternalHref } from "@/lib/url";
+import { cn } from "@/lib/utils";
 import type { FeedPosting } from "@/lib/feed/source";
+
+type PostingRowDensity = "compact" | "comfortable";
+type PostingRowVariant = "card" | "flat";
+
+const ROW_DENSITY: Record<
+  PostingRowDensity,
+  {
+    shell: string;
+    logo: number;
+    title: string;
+    titleGap: string;
+    location: string;
+    age: string;
+    iconButton: string;
+    iconSize: number;
+    trackedIconSize: number;
+  }
+> = {
+  compact: {
+    shell: "gap-3 px-3 py-2.5",
+    logo: 30,
+    title: "text-[14px]",
+    titleGap: "mt-1",
+    location: "text-[12px]",
+    age: "text-[11px]",
+    iconButton: "size-8",
+    iconSize: 14,
+    trackedIconSize: 13,
+  },
+  comfortable: {
+    shell: "gap-4 px-4 py-3.5",
+    logo: 36,
+    title: "text-[15px]",
+    titleGap: "mt-1.5",
+    location: "text-[13px]",
+    age: "text-[12px]",
+    iconButton: "size-9",
+    iconSize: 15,
+    trackedIconSize: 14,
+  },
+};
 
 interface RowProps {
   posting: FeedPosting;
@@ -14,12 +57,15 @@ interface RowProps {
   saved: boolean;
   tracked: boolean;
   isNew: boolean;
+  density?: PostingRowDensity;
+  variant?: PostingRowVariant;
   pending?: boolean;
   savePending?: boolean;
   trackPending?: boolean;
+  contextLabel?: string;
   onTrack: (posting: FeedPosting) => void | Promise<void>;
   onToggleSaved: (posting: FeedPosting, next: boolean) => void;
-  onToggleDismiss: (posting: FeedPosting, next: boolean) => void;
+  onToggleDismiss?: (posting: FeedPosting, next: boolean) => void;
 }
 
 export const PostingRow = memo(function PostingRow({
@@ -28,99 +74,149 @@ export const PostingRow = memo(function PostingRow({
   saved,
   tracked,
   isNew,
+  density = "compact",
+  variant = "card",
   pending,
   savePending,
   trackPending,
+  contextLabel,
   onTrack,
   onToggleSaved,
   onToggleDismiss,
 }: RowProps) {
-  const posted = useMemo(() => {
-    if (!posting.datePosted) return "";
-    try {
-      return formatDistanceToNowStrict(new Date(posting.datePosted * 1000), { addSuffix: true })
-        .replace("about ", "");
-    } catch {
-      return "";
-    }
-  }, [posting.datePosted]);
-
-  const locationLabel = useMemo(() => formatLocations(posting.locations), [posting.locations]);
+  const rowStyle = ROW_DENSITY[density];
+  const ageLabel = useMemo(
+    () => formatPostingRelativeTime(posting.postedDisplay),
+    [posting.postedDisplay],
+  );
+  const locationLabel = useMemo(
+    () => formatCompactLocationSegments(posting.locations, 2),
+    [posting.locations],
+  );
   const postingHref = useMemo(() => safeExternalHref(posting.url), [posting.url]);
+  const showAside = Boolean(locationLabel || ageLabel);
 
   const handleTrack = useCallback(() => onTrack(posting), [onTrack, posting]);
   const handleSave = useCallback(
     () => onToggleSaved(posting, !saved),
     [onToggleSaved, posting, saved],
   );
-  const handleToggle = useCallback(
-    () => onToggleDismiss(posting, !dismissed),
-    [onToggleDismiss, posting, dismissed],
-  );
+  const handleToggle = useCallback(() => {
+    onToggleDismiss?.(posting, !dismissed);
+  }, [onToggleDismiss, posting, dismissed]);
 
   return (
     <li
       data-testid="posting-row"
       data-posting-id={posting.id}
-      className={`group smooth-surface hover:bg-[color-mix(in_oklab,var(--ink)_3%,transparent)] ${
-        dismissed ? "opacity-55 saturate-50" : ""
-      }`}
+      className={dismissed ? "opacity-55 saturate-50" : undefined}
     >
-      <div className="grid min-h-[72px] grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-2 py-4 md:grid-cols-[2rem_minmax(0,1fr)_12rem_6rem_auto]">
-        <CompanyLogo company={posting.company} size={30} />
+      <div
+        className={cn(
+          "flex items-center transition-colors duration-150",
+          variant === "card"
+            ? cn("rounded-lg border border-border bg-card hover:bg-muted/30", rowStyle.shell)
+            : cn("gap-2.5 px-1 py-2 hover:bg-[color-mix(in_oklab,var(--ink)_3%,transparent)]"),
+        )}
+      >
+        <CompanyLogo
+          company={posting.company}
+          websiteUrl={posting.companyWebsiteUrl}
+          size={rowStyle.logo}
+          lazy
+        />
 
         <div className="min-w-0 flex-1">
           <PostingMetaLine company={posting.company} season={posting.season}>
+            {contextLabel ? (
+              <>
+                <MetaSeparator />
+                <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">
+                  {contextLabel}
+                </span>
+              </>
+            ) : null}
             {isNew && !tracked ? (
               <>
                 <MetaSeparator />
-                <span
-                  className="inline-flex shrink-0 items-center font-mono text-[9px] font-medium uppercase tracking-[0.16em]"
-                  style={{ color: "var(--primary)" }}
-                >
+                <span className="font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-primary">
                   New
                 </span>
               </>
             ) : null}
           </PostingMetaLine>
-          <div className="mt-1 flex items-center gap-2">
+          <div className={cn("min-w-0", rowStyle.titleGap)}>
             {postingHref ? (
               <a
                 href={postingHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="truncate text-[14px] font-medium text-foreground decoration-muted-foreground/40 underline-offset-4 transition-colors duration-150 hover:text-primary"
+                className={cn(
+                  "block truncate font-medium text-foreground decoration-muted-foreground/40 underline-offset-4 transition-colors duration-150 hover:text-primary hover:underline",
+                  rowStyle.title,
+                )}
               >
                 {posting.title}
               </a>
             ) : (
-              <span className="truncate text-[14px] font-medium text-foreground">
+              <p className={cn("truncate font-medium text-foreground", rowStyle.title)}>
                 {posting.title}
-              </span>
+              </p>
             )}
           </div>
+          {showAside ? (
+            <p className={cn("mt-1 truncate text-muted-foreground md:hidden", rowStyle.location)}>
+              {[locationLabel, ageLabel].filter(Boolean).join(" · ")}
+            </p>
+          ) : null}
         </div>
 
-        <div className="hidden min-w-0 text-[12px] text-muted-foreground md:block truncate">
-          {locationLabel}
-        </div>
+        {showAside ? (
+          <div className="hidden min-w-0 shrink-0 flex-col items-end gap-0.5 text-right md:flex md:max-w-[11rem]">
+            {locationLabel ? (
+              <span
+                className={cn(
+                  "w-full truncate font-normal text-foreground/72",
+                  rowStyle.location,
+                )}
+              >
+                {locationLabel}
+              </span>
+            ) : null}
+            {ageLabel ? (
+              <span
+                className={cn(
+                  "w-full truncate tabular-nums text-muted-foreground",
+                  rowStyle.age,
+                )}
+              >
+                {ageLabel}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
 
-        <div className="hidden text-right label-meta tabular whitespace-nowrap md:block">
-          {posted}
-        </div>
-
-        <div className="flex shrink-0 items-center justify-end gap-0.5">
+        <div
+          className={cn(
+            "flex shrink-0 items-center rounded-lg border border-border/80 bg-muted/35 p-0.5",
+            density === "comfortable" ? "gap-0.5" : "gap-px",
+          )}
+          role="group"
+          aria-label="Posting actions"
+        >
           {tracked ? (
             <span
               aria-label="Tracked"
               title="Already in your pipeline"
-              className="inline-flex size-7 items-center justify-center rounded-full"
+              className={cn(
+                "inline-flex items-center justify-center rounded-md text-primary",
+                rowStyle.iconButton,
+              )}
               style={{
-                color: "var(--primary)",
-                background: "color-mix(in oklab, var(--primary) 10%, transparent)",
+                background: "color-mix(in oklab, var(--primary) 12%, transparent)",
               }}
             >
-              <Check size={13} strokeWidth={2.5} />
+              <Check size={rowStyle.trackedIconSize} strokeWidth={2.5} />
             </span>
           ) : (
             <IconButton
@@ -128,8 +224,9 @@ export const PostingRow = memo(function PostingRow({
               onClick={handleTrack}
               disabled={trackPending}
               tone="positive"
+              className={rowStyle.iconButton}
             >
-              <Plus size={14} strokeWidth={1.85} />
+              <Plus size={rowStyle.iconSize} strokeWidth={1.85} />
             </IconButton>
           )}
           <IconButton
@@ -137,21 +234,29 @@ export const PostingRow = memo(function PostingRow({
             onClick={handleSave}
             disabled={savePending}
             tone={saved ? "saved" : "neutral"}
+            className={rowStyle.iconButton}
           >
             <Bookmark
-              size={14}
+              size={rowStyle.iconSize}
               strokeWidth={1.85}
               fill={saved ? "currentColor" : "none"}
             />
           </IconButton>
-          <IconButton
-            label={dismissed ? "Restore" : "Dismiss"}
-            onClick={handleToggle}
-            disabled={pending}
-            tone={dismissed ? "neutral" : "negative"}
-          >
-            {dismissed ? <RotateCcw size={14} strokeWidth={1.85} /> : <X size={14} strokeWidth={1.85} />}
-          </IconButton>
+          {onToggleDismiss ? (
+            <IconButton
+              label={dismissed ? "Restore" : "Dismiss"}
+              onClick={handleToggle}
+              disabled={pending}
+              tone={dismissed ? "neutral" : "negative"}
+              className={rowStyle.iconButton}
+            >
+              {dismissed ? (
+                <RotateCcw size={rowStyle.iconSize} strokeWidth={1.85} />
+              ) : (
+                <X size={rowStyle.iconSize} strokeWidth={1.85} />
+              )}
+            </IconButton>
+          ) : null}
         </div>
       </div>
     </li>
@@ -162,13 +267,13 @@ type IconButtonTone = "positive" | "negative" | "neutral" | "saved";
 
 const TONE_CLASSES: Record<IconButtonTone, string> = {
   positive:
-    "text-muted-foreground/60 hover:text-[color:var(--primary)] hover:bg-[color-mix(in_oklab,var(--primary)_10%,transparent)]",
+    "text-foreground/55 hover:text-[color:var(--primary)] hover:bg-[color-mix(in_oklab,var(--primary)_12%,transparent)]",
   negative:
-    "text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10",
+    "text-foreground/55 hover:text-destructive hover:bg-destructive/10",
   neutral:
-    "text-muted-foreground/60 hover:text-foreground hover:bg-[color-mix(in_oklab,var(--ink)_6%,transparent)]",
+    "text-foreground/55 hover:text-foreground hover:bg-[color-mix(in_oklab,var(--ink)_8%,transparent)]",
   saved:
-    "text-[color:var(--primary)] bg-[color-mix(in_oklab,var(--primary)_10%,transparent)] hover:bg-[color-mix(in_oklab,var(--primary)_14%,transparent)]",
+    "text-[color:var(--primary)] bg-[color-mix(in_oklab,var(--primary)_12%,transparent)] hover:bg-[color-mix(in_oklab,var(--primary)_16%,transparent)]",
 };
 
 function IconButton({
@@ -177,12 +282,14 @@ function IconButton({
   onClick,
   disabled,
   tone,
+  className,
 }: {
   children: React.ReactNode;
   label: string;
   onClick: () => void;
   disabled?: boolean;
   tone: IconButtonTone;
+  className?: string;
 }) {
   return (
     <button
@@ -191,15 +298,14 @@ function IconButton({
       aria-label={label}
       title={label}
       disabled={disabled}
-      className={`inline-flex size-8 items-center justify-center rounded-full leading-none smooth-surface disabled:cursor-not-allowed disabled:opacity-50 [&>svg]:block [&>svg]:shrink-0 ${TONE_CLASSES[tone]}`}
+      className={cn(
+        "inline-flex items-center justify-center rounded-md leading-none smooth-surface disabled:cursor-not-allowed disabled:opacity-50 [&>svg]:block [&>svg]:shrink-0",
+        className ?? "size-8",
+        TONE_CLASSES[tone],
+      )}
     >
       {children}
     </button>
   );
 }
 
-function formatLocations(locations: string[]): string {
-  if (locations.length === 0) return "—";
-  if (locations.length <= 2) return locations.join(" · ");
-  return `${locations.slice(0, 2).join(" · ")} +${locations.length - 2}`;
-}
