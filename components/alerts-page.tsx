@@ -228,7 +228,7 @@ export function AlertsPage({
           variants={motionVariants.fadeIn}
           initial={false}
           animate="visible"
-          className="max-w-5xl space-y-10"
+          className="space-y-10"
         >
           <EmailToggleRow
             title="Daily digest"

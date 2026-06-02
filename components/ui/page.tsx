@@ -30,10 +30,13 @@ type PageSectionProps = {
   rule?: boolean;
 };
 
+/** Centered content column (~65% of viewport). Tweak via `--page-content-width` in globals.css. */
+export const pageContentWidthClass = "w-[var(--page-content-width)] max-w-full";
+
 export const pageWidths = {
-  md: "max-w-3xl",
-  lg: "max-w-7xl",
-  xl: "max-w-[100rem]",
+  md: pageContentWidthClass,
+  lg: pageContentWidthClass,
+  xl: pageContentWidthClass,
 } as const;
 
 /** Horizontal padding aligned with {@link PageMain}. */
@@ -51,7 +54,7 @@ export function PageMain({ children, className, width = "lg" }: PageMainProps) {
   return (
     <main
       className={cn(
-        "mx-auto w-full pb-20 pt-20 sm:pt-21 lg:pt-24",
+        "mx-auto pb-20 pt-20 sm:pt-21 lg:pt-24",
         pageMainPadding,
         pageWidths[width],
         className,

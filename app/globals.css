@@ -40,6 +40,9 @@
 }
 
 :root {
+  /* Centered app column — ~65% of the viewport on every screen size. */
+  --page-content-width: 65vw;
+
   --motion-duration-fast: 140ms;
   --motion-duration-base: 240ms;
   --motion-duration-slow: 420ms;

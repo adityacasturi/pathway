@@ -246,7 +246,7 @@ export function AlertsSkeleton() {
           <SkeletonBlock className="mt-3 h-3.5 w-80 rounded" />
         </div>
 
-        <div className="max-w-5xl space-y-10">
+        <div className="space-y-10">
           <AlertsToggleRowSkeleton />
 
           <section className="space-y-8">
