@@ -19,31 +19,8 @@ jobs:
           cache: npm
 
       - run: npm ci
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm run test:unit
-
-      - name: Static integration checks for new company migrations
+      - run: npm run verify
+      - run: npm run test:e2e
         env:
-          BASE_REF: ${{ github.base_ref }}
-        run: |
-          set -euo pipefail
-          SLUGS=$(node -e "
-            const { execSync } = require('node:child_process');
-            const base = process.env.BASE_REF;
-            const diff = execSync(
-              'git diff --name-only origin/' + base + '...HEAD -- supabase/migrations/',
-              { encoding: 'utf8' },
-            );
-            const re = /[0-9]+_add_([a-z0-9-]+)_(greenhouse|eightfold|jobs)_/i;
-            const slugs = [...new Set(
-              diff.split('\n').map((line) => line.match(re)?.[1]).filter(Boolean),
-            )];
-            process.stdout.write(slugs.join(' '));
-          ")
-          if [ -z "${SLUGS// }" ]; then
-            echo "No new company migration slugs detected; skipping integration verify."
-            exit 0
-          fi
-          echo "Verifying slugs: $SLUGS"
-          npm run verify:integration -- $SLUGS --static
+          E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
+          E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}

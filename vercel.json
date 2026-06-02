@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/scrape-postings",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/send-alert-digests",
+      "schedule": "0 14 * * *"
+    }
+  ]
+}

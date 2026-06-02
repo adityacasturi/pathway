@@ -22,6 +22,10 @@
 # production
 /build
 
+# discover onboarding queue (local sqlite state)
+/discover-queue/queue.sqlite
+/discover-queue/queue.sqlite-*
+
 # misc
 .DS_Store
 *.pem

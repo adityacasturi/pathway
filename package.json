@@ -2,6 +2,14 @@
   "name": "pathway",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
+  "imports": {
+    "@/*": [
+      "./*",
+      "./*.ts",
+      "./*.tsx"
+    ]
+  },
   "engines": {
     "node": "22.x"
   },
@@ -11,15 +19,25 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test:unit": "node --test --experimental-strip-types --experimental-specifier-resolution=node tests/unit/*.test.ts",
+    "test:unit": "node tests/run-unit.mjs",
+    "test:unit:coverage": "node tests/run-unit.mjs --coverage",
+    "test:preprod": "npm run typecheck && npm audit --audit-level=moderate && npm run test:unit && npm run build",
+    "test:preprod:full": "npm run lint && npm run test:preprod && npm run test:e2e",
+    "scrape": "node --disable-warning=ExperimentalWarning --experimental-strip-types --experimental-specifier-resolution=node scripts/scrape.ts",
+    "scrape:audit": "node --disable-warning=ExperimentalWarning --experimental-strip-types --experimental-specifier-resolution=node scripts/audit-scrape-quality.ts",
+    "scrape:audit-adapters": "node --disable-warning=ExperimentalWarning --experimental-strip-types --experimental-specifier-resolution=node scripts/audit-adapter-patterns.ts",
+    "discover-queue": "node --disable-warning=ExperimentalWarning --experimental-strip-types --experimental-specifier-resolution=node scripts/discover-queue.ts",
+    "landing-logos": "node --disable-warning=ExperimentalWarning --experimental-strip-types --experimental-specifier-resolution=node scripts/download-landing-logos.ts",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "verify": "npm run lint && npm run typecheck && npm audit --audit-level=moderate && npm run build"
+    "verify": "npm run lint && npm run test:preprod"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.0",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.103.3",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.38.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "d3-sankey": "^0.12.3",
@@ -37,7 +55,7 @@
     "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4",
     "@types/d3-sankey": "^0.12.5",
-    "@types/node": "^20",
+    "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
