@@ -1,7 +1,11 @@
 import { DIGEST_MAX_POSTINGS } from "@/lib/config/alerts";
 import type { AlertPostingCandidate } from "@/lib/alerts/types";
 import { getSiteUrl } from "@/lib/alerts/site-url";
-import { escapeHtml, renderAlertEmailLayout } from "@/lib/email/templates/alert-email-layout";
+import {
+  buildCompanyLogoUrl,
+  escapeHtml,
+  renderAlertEmailLayout,
+} from "@/lib/email/templates/alert-email-layout";
 
 export function buildDigestAlertSubject(count: number): string {
   const label = count === 1 ? "internship" : "internships";
@@ -23,20 +27,30 @@ export function buildDigestAlertHtml(
 
   const sections = Array.from(grouped.entries())
     .map(([companyName, companyPostings]) => {
+      const firstPosting = companyPostings[0];
+      const logoUrl = firstPosting ? buildCompanyLogoUrl(firstPosting.companySlug) : null;
       const rows = companyPostings
         .map((posting) => {
           const meta = [posting.season, posting.location?.trim()].filter(Boolean).join(" | ");
-          return `<li style="margin:0 0 10px;line-height:1.5;color:#374151;">
-            <a href="${escapeHtml(posting.postingUrl)}" style="color:#111827;text-decoration:none;font-weight:700;">${escapeHtml(posting.roleName)}</a>
-            ${meta ? `<span style="color:#6b7280;"> (${escapeHtml(meta)})</span>` : ""}
-          </li>`;
+          return `<p style="margin:0 0 8px;font-size:14px;line-height:1.45;color:#111827;">
+            <a href="${escapeHtml(posting.postingUrl)}" style="color:#111827;text-decoration:underline;font-weight:600;">${escapeHtml(posting.roleName)}</a>${meta ? `<span style="color:#6b7280;"> | ${escapeHtml(meta)}</span>` : ""}
+          </p>`;
         })
         .join("");
 
-      return `<div style="margin:0 0 20px;">
-        <p style="margin:0 0 8px;font-size:14px;font-weight:700;color:#111827;">${escapeHtml(companyName)}</p>
-        <ul style="margin:0;padding:0 0 0 18px;font-size:14px;">${rows}</ul>
-      </div>`;
+      const logoHtml = logoUrl
+        ? `<img src="${escapeHtml(logoUrl)}" width="32" height="32" alt="" style="display:block;width:32px;height:32px;border-radius:8px;border:1px solid #e5e7eb;object-fit:contain;">`
+        : `<span style="display:block;width:32px;height:32px;border-radius:8px;background:#f3f4f6;border:1px solid #e5e7eb;"></span>`;
+
+      return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0;border-collapse:collapse;">
+        <tr>
+          <td width="40" valign="middle" style="padding:0 10px 8px 0;">${logoHtml}</td>
+          <td valign="middle" style="padding:0 0 8px 0;">
+            <span style="display:block;font-size:16px;line-height:1.25;font-weight:650;color:#111827;">${escapeHtml(companyName)}</span>
+          </td>
+        </tr>
+      </table>
+      <div style="margin:0 0 22px;">${rows}</div>`;
     })
     .join("");
 
@@ -47,8 +61,8 @@ export function buildDigestAlertHtml(
 
   const liveUrl = `${getSiteUrl()}/live`;
   const bodyHtml = `
-    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#374151;">
-      New internships today from companies and sectors you follow.
+    <p style="margin:0 0 18px;font-size:14px;line-height:1.55;color:#4b5563;">
+      New roles from companies and sectors you follow.
     </p>
     ${sections}
     ${overflow}

@@ -18,6 +18,10 @@ export function buildUnsubscribeUrl(userId: string): string | null {
   return `${getSiteUrl()}/alerts/unsubscribe?token=${encodeURIComponent(token)}`;
 }
 
+export function buildCompanyLogoUrl(companySlug: string): string {
+  return `${getSiteUrl()}/company-logos/${encodeURIComponent(companySlug)}.png`;
+}
+
 export function renderAlertEmailLayout(options: {
   userId: string;
   title: string;
@@ -38,7 +42,7 @@ export function renderAlertEmailLayout(options: {
 
   return `<!DOCTYPE html>
 <html lang="en">
-  <body style="margin:0;padding:0;background:#f5f5f3;font-family:Arial,Helvetica,sans-serif;color:#111827;">
+  <body style="margin:0;padding:0;background:#f5f5f3;font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;color:#111827;">
     <div style="display:none;max-height:0;overflow:hidden;color:#f5f5f3;font-size:1px;line-height:1px;">
       Pathway found new internships matching your alerts.
     </div>
@@ -47,8 +51,8 @@ export function renderAlertEmailLayout(options: {
         <img src="${escapeHtml(logoUrl)}" width="112" alt="Pathway" style="display:block;width:112px;height:auto;border:0;outline:none;text-decoration:none;">
       </div>
       <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;padding:28px;">
-      <p style="margin:0 0 10px;font-size:12px;line-height:1.4;letter-spacing:0.08em;text-transform:uppercase;color:#6b7280;font-weight:700;">Pathway Alerts</p>
-      <h1 style="margin:0 0 18px;font-size:24px;line-height:1.25;font-weight:700;color:#111827;">${escapeHtml(options.title)}</h1>
+      <p style="margin:0 0 10px;font-size:11px;line-height:1.4;letter-spacing:0.08em;text-transform:uppercase;color:#6b7280;font-weight:800;">Pathway Alerts</p>
+      <h1 style="margin:0 0 18px;font-size:24px;line-height:1.2;font-weight:750;color:#111827;">${escapeHtml(options.title)}</h1>
       ${options.bodyHtml}
       <p style="margin:26px 0 0;padding-top:18px;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280;line-height:1.5;">
         ${footerParts.join(" | ")}
