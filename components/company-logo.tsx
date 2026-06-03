@@ -190,6 +190,8 @@ export function CompanyLogo({
         if (attempt < 2) {
           retryTimer = setTimeout(() => void load(attempt + 1), 1500 * (attempt + 1));
         } else {
+          failedCompanies.add(key);
+          persistFailed();
           setLogoLoad(null);
         }
         return;
@@ -231,9 +233,14 @@ export function CompanyLogo({
           decoding="async"
           className="block size-full rounded-sm object-contain object-center"
           onError={() => {
-            if (!staticSlug) return;
-            brokenStaticSlugs.add(staticSlug);
-            setStaticBroken(true);
+            if (staticSlug) {
+              brokenStaticSlugs.add(staticSlug);
+              setStaticBroken(true);
+              return;
+            }
+            failedCompanies.add(key);
+            persistFailed();
+            setLogoLoad(null);
           }}
         />
       )}

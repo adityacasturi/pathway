@@ -21,14 +21,14 @@ test("authenticated user can navigate core app surfaces", async ({ page }) => {
   await page.goto("/applications");
   await expect(page.getByRole("heading", { name: "Applications" })).toBeVisible();
 
-  await page.goto("/live");
+  await page.goto("/openings");
   await expect(page.getByRole("heading", { name: "Openings" })).toBeVisible();
 
-  await page.goto("/discover");
+  await page.goto("/companies");
   await expect(page.getByRole("heading", { name: "Companies" })).toBeVisible();
   await expect(page.getByPlaceholder(/Search company, role, or location/)).toBeVisible();
 
-  await page.goto("/stats");
+  await page.goto("/insights");
   await expect(page.getByRole("heading", { name: "Insights" })).toBeVisible();
 
   await page.goto("/settings");
@@ -38,7 +38,7 @@ test("authenticated user can navigate core app surfaces", async ({ page }) => {
 
 test("discover feed renders without duplicate visible posting links", async ({ page }) => {
   await signIn(page);
-  await page.goto("/discover");
+  await page.goto("/companies");
 
   const hrefs = await page
     .getByTestId("posting-row")
@@ -90,7 +90,7 @@ test("authenticated user can dismiss and restore a discover posting", async ({ p
   test.skip(!canMutate, "Set E2E_ALLOW_MUTATION=1 to run mutation smoke tests.");
 
   await signIn(page);
-  await page.goto("/discover");
+  await page.goto("/companies");
   await expect(page.getByRole("heading", { name: "Companies" })).toBeVisible();
 
   const firstRow = page.getByTestId("posting-row").first();

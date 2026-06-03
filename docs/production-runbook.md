@@ -66,7 +66,7 @@ npm run qstash:cron -- delete
 
 For US-region QStash tokens, set `QSTASH_URL=https://qstash-us-east-1.upstash.io`. For EU-region tokens, omit `QSTASH_URL` or set `https://qstash-eu-central-1.upstash.io`.
 
-`upsert` is idempotent because each schedule uses a stable `Upstash-Schedule-Id`. It also removes retired Pathway schedule IDs after creating the current schedules so renamed jobs do not keep running in parallel. Scrape cadence is every 30 minutes. Each cycle fans out to four shards on staggered minute offsets:
+`upsert` is idempotent because each schedule uses a stable `Upstash-Schedule-Id`. It also removes retired Pathway schedule IDs after creating the current schedules so renamed jobs do not keep running in parallel. Scrape cadence is every 15 minutes. Each cycle fans out to four shards on staggered minute offsets:
 
 ```text
 pathway-discover-scrape-shard-0  :07,:37  /api/cron/scrape-postings?shard=0&shards=4&alerts=0

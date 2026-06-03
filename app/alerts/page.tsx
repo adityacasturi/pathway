@@ -23,9 +23,9 @@ interface SubscriptionRow {
 export default async function AlertsRoute() {
   const supabase = await createClient();
   const { data: userData } = await supabase.auth.getUser();
-  if (!userData.user) {
-    redirect("/");
-  }
+  if (!userData.user) redirect("/login?next=/alerts");
+
+  const alertsLaunched = isAlertsLaunched();
 
   const industryCatalog = await loadDiscoverIndustryCatalog(supabase);
   const [companies, curatedAlertSectors, preferencesRes, subscriptionsRes] = await Promise.all([
@@ -96,7 +96,7 @@ export default async function AlertsRoute() {
         websiteUrl: company.websiteUrl,
         industryLabel: company.industryLabel,
       }))}
-      previewMode={!isAlertsLaunched()}
+      previewMode={!alertsLaunched}
     />
   );
 }

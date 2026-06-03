@@ -1,6 +1,6 @@
 # Architecture
 
-Pathway is a Next.js 16 App Router app backed by Supabase Auth and Postgres. Students sign up with any valid email, track internship applications on a timeline, browse scraped roles on **Live**, and browse companies on **Discover**.
+Pathway is a Next.js 16 App Router app backed by Supabase Auth and Postgres. Students sign up with any valid email, track internship applications on a timeline, browse scraped roles on **Openings**, and browse employers on **Companies**.
 
 ## Stack
 
@@ -21,15 +21,15 @@ Before changing routing, caching, `proxy.ts`, or Server Components, read the rel
 | Route | Access | Purpose |
 | --- | --- | --- |
 | `/` | Public | Landing; redirects authenticated users to `/home` |
-| `/login` | Public | Sign in; signup via `?mode=signup` when enabled |
-| `/register` | Public | Redirects to `/login?mode=signup` |
+| `/login` | Public | Sign in; password reset entry point |
+| `/register` | Public | Dedicated signup form when signup is enabled |
 | `/set-password` | Auth flow | Password reset completion |
 | `/auth/confirm` | Public | OTP / email-link verification handler; validated `next` redirect |
 | `/home` | Auth | Overview briefing: pipeline snapshot, "since yesterday", starred, "for later" |
 | `/applications` | Auth | Application tracker and detail modal |
-| `/live` | Auth | Flat scraped internship feed (save / dismiss / track) |
-| `/discover` | Auth | Company catalog; open roles loaded per company |
-| `/stats` | Auth | Application metrics + funnel + market analytics |
+| `/openings` | Auth | Flat scraped internship feed (save / dismiss / track) |
+| `/companies` | Auth | Company catalog; open roles loaded per company |
+| `/insights` | Auth | Application metrics + funnel + market analytics |
 | `/alerts` | Auth | Email alert subscriptions (companies / curated sectors) |
 | `/settings` | Auth | Account and preferences (accent, quick track) |
 | `/alerts/unsubscribe` | Public | One-click email unsubscribe (signed token) |
@@ -38,7 +38,7 @@ Before changing routing, caching, `proxy.ts`, or Server Components, read the rel
 | `/api/cron/send-instant-alerts` | Cron | Instant alert delivery after scrape shards succeed |
 | `/api/cron/send-alert-digests` | Cron | Daily digest alerts at 14:11 UTC |
 
-`proxy.ts` gates routes: unauthenticated users go to `/`; authenticated users cannot stay on `/login`.
+`proxy.ts` gates routes: unauthenticated users on protected routes go to `/login?next=<path>`; authenticated users cannot stay on `/login`, `/register`, or `/`.
 
 ## Authentication and signup
 
@@ -111,7 +111,7 @@ Pattern: validate input → Supabase server client or narrow RPC → `revalidate
 | `lib/supabase/auth.ts` | `getUser()` helper for server components |
 | `lib/supabase/admin.ts` | Service role — bypasses RLS (scrapes, cron alert sends, unsubscribe writes, discover-company / discover-queue). Server/CLI only; guarded against browser use. |
 
-## Live feed
+## Openings feed
 
 Loader: `lib/feed/scraped-postings.ts` → `FeedPosting` (`lib/feed/source.ts`).
 
@@ -121,9 +121,9 @@ Loader: `lib/feed/scraped-postings.ts` → `FeedPosting` (`lib/feed/source.ts`).
 - **US-only:** `lib/feed/us-locations.ts` at scrape, upsert, and read; `countries` column stores ISO codes when known.
 - **Posted vs Discovered:** see [scraped-posted-dates.md](./scraped-posted-dates.md). Live **NEW** uses `first_seen_at` vs the user's DB-backed `live_last_seen_at`, not ATS touch times.
 - Applied postings hidden by default when posting URL matches an active application.
-- `refreshFeed()` revalidates `/live` and `/home` only — it does **not** scrape.
+- `refreshFeed()` revalidates `/openings` and `/home` only — it does **not** scrape.
 
-## Discover
+## Companies
 
 Loader: `lib/discover/companies.ts`. UI: `components/discover-companies.tsx`.
 
@@ -150,7 +150,7 @@ Loader: `lib/discover/companies.ts`. UI: `components/discover-companies.tsx`.
 
 ## Scraping (summary)
 
-- Cron: Upstash QStash schedules call `/api/cron/scrape-postings` every 30 minutes across four source shards, then `/api/cron/send-instant-alerts` a few minutes later. QStash also calls `/api/cron/send-alert-digests` daily at 14:11 UTC. Manage schedules with `npm run qstash:cron -- <list|upsert|delete>`.
+- Cron: Upstash QStash schedules call `/api/cron/scrape-postings` every 15 minutes across four source shards, then `/api/cron/send-instant-alerts` a few minutes later. QStash also calls `/api/cron/send-alert-digests` daily at 14:11 UTC. Manage schedules with `npm run qstash:cron -- <list|upsert|delete>`.
 - Local: `npm run scrape` (needs `SUPABASE_SERVICE_ROLE_KEY`).
 - Adapters: `lib/scraping/registry.ts` keyed by `company_sources.source_type` (`lib/scraping/types.ts`).
 - Full detail: [scraping.md](./scraping.md).

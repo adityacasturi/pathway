@@ -231,6 +231,18 @@ export function AlertsPage({
           animate="visible"
           className="space-y-10"
         >
+          <div
+            className="rounded-xl border bg-card px-4 py-3"
+            style={{ borderColor: "var(--rule)" }}
+          >
+            <p className="label-meta">Alert setup</p>
+            <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
+              {alertCount > 0
+                ? `${alertCount} follow${alertCount === 1 ? "" : "s"} selected. Choose how Pathway should email you below.`
+                : "Choose companies or curated sectors first, then turn on digest or instant emails."}
+            </p>
+          </div>
+
           <EmailToggleRow
             title="Daily digest"
             description="Every morning, one email summarizing new roles at companies and sectors you follow."

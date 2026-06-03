@@ -29,7 +29,7 @@ export default async function ApplicationsPage() {
     loadUserViewPreferences(supabase),
   ]);
 
-  if (!userResult.data.user) redirect("/");
+  if (!userResult.data.user) redirect("/login?next=/applications");
 
   assertSupabaseOk(appsResult.error, "Load applications");
 

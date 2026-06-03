@@ -145,9 +145,9 @@ function parseFormData(formData: FormData) {
 function revalidateApplicationSurfaces() {
   revalidatePath("/");
   revalidatePath("/applications");
-  revalidatePath("/live");
-  revalidatePath("/discover");
-  revalidatePath("/stats");
+  revalidatePath("/openings");
+  revalidatePath("/companies");
+  revalidatePath("/insights");
 }
 
 async function limitApplicationWrite() {

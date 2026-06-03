@@ -13,10 +13,12 @@ import { motionVariants } from "@/lib/ui/motion";
 
 export function OtpConfirmationForm({
   email,
+  nextPath = "/home",
   onExit,
   initialMessage,
 }: {
   email: string;
+  nextPath?: string;
   onExit: () => void;
   initialMessage?: string | null;
 }) {
@@ -68,7 +70,7 @@ export function OtpConfirmationForm({
     }
 
     setState("success");
-    router.replace("/home");
+    router.replace(nextPath);
     router.refresh();
   }
 

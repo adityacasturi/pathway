@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Application } from "@/types/application";
 import { AnimatePresence, motion } from "framer-motion";
 import { Archive, ArchiveRestore } from "lucide-react";
@@ -23,6 +24,7 @@ interface Props {
   companyLogoAssetByName?: CompanyLogoAssetByName;
   hasActiveFilters: boolean;
   searchQuery: string;
+  onCreateApplication: () => void;
   onOpen: (app: Application) => void;
   archivedIds: Set<string>;
   onArchiveChange: (applicationId: string, archived: boolean) => void;
@@ -35,6 +37,7 @@ export function ApplicationsTable({
   companyLogoAssetByName = {},
   hasActiveFilters,
   searchQuery,
+  onCreateApplication,
   onOpen,
   archivedIds,
   onArchiveChange,
@@ -86,8 +89,25 @@ export function ApplicationsTable({
           <p className="mt-3 text-[13px] text-muted-foreground/70">
             {hasActiveFilters
               ? `Try clearing "${searchQuery.trim()}" or the filters above.`
-              : "Press N to add your first one."}
+              : "Add one manually, or track a role from Openings to start your pipeline."}
           </p>
+          {!hasActiveFilters ? (
+            <div className="mt-6 flex flex-col items-center gap-2 sm:flex-row">
+              <button
+                type="button"
+                onClick={onCreateApplication}
+                className="inline-flex h-10 items-center justify-center rounded-full border border-border bg-card px-4 text-[13px] font-medium text-foreground transition-colors hover:border-[color:var(--rule-strong)]"
+              >
+                Add manually
+              </button>
+              <Link
+                href="/openings"
+                className="inline-flex h-10 items-center justify-center rounded-full border border-border bg-background/70 px-4 text-[13px] font-medium text-muted-foreground transition-colors hover:border-[color:var(--rule-strong)] hover:text-foreground"
+              >
+                Track from Openings
+              </Link>
+            </div>
+          ) : null}
         </div>
       ) : (
         <ul className="flex flex-col gap-3">

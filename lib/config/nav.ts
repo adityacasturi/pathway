@@ -1,23 +1,22 @@
 const NAV_HREFS = [
   "/home",
   "/applications",
-  "/live",
-  "/discover",
+  "/openings",
+  "/companies",
   "/alerts",
-  "/stats",
+  "/insights",
   "/settings",
 ] as const;
 
 export type NavHref = (typeof NAV_HREFS)[number];
 
-/** User-facing nav and page titles (routes unchanged). */
 export const NAV_LABELS: Record<NavHref, string> = {
   "/home": "Overview",
   "/applications": "Applications",
-  "/live": "Openings",
-  "/discover": "Companies",
+  "/openings": "Openings",
+  "/companies": "Companies",
   "/alerts": "Alerts",
-  "/stats": "Insights",
+  "/insights": "Insights",
   "/settings": "Settings",
 };
 

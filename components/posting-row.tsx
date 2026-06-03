@@ -302,13 +302,15 @@ function IconButton({
       title={label}
       disabled={disabled}
       className={cn(
-        "inline-flex items-center justify-center rounded-md leading-none smooth-surface disabled:cursor-not-allowed disabled:opacity-50 [&>svg]:block [&>svg]:shrink-0",
+        "group/posting-action relative inline-flex items-center justify-center rounded-md leading-none smooth-surface disabled:cursor-not-allowed disabled:opacity-50 [&>svg]:block [&>svg]:shrink-0",
         className ?? "size-8",
         TONE_CLASSES[tone],
       )}
     >
       {children}
+      <span className="pointer-events-none absolute bottom-[calc(100%+7px)] left-1/2 z-30 hidden -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-[11px] font-medium text-foreground shadow-[0_12px_28px_-18px_color-mix(in_oklab,var(--ink)_60%,transparent)] group-hover/posting-action:block group-focus-visible/posting-action:block">
+        {label}
+      </span>
     </button>
   );
 }
-

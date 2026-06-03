@@ -71,7 +71,7 @@ export async function updateFeedViewPreferences(patch: FeedViewPreferencesPatch)
     return { error: formatSupabaseMutationError(error, "Unable to save feed preferences.") };
   }
 
-  revalidatePath("/live");
+  revalidatePath("/openings");
   return { ok: true };
 }
 

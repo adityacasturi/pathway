@@ -14,16 +14,21 @@ import { matchPostingsToUsers } from "@/lib/alerts/match-postings";
 import type { AlertPostingCandidate } from "@/lib/alerts/types";
 import { DIGEST_MAX_POSTINGS } from "@/lib/config/alerts";
 import { isAlertsLaunched } from "@/lib/config/alerts-launch";
-import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  handleResendBatchFailure,
+  pauseBetweenResendSends,
+  type ResendBatchResult,
+} from "@/lib/email/resend-batch";
 import { isEmailConfigured, sendResendEmail } from "@/lib/email/resend-client";
 import {
   buildDigestAlertHtml,
   buildDigestAlertSubject,
 } from "@/lib/email/templates/digest-alert";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const DEFAULT_DIGEST_LOOKBACK_MS = 24 * 60 * 60 * 1000;
 
-export async function processDigestAlerts(now = new Date()): Promise<{ sent: number; errors: number }> {
+export async function processDigestAlerts(now = new Date()): Promise<ResendBatchResult> {
   if (!isAlertsLaunched() || !isEmailConfigured()) {
     return { sent: 0, errors: 0 };
   }
@@ -67,6 +72,8 @@ export async function processDigestAlerts(now = new Date()): Promise<{ sent: num
 
   let sent = 0;
   let errors = 0;
+  let stoppedReason: ResendBatchResult["stoppedReason"];
+  let sendIndex = 0;
 
   for (const [userId, userPostings] of postingsByUser) {
     const email = emails.get(userId);
@@ -74,6 +81,11 @@ export async function processDigestAlerts(now = new Date()): Promise<{ sent: num
       errors += 1;
       continue;
     }
+
+    if (sendIndex > 0) {
+      await pauseBetweenResendSends();
+    }
+    sendIndex += 1;
 
     const capped = userPostings.slice(0, DIGEST_MAX_POSTINGS);
     const result = await sendResendEmail({
@@ -84,6 +96,14 @@ export async function processDigestAlerts(now = new Date()): Promise<{ sent: num
 
     if (!result.ok) {
       errors += 1;
+      const stop = handleResendBatchFailure(result, "alerts.digest_send_failed", {
+        channel: "digest",
+        userId,
+      });
+      if (stop) {
+        stoppedReason = stop;
+        break;
+      }
       continue;
     }
 
@@ -99,7 +119,7 @@ export async function processDigestAlerts(now = new Date()): Promise<{ sent: num
     await upsertAlertDigestState(supabase, userId, now);
   }
 
-  return { sent, errors };
+  return { sent, errors, stoppedReason };
 }
 
 function getEarliestDigestSince(digestState: Map<string, Date>, now: Date): Date {

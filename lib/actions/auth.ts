@@ -77,12 +77,20 @@ function readCredentials(
 }
 
 function getEmailRedirectTo() {
+  return getSiteRedirectTo("/login");
+}
+
+function getPasswordResetRedirectTo() {
+  return getSiteRedirectTo("/set-password");
+}
+
+function getSiteRedirectTo(path: string) {
   const siteUrl =
     process.env.NEXT_PUBLIC_SITE_URL ??
     process.env.VERCEL_PROJECT_PRODUCTION_URL ??
     "http://localhost:3000";
   const normalized = siteUrl.startsWith("http") ? siteUrl : `https://${siteUrl}`;
-  return new URL("/login", normalized).toString();
+  return new URL(path, normalized).toString();
 }
 
 export async function login(formData: FormData): Promise<AuthActionResult> {
@@ -218,6 +226,26 @@ export async function resendEmailOtp(formData: FormData): Promise<{ ok: true } |
     options: { emailRedirectTo: getEmailRedirectTo() },
   });
   if (error) return { error: formatAuthError(error) };
+  return { ok: true };
+}
+
+export async function sendPasswordReset(formData: FormData): Promise<{ ok: true } | { error: string }> {
+  const rateLimit = await limitServerActionByIp("auth:password-reset", 4, 60_000);
+  if (!rateLimit.ok) {
+    return { error: rateLimit.error ?? "Too many attempts. Please try again shortly." };
+  }
+
+  const email = formData.get("email");
+  if (typeof email !== "string") return { error: "Enter your email first." };
+  const emailError = getEmailValidationError(email);
+  if (emailError) return { error: emailError };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(normalizeEmail(email), {
+    redirectTo: getPasswordResetRedirectTo(),
+  });
+  if (error) return { error: formatAuthError(error) };
+
   return { ok: true };
 }
 

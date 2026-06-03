@@ -9,7 +9,7 @@ import { NextResponse, type NextRequest } from "next/server";
  *   definitively anonymous, so we skip the cross-region `auth.getUser()`
  *   round-trip entirely. This is what makes public navigation snappy.
  * - Otherwise refreshes the Supabase session via cookies on each request.
- * - Redirects unauthenticated users to the public landing page (except public routes).
+ * - Redirects unauthenticated users to sign in with a safe return path (except public routes).
  * - `/api/logo` requires authentication; `/company-logos/` is public (landing).
  * - Redirects already-signed-in users away from public auth/landing routes back to the app.
  */
@@ -37,7 +37,7 @@ export async function proxy(request: NextRequest) {
     .some((c) => c.name.startsWith("sb-") && c.name.includes("auth-token"));
 
   if (!hasAuthCookie) {
-    if (!isPublicRoute) return NextResponse.redirect(new URL("/", request.url));
+    if (!isPublicRoute) return NextResponse.redirect(getLoginRedirectUrl(request));
     return NextResponse.next({ request });
   }
 
@@ -68,15 +68,20 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user && !isPublicRoute) {
-    return NextResponse.redirect(new URL("/", request.url));
-  }
+  if (!user && !isPublicRoute) return NextResponse.redirect(getLoginRedirectUrl(request));
 
   if (user && (pathname === "/" || pathname === "/login" || pathname === "/register")) {
     return NextResponse.redirect(new URL("/home", request.url));
   }
 
   return supabaseResponse;
+}
+
+function getLoginRedirectUrl(request: NextRequest) {
+  const redirectUrl = new URL("/login", request.url);
+  const nextPath = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+  redirectUrl.searchParams.set("next", nextPath);
+  return redirectUrl;
 }
 
 export const config = {

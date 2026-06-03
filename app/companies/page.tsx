@@ -10,10 +10,10 @@ import { normalizeUrl } from "@/lib/url";
 
 export const dynamic = "force-dynamic";
 
-export default async function DiscoverPage() {
+export default async function CompaniesPage() {
   const supabase = await createClient();
   const { data: userData } = await supabase.auth.getUser();
-  if (!userData.user) redirect("/");
+  if (!userData.user) redirect("/login?next=/companies");
 
   const industryCatalog = await loadDiscoverIndustryCatalog(supabase);
   const [companies, starredCompanyIds, interactionsRes, appsRes, preferencesRes] =

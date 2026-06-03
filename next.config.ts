@@ -49,6 +49,13 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "64kb",
     },
   },
+  async redirects() {
+    return [
+      { source: "/live", destination: "/openings", permanent: true },
+      { source: "/discover", destination: "/companies", permanent: true },
+      { source: "/stats", destination: "/insights", permanent: true },
+    ];
+  },
   async headers() {
     return [
       {

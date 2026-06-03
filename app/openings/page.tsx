@@ -16,7 +16,7 @@ interface LivePageProps {
   }>;
 }
 
-export default async function LivePage({ searchParams }: LivePageProps) {
+export default async function OpeningsPage({ searchParams }: LivePageProps) {
   const supabase = await createClient();
   const params = await searchParams;
   const initialQuery = typeof params.q === "string" ? params.q : "";
@@ -32,7 +32,7 @@ export default async function LivePage({ searchParams }: LivePageProps) {
       loadUserViewPreferences(supabase),
     ]);
 
-  if (!userResult.data.user) redirect("/");
+  if (!userResult.data.user) redirect("/login?next=/openings");
 
   assertSupabaseOk(interactionsRes.error, "Load feed interactions");
   assertSupabaseOk(appsRes.error, "Load tracked applications");

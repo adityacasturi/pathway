@@ -292,10 +292,11 @@ export function Dashboard({
     [sorted, effectiveVisibleCount],
   );
 
+  const hasApplications = applications.length > 0;
   const activeFilterCount =
     Number(seasonFilter !== "all") +
-    Number(hideRejected) +
-    Number(hideArchived) +
+    Number(hasApplications && hideRejected) +
+    Number(hasApplications && hideArchived) +
     Number(sortKey !== null);
 
   function handleSortChange(nextKey: SortKey) {
@@ -469,6 +470,7 @@ export function Dashboard({
           companyLogoAssetByName={companyLogoAssetByName}
           hasActiveFilters={Boolean(query || statusFilter !== "all" || seasonFilter !== "all")}
           searchQuery={query}
+          onCreateApplication={() => setDialogOpen(true)}
           onOpen={(application) => setDetailId(application.id)}
           archivedIds={archivedIds}
           onArchiveChange={setApplicationArchived}

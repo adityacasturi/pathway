@@ -1,5 +1,12 @@
 import { NextRequest } from "next/server";
+import {
+  isLogoDevDegraded,
+  markLogoDevDegraded,
+  shouldOpenLogoDevCircuit,
+} from "@/lib/logo/degraded";
 import { logoDevReferer, logoProxyStatusFromUpstream } from "@/lib/logo/upstream";
+import { logServerEvent } from "@/lib/observability";
+import { limitRequestByIpAsync } from "@/lib/rate-limit-buckets";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
 
 const LOGO_DEV_TOKEN = process.env.LOGO_DEV_TOKEN;
@@ -73,6 +80,21 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  const rateLimit = await limitRequestByIpAsync(request, "logo:proxy", 120, 60_000);
+  if (!rateLimit.ok) {
+    return new Response(null, {
+      status: 503,
+      headers: { "Cache-Control": TRANSIENT_CACHE },
+    });
+  }
+
+  if (isLogoDevDegraded()) {
+    return new Response(null, {
+      status: 503,
+      headers: { "Cache-Control": TRANSIENT_CACHE },
+    });
+  }
+
   const domain = cleanDomain(request.nextUrl.searchParams.get("domain"));
   const company = cleanCompany(request.nextUrl.searchParams.get("company"));
   const upstreamUrl = logoDevUpstreamUrl(domain, company);
@@ -90,6 +112,15 @@ export async function GET(request: NextRequest) {
 
   try {
     const upstream = await fetchWithTimeout(upstreamUrl);
+    if (shouldOpenLogoDevCircuit(upstream.status)) {
+      markLogoDevDegraded(`logo.dev upstream ${upstream.status}`);
+      logServerEvent({
+        level: "warn",
+        event: "logo.dev.degraded",
+        message: `Opened logo.dev circuit after upstream ${upstream.status}`,
+      });
+    }
+
     const proxyStatus = logoProxyStatusFromUpstream(upstream.status);
 
     if (proxyStatus !== 200 || !upstream.body) {
@@ -110,7 +141,12 @@ export async function GET(request: NextRequest) {
         "Cache-Control": `private, max-age=${CACHE_SECONDS}, immutable`,
       },
     });
-  } catch {
+  } catch (error) {
+    logServerEvent({
+      level: "warn",
+      event: "logo.proxy_fetch_failed",
+      message: error instanceof Error ? error.message : "Logo proxy fetch failed",
+    });
     // Timeouts and network errors are not "missing logos" — avoid caching a false 404.
     return new Response(null, {
       status: 503,

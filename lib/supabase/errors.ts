@@ -38,6 +38,21 @@ export function formatSupabaseMutationError(
   if (normalized.includes("too many attempts")) {
     return "Too many attempts. Please wait a moment and try again.";
   }
+  if (
+    normalized.includes("rate limit") ||
+    normalized.includes("too many requests") ||
+    normalized.includes("overloaded") ||
+    normalized.includes("service unavailable")
+  ) {
+    return "Pathway is busy right now. Please try again in a moment.";
+  }
+  if (
+    normalized.includes("connection") ||
+    normalized.includes("timeout") ||
+    normalized.includes("fetch failed")
+  ) {
+    return "We couldn't reach the server. Please try again shortly.";
+  }
   if (normalized.includes("not authenticated")) {
     return "Not authenticated.";
   }

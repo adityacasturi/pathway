@@ -1,12 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, ListChecks, Gift, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import { LandingProductStory } from "@/components/landing-product-story";
-import { OfferTimelineMock } from "@/components/landing/mocks/offer-timeline-mock";
-import { ComparisonTable } from "@/components/landing/comparison-table";
 import { SchoolLogoCarousel } from "@/components/school-logo-carousel";
 import { TrustBand } from "@/components/landing/trust-band";
 import { pageMainPadding, pageWidths } from "@/components/ui/page";
@@ -15,21 +13,6 @@ const landingWidth = pageWidths.xl;
 const landingPad = pageMainPadding;
 
 export const dynamic = "force-dynamic";
-
-const PIPELINE_POINTS = [
-  {
-    title: "A timeline for every role",
-    body: "Applied, online assessment, interviews, offer. Each application keeps an ordered, dated history you can read in seconds.",
-  },
-  {
-    title: "Status that keeps itself current",
-    body: "Log an event and the status updates on its own. No dropdowns to babysit and no stale rows to clean up.",
-  },
-  {
-    title: "Nothing slips through the cracks",
-    body: "Notes, dates, and next steps stay attached to the role, so you walk into every round knowing exactly where you left off.",
-  },
-] as const;
 
 export default async function LandingRoute() {
   const supabase = await createClient();
@@ -58,13 +41,6 @@ function LandingPage() {
                 className="brand-wordmark h-7 w-auto sm:h-[40px]"
               />
             </Link>
-            <span
-              className="hidden items-center gap-1.5 whitespace-nowrap rounded-full border bg-card px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:inline-flex"
-              style={{ borderColor: "var(--rule)" }}
-            >
-              <span className="block size-1.5 rounded-full bg-[color:var(--primary)]" />
-              v2.0 out now
-            </span>
           </div>
           <nav aria-label="Public navigation" className="flex items-center gap-2">
             <Link
@@ -85,34 +61,32 @@ function LandingPage() {
         <span aria-hidden className="landing-header-rule block h-px w-full" />
       </header>
 
-      <section className={cn("landing-hero mx-auto w-full pb-10 pt-14", landingWidth, landingPad)}>
+      <section className={cn("landing-hero mx-auto w-full pb-8 pt-10", landingWidth, landingPad)}>
         <div className="flex min-w-0 flex-col items-center text-center">
-          <div className="landing-offer mb-8">
-            <p className="landing-offer-title">
-              <Gift size={14} strokeWidth={1.8} className="text-[color:var(--primary)]" />
-              <span>
-                <em>100% free</em> for students
-              </span>
-            </p>
+          <div className="landing-offer mb-5">
+            <div className="landing-offer-badge">
+              <span className="landing-offer-dot" aria-hidden />
+              <span className="landing-offer-badge__label">New · real-time alerts</span>
+            </div>
           </div>
-          <h1 className="landing-hero-title mx-auto w-full max-w-6xl text-[3.4rem] text-foreground sm:text-[4.75rem] lg:text-[6.25rem]">
+          <h1 className="landing-hero-title mx-auto w-full max-w-6xl text-[3.25rem] text-foreground sm:text-[4.35rem] lg:text-[5.65rem]">
             <span>Beat the crowd</span>
             <span>to new internships.</span>
           </h1>
-          <p className="lp-hero-sub mt-7 max-w-2xl">
-            Pathway checks hundreds of company career pages every 30 minutes and surfaces new
+          <p className="lp-hero-sub mt-6 max-w-2xl">
+            Pathway checks hundreds of company career pages every 15 minutes and surfaces new
             internships quickly, so you apply before the listing makes the rounds.
           </p>
-          <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row">
+          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link href="/register" className="lp-cta lp-cta--primary">
-              Get started free <ArrowRight size={15} strokeWidth={1.9} />
+              Get started <ArrowRight size={15} strokeWidth={1.9} />
             </Link>
             <a href="#product" className="lp-cta lp-cta--secondary">
               See it in action
             </a>
           </div>
 
-          <div className="mx-auto mt-9 w-full max-w-5xl">
+          <div className="mx-auto mt-6 w-full max-w-5xl">
             <SchoolLogoCarousel />
           </div>
         </div>
@@ -120,10 +94,7 @@ function LandingPage() {
 
       <TrustBand />
 
-      <section
-        id="product"
-        className={cn("mx-auto w-full pb-10 pt-36 sm:pt-48", landingWidth, landingPad)}
-      >
+      <section id="product" className={cn("mx-auto w-full pb-10 pt-16 sm:pt-20", landingWidth, landingPad)}>
         <div className="lp-section-head mb-6">
           <span className="label-micro">The product</span>
           <h2 className="display-serif mt-4 max-w-4xl text-[2rem] text-foreground sm:text-[2.75rem]">
@@ -133,67 +104,20 @@ function LandingPage() {
         <LandingProductStory />
       </section>
 
-      <section className={cn("lp-speed mx-auto w-full py-20", landingWidth, landingPad)}>
-        <div className="lp-speed-grid">
-          <div className="lp-speed-copy">
-            <span className="label-micro lp-accent-label">
-              <ListChecks size={12} strokeWidth={2} /> Track every application
-            </span>
-            <h2 className="display-serif mt-4 text-[2rem] text-foreground sm:text-[2.6rem]">
-              From first application to signed offer.
-            </h2>
-            <p className="lp-section-sub mt-5">
-              Every role you track gets a living timeline. Log a screen, an interview, an offer, and
-              Pathway keeps your status in sync, so you always know exactly where each application
-              stands.
-            </p>
-            <ul className="lp-speed-list mt-8">
-              {PIPELINE_POINTS.map((point) => (
-                <li key={point.title} className="lp-speed-item">
-                  <h3 className="lp-speed-item-title">{point.title}</h3>
-                  <p className="lp-speed-item-body">{point.body}</p>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="lp-speed-media">
-            <div className="landing-product-frame">
-              <OfferTimelineMock />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className={cn("lp-compare mx-auto w-full py-20", landingWidth, landingPad)}>
-        <div className="lp-section-head lp-section-head--center mb-10">
-          <span className="label-micro lp-accent-label">
-            <Sparkles size={12} strokeWidth={2} /> Why Pathway
-          </span>
-          <h2 className="display-serif mt-4 text-[2rem] text-foreground sm:text-[2.6rem]">
-            How we stack up against the alternatives.
-          </h2>
-          <p className="lp-section-sub lp-section-sub--center mt-5">
-            Pathway watches company career pages every 30 minutes and alerts you when new
-            internships post. Simplify and a spreadsheet won&apos;t keep your search this current.
-          </p>
-        </div>
-        <ComparisonTable />
-      </section>
-
       <section className={cn("lp-final mx-auto w-full pb-28 pt-10", landingWidth, landingPad)}>
         <div className="lp-final-card">
-          <span className="label-micro lp-accent-label">Free for students</span>
+          <span className="label-micro lp-accent-label">Get started</span>
           <h2 className="landing-hero-title mt-5 text-[2.75rem] text-foreground sm:text-[4rem]">
             <span>Never miss a new</span>
             <span>internship again.</span>
           </h2>
           <p className="lp-section-sub lp-section-sub--center mx-auto mt-6 max-w-2xl">
-            Join students using Pathway to catch new internships soon after they post and apply
-            before the rush.
+            Create a free account to track applications, browse openings, explore companies, and
+            get email alerts for new roles.
           </p>
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link href="/register" className="lp-cta lp-cta--primary">
-              Create your free account <ArrowRight size={15} strokeWidth={1.9} />
+              Create your account <ArrowRight size={15} strokeWidth={1.9} />
             </Link>
             <Link href="/login" className="lp-cta lp-cta--secondary">
               Sign in

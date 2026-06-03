@@ -11,7 +11,7 @@ import type { Application } from "@/types/application";
 
 export const dynamic = "force-dynamic";
 
-export default async function StatsRoute() {
+export default async function InsightsPage() {
   const supabase = await createClient();
 
   // eslint-disable-next-line react-hooks/purity
@@ -27,7 +27,7 @@ export default async function StatsRoute() {
     loadMarketPostingSummary(supabase, nowUnix),
   ]);
 
-  if (!userResult.data.user) redirect("/");
+  if (!userResult.data.user) redirect("/login?next=/insights");
 
   assertSupabaseOk(appsResult.error, "Load stats");
 

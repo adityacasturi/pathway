@@ -260,7 +260,38 @@ export function StatsPage({ applications, market }: Props) {
   return (
     <PageShell>
       <PageMain width="xl">
-        <PageHeader title={getPageLabel("/stats")} />
+        <PageHeader title={getPageLabel("/insights")} />
+
+        {active.length === 0 ? (
+          <PageSection rule={false} className="mb-10">
+            <div
+              className="rounded-xl border bg-card px-4 py-4"
+              style={{ borderColor: "var(--rule)" }}
+            >
+              <p className="text-[15px] font-medium text-foreground">
+                Add applications to unlock your search metrics.
+              </p>
+              <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">
+                Insights will calculate response rates, timing, and pipeline flow after you track
+                roles and log events. Start manually or add a role from Openings.
+              </p>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <Link
+                  href="/applications"
+                  className="inline-flex h-9 items-center justify-center rounded-full border border-border bg-background px-4 text-[13px] font-medium text-foreground transition-colors hover:border-[color:var(--rule-strong)]"
+                >
+                  Add an application
+                </Link>
+                <Link
+                  href="/openings"
+                  className="inline-flex h-9 items-center justify-center rounded-full border border-border bg-background/70 px-4 text-[13px] font-medium text-muted-foreground transition-colors hover:border-[color:var(--rule-strong)] hover:text-foreground"
+                >
+                  Track from Openings
+                </Link>
+              </div>
+            </div>
+          </PageSection>
+        ) : null}
 
         <PageSection rule={false} className="mb-12">
           <SectionHeading
@@ -317,7 +348,7 @@ export function StatsPage({ applications, market }: Props) {
                 label="Open roles"
                 value={market.pulse.openTotal.toLocaleString("en-US")}
                 detail={`${market.catalog.companiesWithOpenRoles} companies hiring`}
-                href="/live"
+                href="/openings"
               />
             </li>
             <li>
@@ -329,7 +360,7 @@ export function StatsPage({ applications, market }: Props) {
                     ? `Mostly ${market.pulse.dominantSeason}`
                     : "First seen in Pathway"
                 }
-                href="/live"
+                href="/openings"
               />
             </li>
             <li>
@@ -337,7 +368,7 @@ export function StatsPage({ applications, market }: Props) {
                 label="Catalog hiring"
                 value={catalogHiringLabel}
                 detail={`${market.catalog.companiesWithOpenRoles} of ${market.catalog.discoverCompanies} companies`}
-                href="/discover"
+                href="/companies"
               />
             </li>
             <li>
@@ -345,7 +376,7 @@ export function StatsPage({ applications, market }: Props) {
                 label="Company catalog"
                 value={market.catalog.discoverCompanies.toLocaleString("en-US")}
                 detail="Active companies tracked"
-                href="/discover"
+                href="/companies"
               />
             </li>
           </ul>

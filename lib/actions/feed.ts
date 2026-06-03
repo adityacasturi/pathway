@@ -136,7 +136,7 @@ export async function refreshFeed() {
   const { user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
 
-  revalidatePath("/live");
+  revalidatePath("/openings");
   revalidatePath("/home");
   return { ok: true };
 }

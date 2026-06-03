@@ -9,6 +9,7 @@ test("login renders with public signup available", async ({ page }) => {
   await expect(page.getByLabel("Email")).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Password", exact: true })).toBeVisible();
   await expect(page.getByLabel("Universities using Pathway")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Forgot password?" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Create an account" })).toBeVisible();
   await expect(page.getByText(/Signups are paused/i)).toHaveCount(0);
 });
@@ -27,12 +28,18 @@ test("signup accepts any valid email domain", async ({ page }) => {
   await expect(page.getByText("Enter a valid email address.")).toBeVisible();
 });
 
+test("register is the dedicated signup route", async ({ page }) => {
+  await page.goto("/register");
+
+  await expect(page.getByRole("heading", { name: "Create account" })).toBeVisible();
+});
+
 test("landing page renders for anonymous users", async ({ page }) => {
   await page.goto("/");
 
   const publicNav = page.getByLabel("Public navigation");
   await expect(page.getByRole("heading", { name: LANDING_HERO })).toBeVisible();
-  await expect(page.getByText(/100% free/i)).toBeVisible();
+  await expect(page.getByText(/real-time alerts/i)).toBeVisible();
   await expect(publicNav.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/login");
   await expect(publicNav.getByRole("link", { name: /Get started/i })).toHaveAttribute("href", "/register");
   await expect(page.getByRole("link", { name: "Pathway home" })).toBeVisible();
@@ -44,7 +51,9 @@ test("landing page renders for anonymous users", async ({ page }) => {
   await expect(page.getByAltText("University of Illinois Urbana-Champaign logo")).toHaveCount(0);
   await expect(page.getByAltText("Cornell University logo")).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Social proof" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /Find roles at 400\+ companies/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Land your dream internship as a/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Simple plans for your internship search/i })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Pathway pricing features" })).toBeVisible();
   await expect(page.getByRole("heading", { name: /Everything your search needs/i })).toBeVisible();
   await expect(page.getByRole("heading", { name: /New roles, the second they post/i })).toBeVisible();
   await expect(page.getByText("Notes and next steps together")).toHaveCount(0);
@@ -71,14 +80,14 @@ test("logo proxy is not available to anonymous users", async ({ request }) => {
 
   expect(response.status()).toBeGreaterThanOrEqual(300);
   expect(response.status()).toBeLessThan(400);
-  expect(response.headers().location).toMatch(/\/$/);
+  expect(response.headers().location).toMatch(/\/login\?next=%2Fapi%2Flogo%3Fcompany%3DStripe$/);
 });
 
 test("protected pages redirect anonymous users to landing", async ({ page }) => {
-  for (const path of ["/applications", "/live", "/home", "/discover", "/stats", "/settings"]) {
+  for (const path of ["/applications", "/openings", "/home", "/companies", "/insights", "/settings"]) {
     await page.goto(path);
-    await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByRole("heading", { name: LANDING_HERO })).toBeVisible();
+    await expect(page).toHaveURL(new RegExp(`/login\\?next=${encodeURIComponent(path)}$`));
+    await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
   }
 });
 

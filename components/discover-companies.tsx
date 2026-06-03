@@ -485,7 +485,7 @@ export function DiscoverCompanies({
   return (
     <PageShell>
       <PageMain width="xl">
-        <PageHeader title={getPageLabel("/discover")} />
+        <PageHeader title={getPageLabel("/companies")} />
 
         <div className="mb-8">
           <SearchInput
@@ -828,7 +828,10 @@ function CompanyCard({
           lazy={lazyLogo}
         />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[15px] font-medium leading-snug text-foreground">
+          <p
+            title={company.name}
+            className="truncate text-[15px] font-medium leading-snug text-foreground"
+          >
             {company.name}
           </p>
           <p
@@ -838,7 +841,7 @@ function CompanyCard({
             }
           >
             <CompanyHiringStatusDot open={isHiring} />
-            <span className="min-w-0 truncate">{statusLabel}</span>
+            <span className="min-w-0">{statusLabel}</span>
           </p>
         </div>
       </button>

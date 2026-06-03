@@ -348,7 +348,7 @@ export function Home({
               {postingList(visibleNew, true)}
               {hiddenNewCount > 0 ? (
                 <Link
-                  href="/live"
+                  href="/openings"
                   className="mt-4 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
                 >
                   {hiddenNewCount} more in Openings <ArrowRight size={14} strokeWidth={1.75} />
@@ -369,7 +369,7 @@ export function Home({
                 Star companies to track their open roles here.
               </p>
               <Link
-                href="/discover"
+                href="/companies"
                 className="mt-3 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
               >
                 Browse companies <ArrowRight size={14} strokeWidth={1.75} />

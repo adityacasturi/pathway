@@ -25,7 +25,7 @@ export default async function Settings() {
   const userResult = await supabase.auth.getUser();
 
   const { data } = userResult;
-  if (!data.user) redirect("/");
+  if (!data.user) redirect("/login?next=/settings");
 
   let preferencesRes = await supabase
     .from("user_preferences")

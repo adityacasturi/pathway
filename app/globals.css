@@ -586,6 +586,7 @@
     gap: 24px;
     padding: 44px 0 56px;
     border-top: 1px solid var(--rule);
+    scroll-margin-top: 32px;
   }
   .landing-feature:first-child {
     border-top: 0;
@@ -621,17 +622,17 @@
     background:
       linear-gradient(180deg, color-mix(in oklab, white 58%, transparent), transparent),
       color-mix(in oklab, var(--card) 86%, var(--primary) 8%);
-    padding: 8px 14px;
+    padding: 7px 13px;
     box-shadow: 0 1px 0 color-mix(in oklab, white 80%, transparent) inset;
   }
   .landing-offer-title {
     display: flex;
     min-width: 0;
     flex-wrap: wrap;
-    align-items: baseline;
-    gap: 5px;
-    font-size: 14px;
-    line-height: 1.35;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    line-height: 1.25;
     color: var(--muted-foreground);
   }
   .landing-offer-title span {
@@ -641,6 +642,31 @@
     color: color-mix(in oklab, var(--primary) 78%, var(--foreground));
     font-style: normal;
     font-weight: 500;
+  }
+  /* Status dot: fixed sage green (landing uses midnight accent for --primary). */
+  .landing-offer-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+  .landing-offer-dot {
+    flex: 0 0 auto;
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: oklch(0.52 0.11 150);
+    transform: translateY(0.5px);
+  }
+  .landing-offer-badge__label {
+    display: block;
+    line-height: 1;
   }
   .landing-shell {
     min-height: 100vh;
@@ -705,17 +731,17 @@
     background:
       linear-gradient(180deg, color-mix(in oklab, white 58%, transparent), transparent),
       color-mix(in oklab, var(--card) 86%, var(--primary) 8%);
-    padding: 8px 14px;
+    padding: 7px 13px;
     box-shadow: 0 1px 0 color-mix(in oklab, white 80%, transparent) inset;
   }
   .landing-offer-title {
     display: flex;
     min-width: 0;
     flex-wrap: wrap;
-    align-items: baseline;
-    gap: 5px;
-    font-size: 14px;
-    line-height: 1.35;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    line-height: 1.25;
     color: var(--muted-foreground);
   }
   .landing-offer-title span {
@@ -905,6 +931,7 @@
     font-family: var(--font-sans);
     font-size: 1.0625rem;
     line-height: 1.6;
+    text-align: center;
     color: var(--muted-foreground);
     font-weight: 400;
   }
@@ -920,6 +947,7 @@
     position: relative;
     display: inline-flex;
     height: 46px;
+    min-width: 182px;
     align-items: center;
     justify-content: center;
     gap: 7px;
@@ -958,6 +986,7 @@
     z-index: 1;
   }
   .lp-cta--secondary {
+    min-width: 164px;
     border: 1px solid var(--rule);
     color: var(--foreground);
     background:
@@ -1049,10 +1078,100 @@
 
   /* Trust band — facts + company marquees below the hero. */
   .lp-trust {
-    padding-bottom: 4rem;
+    padding-bottom: 3rem;
   }
   .lp-trust-companies {
-    margin-top: 4.5rem;
+    margin-top: 3rem;
+  }
+  .lp-trust-copy {
+    max-width: 44rem;
+    text-align: center;
+  }
+  .lp-trust-line {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    align-items: center;
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.5;
+    font-weight: 500;
+    letter-spacing: 0;
+    color: color-mix(in oklab, var(--foreground) 76%, var(--muted-foreground));
+  }
+  .lp-trust-line__sentence {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    column-gap: 0.32em;
+    row-gap: 0.35em;
+    line-height: 1.5;
+  }
+  .lp-trust-line__text {
+    flex: 0 0 auto;
+    line-height: 1.5;
+    white-space: nowrap;
+  }
+  .lp-trust-line__tail {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 0.1em;
+  }
+  .lp-trust-line__period {
+    flex: 0 0 auto;
+    line-height: 1.5;
+  }
+  .lp-trust-pill {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: calc(var(--lp-trust-slot-ch, 12) * 1ch + 0.5rem);
+    border-radius: 999px;
+    border: 1px solid color-mix(in oklab, var(--primary) 18%, var(--rule));
+    background: color-mix(in oklab, var(--primary) 5%, var(--card));
+    padding: 0.1rem 0.45rem;
+    font-family: var(--font-mono);
+    font-size: 15px;
+    line-height: 1.35;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    color: color-mix(in oklab, var(--foreground) 88%, var(--muted-foreground));
+  }
+  /* software engineer (17ch) needs extra mono room */
+  .lp-trust-pill--role {
+    width: calc(var(--lp-trust-slot-ch, 12) * 1ch + 1.35rem);
+  }
+  .lp-trust-pill--company {
+    width: calc(var(--lp-trust-slot-ch, 12) * 1ch + 2.75rem);
+  }
+  .lp-trust-pill-label {
+    display: block;
+    width: 100%;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .lp-trust-pill-clip {
+    display: flex;
+    width: 100%;
+    height: 1.35em;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    line-height: 1.35;
+    text-align: center;
+  }
+  .lp-trust-pill-word {
+    display: flex;
+    height: 100%;
+    align-items: center;
+    line-height: 1.35;
+    white-space: nowrap;
+    text-align: center;
   }
 
   /* Section heads — micro label + display headline. */
@@ -1117,99 +1236,11 @@
     color: var(--muted-foreground);
   }
 
-  /* Comparison table — hairline grid, Pathway column gently highlighted. */
-  .compare {
-    border: 1px solid var(--rule);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    background: var(--card);
-  }
-  .compare-row {
-    display: grid;
-    grid-template-columns: 1.4fr 1fr 1fr 1fr;
-    align-items: center;
-    border-top: 1px solid var(--rule);
-  }
-  .compare-row:first-child {
-    border-top: 0;
-  }
-  .compare-row--head {
-    background: color-mix(in oklab, var(--paper-sunk) 70%, var(--card));
-  }
-  .compare-feature {
-    padding: 14px 16px;
-    font-size: 13.5px;
-    font-weight: 500;
-    color: var(--foreground);
-  }
-  .compare-row--head .compare-feature {
-    font-weight: 400;
-  }
-  .compare-col {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 14px 10px;
-    text-align: center;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--muted-foreground);
-    border-left: 1px solid var(--rule);
-    min-height: 52px;
-  }
-  .compare-col--pathway {
-    background: color-mix(in oklab, var(--primary) 6%, var(--card));
-    color: var(--foreground);
-    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--primary) 12%, transparent);
-  }
-  .compare-row--head .compare-col--pathway {
-    color: color-mix(in oklab, var(--primary) 80%, var(--foreground));
-    font-weight: 600;
-  }
-  .compare-mark {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    border-radius: 999px;
-  }
-  .compare-mark--yes {
-    color: var(--primary-foreground);
-    background: var(--primary);
-  }
-  .compare-mark--neutral {
-    color: var(--foreground);
-    background: color-mix(in oklab, var(--ink) 8%, transparent);
-  }
-  .compare-mark--no {
-    color: color-mix(in oklab, var(--muted-foreground) 70%, transparent);
-    background: color-mix(in oklab, var(--ink) 4%, transparent);
-  }
-  .compare-text--muted {
-    color: var(--muted-foreground);
-    font-weight: 400;
-  }
-  .compare-text--strong {
-    color: var(--foreground);
-    font-weight: 600;
-  }
-  @media (max-width: 640px) {
-    .compare-feature {
-      font-size: 12px;
-      padding: 12px 10px;
-    }
-    .compare-col {
-      font-size: 11px;
-      padding: 12px 4px;
-    }
-  }
-
   /* Offer wall — two opposing logo marquees behind a soft edge fade. */
   .offer-wall {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 12px;
     overflow: hidden;
   }
   .offer-wall-row {
@@ -1229,11 +1260,14 @@
     display: inline-flex;
     flex-shrink: 0;
     align-items: center;
-    gap: 10px;
-    padding: 9px 15px;
+    gap: 9px;
+    padding: 8px 14px;
     border-radius: 999px;
-    border: 1px solid var(--rule);
-    background: var(--card);
+    border: 1px solid color-mix(in oklab, var(--rule) 82%, transparent);
+    background:
+      linear-gradient(180deg, color-mix(in oklab, white 48%, transparent), transparent),
+      color-mix(in oklab, var(--card) 92%, var(--paper-sunk) 8%);
+    box-shadow: 0 1px 0 color-mix(in oklab, white 62%, transparent) inset;
   }
   .offer-wall-chip-logo {
     width: 24px;

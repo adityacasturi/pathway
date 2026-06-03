@@ -176,7 +176,13 @@ export function SettingsPage({
 
               <div className="py-5">
                 <div className="flex items-center justify-between gap-6">
-                  <p className="label-meta">Quick track</p>
+                  <div>
+                    <p className="label-meta">Quick track</p>
+                    <p className="mt-1 max-w-lg text-[13px] leading-relaxed text-muted-foreground">
+                      Add roles from Overview, Openings, or Companies immediately. Turn this off to
+                      review details in a confirmation dialog first.
+                    </p>
+                  </div>
                   <Switch
                     checked={quickTrackEnabled}
                     disabled={isQuickTrackPending}

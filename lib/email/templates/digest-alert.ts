@@ -59,7 +59,7 @@ export function buildDigestAlertHtml(
       ? `<p style="margin:0 0 12px;color:#6b7280;font-size:14px;line-height:1.5;">+ ${postings.length - DIGEST_MAX_POSTINGS} more on Pathway.</p>`
       : "";
 
-  const liveUrl = `${getSiteUrl()}/live`;
+  const openingsUrl = `${getSiteUrl()}/openings`;
   const bodyHtml = `
     <p style="margin:0 0 18px;font-size:14px;line-height:1.55;color:#4b5563;">
       New roles from companies and sectors you follow.
@@ -67,7 +67,7 @@ export function buildDigestAlertHtml(
     ${sections}
     ${overflow}
     <p style="margin:20px 0 0;">
-      <a href="${escapeHtml(liveUrl)}" style="display:inline-block;padding:11px 16px;border-radius:8px;background:#111827;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;">Browse openings</a>
+      <a href="${escapeHtml(openingsUrl)}" style="display:inline-block;padding:11px 16px;border-radius:8px;background:#111827;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;">Browse openings</a>
     </p>`;
 
   return renderAlertEmailLayout({

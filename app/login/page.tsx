@@ -1,10 +1,11 @@
 "use client";
 
+import { Suspense } from "react";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
-import { login } from "@/lib/actions/auth";
+import { login, sendPasswordReset } from "@/lib/actions/auth";
 import { SIGNUPS_ENABLED } from "@/lib/auth/signup-enabled";
 import { normalizeEmail } from "@/lib/auth/validation";
 import { AsyncButton } from "@/components/ui/async-button";
@@ -24,11 +25,31 @@ import { OtpConfirmationForm } from "@/components/auth/otp-confirmation-form";
 import { motionVariants } from "@/lib/ui/motion";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginFallback />}>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginFallback() {
+  return (
+    <AuthPageShell>
+      <AuthPageHeader title="Sign in" />
+    </AuthPageShell>
+  );
+}
+
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = getSafeNextPath(searchParams.get("next"));
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [state, setState] = useState<"idle" | "pending" | "success" | "error">("idle");
+  const [resetState, setResetState] = useState<"idle" | "pending" | "success" | "error">("idle");
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
   const [otpEmail, setOtpEmail] = useState<string | null>(null);
 
   const isPending = state === "pending";
@@ -41,6 +62,7 @@ export default function LoginPage() {
     const submittedEmail = String(formData.get("email") ?? "");
     setError(null);
     setState("pending");
+    setResetMessage(null);
 
     const result = await login(formData).catch(() => ({
       error: "Something went wrong. Please try again.",
@@ -65,8 +87,29 @@ export default function LoginPage() {
     }
 
     setState("success");
-    router.replace("/home");
+    router.replace(nextPath);
     router.refresh();
+  }
+
+  async function handlePasswordReset(form: HTMLFormElement) {
+    if (resetState === "pending" || isPending) return;
+    const formData = new FormData(form);
+    setError(null);
+    setResetMessage(null);
+    setResetState("pending");
+
+    const result = await sendPasswordReset(formData).catch(() => ({
+      error: "Something went wrong. Please try again.",
+    }));
+
+    if ("error" in result) {
+      setError(result.error);
+      setResetState("error");
+      return;
+    }
+
+    setResetState("success");
+    setResetMessage("If an account exists for that email, a reset link is on the way.");
   }
 
   return (
@@ -78,11 +121,17 @@ export default function LoginPage() {
             <span className="font-medium text-foreground">{otpEmail}</span>.
           </p>
         )}
+        {!otpEmail && nextPath !== "/home" ? (
+          <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
+            Sign in to continue to your requested page.
+          </p>
+        ) : null}
       </AuthPageHeader>
 
       {otpEmail ? (
         <OtpConfirmationForm
           email={otpEmail}
+          nextPath={nextPath}
           onExit={() => {
             setOtpEmail(null);
             setError(null);
@@ -133,6 +182,23 @@ export default function LoginPage() {
           </div>
 
           <AnimatePresence mode="wait">
+            {resetMessage && (
+              <motion.div
+                key={resetMessage}
+                variants={motionVariants.fadeIn}
+                initial="hidden"
+                animate="visible"
+                exit="hidden"
+                role="status"
+                className="rounded-lg border bg-card px-3 py-3 text-[12px] leading-relaxed text-foreground"
+                style={{
+                  borderColor: "color-mix(in oklab, var(--primary) 18%, var(--rule))",
+                  background: "color-mix(in oklab, var(--primary) 4%, var(--card))",
+                }}
+              >
+                {resetMessage}
+              </motion.div>
+            )}
             {error && (
               <motion.div
                 key={error}
@@ -155,6 +221,17 @@ export default function LoginPage() {
             errorLabel="Try again"
             className={AUTH_PRIMARY_BUTTON_CLASS}
           />
+          <button
+            type="button"
+            disabled={isPending || resetState === "pending"}
+            onClick={(event) => {
+              const form = event.currentTarget.form;
+              if (form) void handlePasswordReset(form);
+            }}
+            className="w-full text-center text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+          >
+            {resetState === "pending" ? "Sending reset link..." : "Forgot password?"}
+          </button>
         </form>
       )}
 
@@ -168,4 +245,10 @@ export default function LoginPage() {
       )}
     </AuthPageShell>
   );
+}
+
+function getSafeNextPath(value: string | null): string {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/home";
+  if (value.startsWith("/login") || value.startsWith("/register")) return "/home";
+  return value;
 }

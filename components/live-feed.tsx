@@ -485,7 +485,7 @@ export function LiveFeed({
   return (
     <PageShell>
       <PageMain width="xl">
-        <PageHeader title={getPageLabel("/live")} actions={headerActions} />
+        <PageHeader title={getPageLabel("/openings")} actions={headerActions} />
 
         <motion.div
           className={`relative mb-8 ${searchFocused ? "z-[200]" : "z-20"}`}

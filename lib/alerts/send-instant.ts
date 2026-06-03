@@ -11,14 +11,19 @@ import { loadCuratedSectorCompanyMap } from "@/lib/alerts/load-curated-sectors";
 import { matchPostingsToUsers } from "@/lib/alerts/match-postings";
 import type { AlertMatch } from "@/lib/alerts/types";
 import { isAlertsLaunched } from "@/lib/config/alerts-launch";
-import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  handleResendBatchFailure,
+  pauseBetweenResendSends,
+  type ResendBatchResult,
+} from "@/lib/email/resend-batch";
 import { isEmailConfigured, sendResendEmail } from "@/lib/email/resend-client";
 import {
   buildInstantAlertHtml,
   buildInstantAlertSubject,
 } from "@/lib/email/templates/instant-alert";
+import { createAdminClient } from "@/lib/supabase/admin";
 
-export async function processInstantAlerts(since: Date): Promise<{ sent: number; errors: number }> {
+export async function processInstantAlerts(since: Date): Promise<ResendBatchResult> {
   if (!isAlertsLaunched() || !isEmailConfigured()) {
     return { sent: 0, errors: 0 };
   }
@@ -55,17 +60,36 @@ export async function processInstantAlerts(since: Date): Promise<{ sent: number;
 
   let sent = 0;
   let errors = 0;
+  let stoppedReason: ResendBatchResult["stoppedReason"];
 
-  for (const match of matches) {
+  for (let index = 0; index < matches.length; index += 1) {
+    if (index > 0) {
+      await pauseBetweenResendSends();
+    }
+
+    const match = matches[index]!;
     const email = emails.get(match.userId);
     if (!email) {
       errors += 1;
       continue;
     }
 
-    const result = await sendInstantAlertEmail(match, email);
+    const result = await sendResendEmail({
+      to: email,
+      subject: buildInstantAlertSubject(match.posting),
+      html: buildInstantAlertHtml(match.userId, match.posting),
+    });
+
     if (!result.ok) {
       errors += 1;
+      const stop = handleResendBatchFailure(result, "alerts.instant_send_failed", {
+        channel: "instant",
+        postingId: match.posting.postingId,
+      });
+      if (stop) {
+        stoppedReason = stop;
+        break;
+      }
       continue;
     }
 
@@ -79,18 +103,5 @@ export async function processInstantAlerts(since: Date): Promise<{ sent: number;
     sent += 1;
   }
 
-  return { sent, errors };
-}
-
-async function sendInstantAlertEmail(
-  match: AlertMatch,
-  email: string,
-): Promise<{ ok: true } | { ok: false }> {
-  const result = await sendResendEmail({
-    to: email,
-    subject: buildInstantAlertSubject(match.posting),
-    html: buildInstantAlertHtml(match.userId, match.posting),
-  });
-
-  return result.ok ? { ok: true } : { ok: false };
+  return { sent, errors, stoppedReason };
 }

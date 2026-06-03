@@ -47,7 +47,7 @@ export default async function HomePage() {
       supabase.from("user_preferences").select("quick_track_enabled").maybeSingle(),
     ]);
 
-  if (!userResult.data.user) redirect("/");
+  if (!userResult.data.user) redirect("/login?next=/home");
 
   const favoriteSlugs = await loadDiscoverCompanyFavoriteSlugs(
     supabase,

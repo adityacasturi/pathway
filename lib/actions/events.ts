@@ -21,7 +21,7 @@ type CreateEventRpcResult = {
 function revalidateApplicationSurfaces() {
   revalidatePath("/");
   revalidatePath("/applications");
-  revalidatePath("/stats");
+  revalidatePath("/insights");
 }
 
 function isEventType(value: string): value is EventType {

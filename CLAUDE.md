@@ -41,7 +41,7 @@ Read `node_modules/next/dist/docs/` before changing routing, Server Components, 
 
 ## Product snapshot
 
-Public signup (any valid email) · application tracker with event-derived status · **Home** briefing snapshot · **Live** flat feed · **Discover** company catalog · **Stats** (metrics + market) · **Alerts** (email digests) · **Settings** (accent, quick track).
+Public signup (any valid email) · application tracker with event-derived status · **Home** briefing snapshot · **Openings** flat feed · **Companies** catalog · **Insights** (metrics + market) · **Alerts** (email digests) · **Settings** (accent, quick track).
 
 | Route | Purpose |
 | --- | --- |
@@ -51,9 +51,9 @@ Public signup (any valid email) · application tracker with event-derived status
 | `/auth/confirm` | OTP / email-link verification handler (public) |
 | `/home` | Overview briefing (snapshot, since-yesterday, starred) |
 | `/applications` | Tracker |
-| `/live` | Scraped roles feed |
-| `/discover` | Companies + postings on demand |
-| `/stats` | Application metrics + market analytics |
+| `/openings` | Scraped roles feed |
+| `/companies` | Companies + postings on demand |
+| `/insights` | Application metrics + market analytics |
 | `/alerts` | Email alert subscriptions (company + curated sectors) |
 | `/alerts/unsubscribe` | One-click unsubscribe (HMAC token, public) |
 | `/settings` | Preferences |

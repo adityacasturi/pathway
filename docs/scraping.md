@@ -27,7 +27,7 @@ Environment:
 | `SCRAPER_VERBOSE=1` | Same as `--verbose` |
 | `SCRAPE_COMPANY_CONCURRENCY` | Parallel companies (default 8, max 16) |
 
-Cron (production): `GET` `/api/cron/scrape-postings` with `Authorization: Bearer $CRON_SECRET` — scheduled every 30 minutes via Upstash QStash (`npm run qstash:cron -- upsert`). Each scheduled run fans out across four deterministic source shards; `/api/cron/send-instant-alerts` runs a few minutes later. Local: `npm run scrape`.
+Cron (production): `GET` `/api/cron/scrape-postings` with `Authorization: Bearer $CRON_SECRET` — scheduled every 15 minutes via Upstash QStash (`npm run qstash:cron -- upsert`). Each scheduled run fans out across four deterministic source shards; `/api/cron/send-instant-alerts` runs a few minutes later. Local: `npm run scrape`.
 
 ### Company logos (static)
 
