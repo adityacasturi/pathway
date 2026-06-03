@@ -9,7 +9,7 @@
 - [ ] Authenticated e2e with `E2E_USER_EMAIL` / `E2E_USER_PASSWORD`
 - [ ] Optional mutation e2e: `E2E_ALLOW_MUTATION=1` on a **dedicated QA account only**
 - [ ] New DB changes present in Supabase `list_migrations` (not ad-hoc SQL only)
-- [ ] `select * from app_private.production_integrity_check();` → **0 rows**
+- [ ] `select * from app_private.production_integrity_check();` → every returned `violations` value is **0**
 - [ ] Supabase security/performance advisors reviewed
 - [ ] Production env vars set (see below)
 
@@ -17,7 +17,7 @@
 
 1. `apply_migration` (MCP or CLI) with a descriptive name.
 2. Confirm `list_migrations`.
-3. `select * from app_private.production_integrity_check();` → 0 rows.
+3. `select * from app_private.production_integrity_check();` → every returned `violations` value is `0`.
 4. Run advisors; document accepted warnings.
 5. Optional: commit SQL under `supabase/migrations/` for review-worthy schema/RLS only.
 
@@ -107,7 +107,7 @@ Via MCP or dashboard:
 
 Last verified against the hosted project during the v2 pre-launch sweep:
 
-- **Alert write RPC exposure** — **resolved** (migrations `revoke_public_execute_on_alert_rpcs`, `revoke_authenticated_alert_write_rpcs`). Alert writes now flow through server actions that authenticate the user and perform scoped service-role writes for that `user.id`; client `EXECUTE` on the legacy public write RPCs is revoked.
+- **Alert write RPC/direct table exposure** — **resolved** (migrations `revoke_public_execute_on_alert_rpcs`, `revoke_authenticated_alert_write_rpcs`, `drop_legacy_alert_write_rpcs`, `harden_alert_client_write_policies`, `harden_alert_table_grants`). Alert writes now flow through server actions that authenticate the user and perform scoped service-role writes for that `user.id`; the legacy public write RPCs were dropped and client alert table privileges are read-only where client reads are needed.
 - **`alert_unsubscribe_nonces` has RLS enabled with no policy** — intentional (service-role writes only; deny-all to clients). No action needed.
 - **Leaked-password protection disabled** — enable in the Auth dashboard (see above).
 

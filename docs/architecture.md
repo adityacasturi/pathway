@@ -56,9 +56,9 @@ User-owned (RLS via `auth.uid()`):
 | `application_events` | Timeline events |
 | `feed_interactions` | Saved / dismissed Live posting ids (stable URL hashes) |
 | `discover_company_favorites` | Starred Discover companies |
-| `user_preferences` | Accent, quick-track, Live feed view prefs (`live_*`), Applications hide toggles (`hide_rejected`, `hide_archived`) |
+| `user_preferences` | Accent, quick-track, Live feed view prefs (`live_*`), Applications hide toggles (`hide_rejected`, `hide_archived`). Legacy browser-storage view keys are imported once and cleared. |
 | `alert_preferences` | Email alerts master switch (`emails_enabled`, `digest_enabled`) |
-| `alert_subscriptions` | Per-company, curated sector, or legacy industry alert with instant/digest cadence |
+| `alert_subscriptions` | Per-company or curated-sector alert follows |
 | `alert_sent_postings` | Dedup ledger for sent alert emails |
 | `alert_digest_state` | Last digest send timestamp per user |
 | `alert_curated_sectors` | Curated sector labels/metadata; `alert_curated_sector_companies` maps sector → company slugs |
@@ -119,7 +119,7 @@ Loader: `lib/feed/scraped-postings.ts` → `FeedPosting` (`lib/feed/source.ts`).
 - Market top-line counts for Home/Stats come from `public.market_posting_summary(_now)` so the DB performs the aggregate scan instead of recomputing every summary in React route code.
 - Posting ids: stable URL hash (`lib/feed/ids.ts`) plus row uuid for interactions.
 - **US-only:** `lib/feed/us-locations.ts` at scrape, upsert, and read; `countries` column stores ISO codes when known.
-- **Posted vs Discovered:** see [scraped-posted-dates.md](./scraped-posted-dates.md). Live **NEW** uses `first_seen_at`, not ATS touch times.
+- **Posted vs Discovered:** see [scraped-posted-dates.md](./scraped-posted-dates.md). Live **NEW** uses `first_seen_at` vs the user's DB-backed `live_last_seen_at`, not ATS touch times.
 - Applied postings hidden by default when posting URL matches an active application.
 - `refreshFeed()` revalidates `/live` and `/home` only — it does **not** scrape.
 
@@ -138,13 +138,13 @@ Loader: `lib/discover/companies.ts`. UI: `components/discover-companies.tsx`.
 ## Email alerts
 
 - UI: `app/alerts/page.tsx`, `components/alerts-page.tsx`.
-- **Daily digest** — global toggle (`alert_preferences.digest_enabled`); one morning email with new roles matching the user’s follows (instant subscriptions + legacy industry digest rows).
-- **Curated sector alerts** — global toggle (`emails_enabled`) plus subscriptions to sector slugs in `alert_curated_sectors` / `alert_curated_sector_companies` (loaded via `lib/alerts/load-curated-sectors.ts`); instant email when a new role appears at any company in a followed sector. Legacy `industry` subscriptions still match in cron but are no longer offered in UI.
+- **Daily digest** — global toggle (`alert_preferences.digest_enabled`); one morning email with new roles matching the user’s company and curated-sector follows.
+- **Curated sector alerts** — global toggle (`emails_enabled`) plus subscriptions to sector slugs in `alert_curated_sectors` / `alert_curated_sector_companies` (loaded via `lib/alerts/load-curated-sectors.ts`); instant email when a new role appears at any company in a followed sector.
 - Matching: `lib/alerts/match-postings.ts` (US-only, `first_seen_at` for new roles).
 - Send: Resend via `lib/email/resend-client.ts`; instant after scrape, digest on daily cron.
 - Env: `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `ALERT_UNSUBSCRIBE_SECRET` — see [production-runbook.md](./production-runbook.md).
 - Launch gate: without `ALERTS_LAUNCHED=true`, the `/alerts` UI is preview-only (visible, non-interactive), server actions reject writes, and crons skip outbound email.
-- DB: `alert_curated_sectors` + `app_private.validate_alert_subscription_row` trigger enforce sector/company/industry targets and `cadence = instant` on writes; RLS uses `(select auth.uid())` for performance.
+- DB: `alert_curated_sectors` + `app_private.validate_alert_subscription_row` trigger enforce sector/company targets and `cadence = instant` on writes; RLS uses `(select auth.uid())` for performance.
 - Unsubscribe: `GET /alerts/unsubscribe` shows a confirm form; `POST` performs the disable (avoids mail-scanner GET side effects). Tokens include expiry + single-use nonce (`alert_unsubscribe_nonces`).
 - Writes: server actions authenticate with the user session, then perform scoped service-role writes for that `user.id`; direct client table inserts and public alert write RPC execution are revoked.
 

@@ -11,7 +11,7 @@ Discover groups companies under a fixed industry taxonomy. **Supabase is the onl
 
 Authenticated users can `SELECT` from `discover_industries` (RLS). Writes go through migrations / service role.
 
-**Migrations (remote):** `discover_industries_catalog`, `discover_industries_company_backfill`, `drop_companies_industry_check`. Git copies: `supabase/migrations/177_*`, `178_*`.
+**Migrations (remote):** `discover_industries_catalog`, `discover_industries_company_backfill`, `drop_companies_industry_check`, `harden_discover_industries_grants`. Git copies: `supabase/migrations/177_*`, `178_*`.
 
 ## App code
 

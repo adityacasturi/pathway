@@ -11,7 +11,7 @@ Production schema and migration history live on the **hosted Supabase project**.
 | Add one Discover company/source | `npm run discover-company -- <flags>` dry-run, then repeat with `--apply --scrape` |
 | Industry slugs for `companies.industry` | [docs/discover-industries.md](../docs/discover-industries.md) (`discover_industries` table) |
 | Apply a durable change | MCP `apply_migration` with a descriptive name |
-| Verify | `list_migrations`, `select * from app_private.production_integrity_check();` (0 rows), advisors |
+| Verify | `list_migrations`, `select * from app_private.production_integrity_check();` (all `violations = 0`), advisors |
 | Optional code review SQL | `supabase migration new <name>` → one file in `supabase/migrations/` |
 
 ## Agents
@@ -40,7 +40,7 @@ After every migration:
 select * from app_private.production_integrity_check();
 ```
 
-Any row returned is a blocker until fixed forward or reverted via a new migration.
+Any row with `violations > 0` is a blocker until fixed forward or reverted via a new migration.
 
 ## Recent hosted migrations
 
@@ -50,3 +50,8 @@ Any row returned is a blocker until fixed forward or reverted via a new migratio
 - `deny_client_access_to_unsubscribe_nonces` — adds an explicit deny-all RLS policy for `alert_unsubscribe_nonces`; writes stay service-role only.
 - `add_pinpoint_source_type_and_wolverine_source` — registers the `pinpoint` source type and moves Wolverine Trading from a stale Lever board to `https://careers.wolve.com/en/postings.json`.
 - `revoke_authenticated_alert_write_rpcs` — revokes signed-in client `EXECUTE` on legacy alert write RPCs after moving `/alerts` mutations behind scoped server actions.
+- `remove_industry_alert_subscriptions` — deletes legacy `industry` alert subscriptions and tightens alert target validation to `company` / `sector`.
+- `drop_legacy_alert_write_rpcs` — drops the now-unused public alert write RPCs after verifying `/alerts` uses scoped server actions and client execution had already been revoked.
+- `harden_alert_client_write_policies` — replaces alert preference/subscription "manage own" policies with read-only client policies so writes must go through server actions.
+- `harden_alert_table_grants` — revokes non-read client table privileges across alert tables; service-role cron/actions retain the required write access.
+- `harden_discover_industries_grants` — revokes non-read client privileges from the Discover industry taxonomy; authenticated clients keep read access only.

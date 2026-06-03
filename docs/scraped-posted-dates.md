@@ -28,7 +28,7 @@ Implemented in [`lib/scraping/posted-date.ts`](../lib/scraping/posted-date.ts) a
 
 - **Posted** — `ats_publish` / `page` / `relative_parse` with `high` or `medium` confidence.
 - **Discovered** — fallback to `first_seen_at`.
-- Live **NEW** — `first_seen_at` vs `localStorage` last visit (not employer publish date).
+- Live **NEW** — `first_seen_at` vs `user_preferences.live_last_seen_at` (not employer publish date). Old browser-storage visit keys are imported once and then cleared.
 
 ## Adapter tiers (maintenance)
 

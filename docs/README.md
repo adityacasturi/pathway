@@ -10,6 +10,7 @@ Start here if you are setting up the repo, onboarding Discover companies, or deb
 | [scraping.md](./scraping.md) | Engineers & agents | Scrape runner, adapters, filters, direct onboarding |
 | [scraped-posted-dates.md](./scraped-posted-dates.md) | Engineers | Posted vs Discovered date provenance |
 | [production-runbook.md](./production-runbook.md) | Release & on-call | Pre-deploy checks, env, incidents |
+| [audits/](./audits/) | Engineers & agents | Production-hardening audit notes and backlog |
 | [../supabase/README.md](../supabase/README.md) | Engineers & agents | Database change workflow (remote-first) |
 | [../discover-queue/README.md](../discover-queue/README.md) | Operators | SQLite queue for bulk company onboarding |
 | [../AGENTS.md](../AGENTS.md) | Coding agents | Required checks, DB rules, UI conventions |

@@ -48,7 +48,7 @@ Do **not** search `supabase/migrations_archive/` for current schema or whether a
 
 - Apply durable DDL/DML with MCP `apply_migration` (descriptive name, e.g. `add_acme_discover`).
 - Inspect with `list_tables`, `execute_sql`, or `catalog-check` — not archive SQL greps.
-- After apply: `list_migrations`, `select * from app_private.production_integrity_check();` (0 rows), advisors.
+- After apply: `list_migrations`, `select * from app_private.production_integrity_check();` (all `violations = 0`), advisors.
 - `execute_sql` for read-only / QA / temporary checks — not durable DDL alone.
 - Optional git file under `supabase/migrations/` only for review-worthy schema/RLS (`supabase migration new <name>`). Routine Discover seeds usually need no repo SQL.
 
