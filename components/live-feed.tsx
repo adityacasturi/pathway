@@ -40,61 +40,11 @@ import { getPageLabel } from "@/lib/config/nav";
 import { SEASON_FILTER_OPTIONS, type SeasonFilter } from "@/lib/config/season-filter";
 import { getSearchTerms } from "@/lib/search-terms";
 import { updateFeedViewPreferences } from "@/lib/actions/user-preferences";
+import {
+  clearStoredFeedViewPreferences,
+  readStoredFeedViewPreferences,
+} from "@/lib/user-preferences/legacy-view-storage";
 import type { FeedViewPreferences } from "@/lib/user-preferences/view-preferences";
-
-const SHOW_DISMISSED_STORAGE_KEY = "pathway:live-show-dismissed";
-const HIDE_APPLIED_STORAGE_KEY = "pathway:live-hide-applied";
-const SEASON_STORAGE_KEY = "pathway:live-season";
-const LEGACY_SHOW_DISMISSED_KEY = "pathway:discover-show-dismissed";
-const LEGACY_HIDE_APPLIED_KEY = "pathway:discover-hide-applied";
-const LEGACY_SEASON_KEY = "pathway:discover-season";
-const LAST_SEEN_STORAGE_KEY = "pathway:feed-last-seen-at";
-
-const VALID_SEASONS = new Set<SeasonFilter>(SEASON_FILTER_OPTIONS.map((option) => option.value));
-
-function readStoredFeedPreferences(initialFeedPrefs: FeedViewPreferences): FeedViewPreferences {
-  if (typeof window === "undefined") return initialFeedPrefs;
-
-  const storedLastSeen = window.localStorage.getItem(LAST_SEEN_STORAGE_KEY);
-  const parsedLastSeen = storedLastSeen ? Number.parseInt(storedLastSeen, 10) : NaN;
-  const lastSeenUnix =
-    Number.isFinite(parsedLastSeen) && parsedLastSeen > initialFeedPrefs.lastSeenUnix
-      ? parsedLastSeen
-      : initialFeedPrefs.lastSeenUnix;
-
-  const dismissPref =
-    window.localStorage.getItem(SHOW_DISMISSED_STORAGE_KEY) ??
-    window.localStorage.getItem(LEGACY_SHOW_DISMISSED_KEY);
-  const showDismissed =
-    dismissPref === "1" && !initialFeedPrefs.showDismissed
-      ? true
-      : initialFeedPrefs.showDismissed;
-
-  const hideAppliedPref =
-    window.localStorage.getItem(HIDE_APPLIED_STORAGE_KEY) ??
-    window.localStorage.getItem(LEGACY_HIDE_APPLIED_KEY);
-  const hideApplied =
-    hideAppliedPref === "0" && initialFeedPrefs.hideApplied
-      ? false
-      : hideAppliedPref === "1" && !initialFeedPrefs.hideApplied
-        ? true
-        : initialFeedPrefs.hideApplied;
-
-  const seasonPref =
-    window.localStorage.getItem(SEASON_STORAGE_KEY) ??
-    window.localStorage.getItem(LEGACY_SEASON_KEY);
-  let seasonFilter = initialFeedPrefs.seasonFilter;
-  if (seasonPref && VALID_SEASONS.has(seasonPref as SeasonFilter)) {
-    seasonFilter = seasonPref as SeasonFilter;
-  } else if (seasonPref?.includes(",")) {
-    const first = seasonPref.split(",")[0]?.trim();
-    if (first && VALID_SEASONS.has(first as SeasonFilter)) {
-      seasonFilter = first as SeasonFilter;
-    }
-  }
-
-  return { lastSeenUnix, showDismissed, hideApplied, seasonFilter };
-}
 
 // Progressive render window. The filter/search still runs over the full list
 // (cheap), but we only paint a chunk at a time. The IntersectionObserver
@@ -137,11 +87,20 @@ export function LiveFeed({
   // Typing stays snappy because the filter runs against the deferred value,
   // letting React keep the input responsive while it catches up on the list.
   const deferredQuery = useDeferredValue(query);
-  const [storedInitialFeedPrefs] = useState(() => readStoredFeedPreferences(initialFeedPrefs));
-  const [seasonFilter, setSeasonFilter] = useState<SeasonFilter>(storedInitialFeedPrefs.seasonFilter);
-  const [showDismissed, setShowDismissed] = useState(storedInitialFeedPrefs.showDismissed);
+  const [storedInitialFeedPrefs] = useState(() =>
+    readStoredFeedViewPreferences(
+      typeof window === "undefined" ? null : window.localStorage,
+      initialFeedPrefs,
+    ),
+  );
+  const [seasonFilter, setSeasonFilter] = useState<SeasonFilter>(
+    storedInitialFeedPrefs.preferences.seasonFilter,
+  );
+  const [showDismissed, setShowDismissed] = useState(
+    storedInitialFeedPrefs.preferences.showDismissed,
+  );
   const [showSavedOnly, setShowSavedOnly] = useState(initialSavedOnly);
-  const [hideApplied, setHideApplied] = useState(storedInitialFeedPrefs.hideApplied);
+  const [hideApplied, setHideApplied] = useState(storedInitialFeedPrefs.preferences.hideApplied);
   const [dialogPrefill, setDialogPrefill] = useState<Prefill | null>(null);
   const [trackPendingId, setTrackPendingId] = useState<string | null>(null);
   const [trackedUrlOverrides, setTrackedUrlOverrides] = useState<Set<string>>(() => new Set());
@@ -166,8 +125,10 @@ export function LiveFeed({
   // The timestamp (unix seconds) of the user's previous visit; anything newer
   // is a candidate for the NEW badge. We capture this once on mount and keep
   // it frozen for the whole session, then stamp the current time into
-  // localStorage on unmount so the next visit has the right baseline.
-  const [lastSeen, setLastSeen] = useState<number | null>(storedInitialFeedPrefs.lastSeenUnix);
+  // user_preferences on unmount so the next visit has the right baseline.
+  const [lastSeen, setLastSeen] = useState<number | null>(
+    storedInitialFeedPrefs.preferences.lastSeenUnix,
+  );
 
   useEffect(() => {
     const patch: {
@@ -177,28 +138,40 @@ export function LiveFeed({
       seasonFilter?: SeasonFilter;
     } = {};
 
-    if (storedInitialFeedPrefs.lastSeenUnix > initialFeedPrefs.lastSeenUnix) {
-      patch.lastSeenUnix = storedInitialFeedPrefs.lastSeenUnix;
+    if (storedInitialFeedPrefs.preferences.lastSeenUnix > initialFeedPrefs.lastSeenUnix) {
+      patch.lastSeenUnix = storedInitialFeedPrefs.preferences.lastSeenUnix;
     }
-    if (storedInitialFeedPrefs.showDismissed !== initialFeedPrefs.showDismissed) {
-      patch.showDismissed = storedInitialFeedPrefs.showDismissed;
+    if (storedInitialFeedPrefs.preferences.showDismissed !== initialFeedPrefs.showDismissed) {
+      patch.showDismissed = storedInitialFeedPrefs.preferences.showDismissed;
     }
-    if (storedInitialFeedPrefs.hideApplied !== initialFeedPrefs.hideApplied) {
-      patch.hideApplied = storedInitialFeedPrefs.hideApplied;
+    if (storedInitialFeedPrefs.preferences.hideApplied !== initialFeedPrefs.hideApplied) {
+      patch.hideApplied = storedInitialFeedPrefs.preferences.hideApplied;
     }
-    if (storedInitialFeedPrefs.seasonFilter !== initialFeedPrefs.seasonFilter) {
-      patch.seasonFilter = storedInitialFeedPrefs.seasonFilter;
+    if (storedInitialFeedPrefs.preferences.seasonFilter !== initialFeedPrefs.seasonFilter) {
+      patch.seasonFilter = storedInitialFeedPrefs.preferences.seasonFilter;
     }
 
     if (Object.keys(patch).length > 0) {
-      void updateFeedViewPreferences(patch);
+      void updateFeedViewPreferences(patch).then((result) => {
+        if (!result?.error) {
+          clearStoredFeedViewPreferences(window.localStorage);
+        }
+      });
+    } else if (storedInitialFeedPrefs.hasStoredPreferences) {
+      clearStoredFeedViewPreferences(window.localStorage);
     }
 
     return () => {
       const unix = Math.floor(Date.now() / 1000);
       void updateFeedViewPreferences({ lastSeenUnix: unix });
     };
-  }, [initialFeedPrefs.hideApplied, initialFeedPrefs.lastSeenUnix, initialFeedPrefs.seasonFilter, initialFeedPrefs.showDismissed, storedInitialFeedPrefs]);
+  }, [
+    initialFeedPrefs.hideApplied,
+    initialFeedPrefs.lastSeenUnix,
+    initialFeedPrefs.seasonFilter,
+    initialFeedPrefs.showDismissed,
+    storedInitialFeedPrefs,
+  ]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {

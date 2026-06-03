@@ -22,6 +22,10 @@ import { SearchInput } from "@/components/search-input";
 import { updateApplicationArchive } from "@/lib/actions/applications";
 import { updateApplicationsViewPreferences } from "@/lib/actions/user-preferences";
 import { normalizeApplicationState } from "@/lib/config/application-state";
+import {
+  clearStoredApplicationsViewPreferences,
+  readStoredApplicationsViewPreferences,
+} from "@/lib/user-preferences/legacy-view-storage";
 import type {
   CompanyLogoAssetByName,
   CompanySlugByName,
@@ -33,8 +37,6 @@ type StatusFilter = "all" | (typeof STATUSES)[number];
 type SortKey = "company" | "role" | "status" | "last_activity";
 type SortDirection = "asc" | "desc";
 
-const HIDE_REJECTED_STORAGE_KEY = "pathway:hide-rejected";
-const HIDE_ARCHIVED_STORAGE_KEY = "pathway:hide-archived";
 const INITIAL_VISIBLE = 40;
 const LOAD_BATCH = 40;
 
@@ -44,26 +46,6 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "status", label: "Status" },
   { key: "last_activity", label: "Recent" },
 ];
-
-function readStoredApplicationsViewPreferences(
-  initialViewPrefs: ApplicationsViewPreferences,
-): ApplicationsViewPreferences {
-  if (typeof window === "undefined") return initialViewPrefs;
-
-  const storedRejected = window.localStorage.getItem(HIDE_REJECTED_STORAGE_KEY);
-  const storedArchived = window.localStorage.getItem(HIDE_ARCHIVED_STORAGE_KEY);
-
-  return {
-    hideRejected:
-      storedRejected === "false" && initialViewPrefs.hideRejected
-        ? false
-        : initialViewPrefs.hideRejected,
-    hideArchived:
-      storedArchived === "false" && initialViewPrefs.hideArchived
-        ? false
-        : initialViewPrefs.hideArchived,
-  };
-}
 
 interface Props {
   applications: Application[];
@@ -113,10 +95,17 @@ export function Dashboard({
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [storedInitialViewPrefs] = useState(() =>
-    readStoredApplicationsViewPreferences(initialViewPrefs),
+    readStoredApplicationsViewPreferences(
+      typeof window === "undefined" ? null : window.localStorage,
+      initialViewPrefs,
+    ),
   );
-  const [hideRejected, setHideRejected] = useState(storedInitialViewPrefs.hideRejected);
-  const [hideArchived, setHideArchived] = useState(storedInitialViewPrefs.hideArchived);
+  const [hideRejected, setHideRejected] = useState(
+    storedInitialViewPrefs.preferences.hideRejected,
+  );
+  const [hideArchived, setHideArchived] = useState(
+    storedInitialViewPrefs.preferences.hideArchived,
+  );
   const archivedIds = useMemo(
     () => new Set(applications.filter((app) => app.archived_at).map((app) => app.id)),
     [applications],
@@ -137,15 +126,21 @@ export function Dashboard({
 
   useEffect(() => {
     const patch: { hideRejected?: boolean; hideArchived?: boolean } = {};
-    if (storedInitialViewPrefs.hideRejected !== initialViewPrefs.hideRejected) {
-      patch.hideRejected = storedInitialViewPrefs.hideRejected;
+    if (storedInitialViewPrefs.preferences.hideRejected !== initialViewPrefs.hideRejected) {
+      patch.hideRejected = storedInitialViewPrefs.preferences.hideRejected;
     }
-    if (storedInitialViewPrefs.hideArchived !== initialViewPrefs.hideArchived) {
-      patch.hideArchived = storedInitialViewPrefs.hideArchived;
+    if (storedInitialViewPrefs.preferences.hideArchived !== initialViewPrefs.hideArchived) {
+      patch.hideArchived = storedInitialViewPrefs.preferences.hideArchived;
     }
 
     if (Object.keys(patch).length > 0) {
-      void updateApplicationsViewPreferences(patch);
+      void updateApplicationsViewPreferences(patch).then((result) => {
+        if (!result?.error) {
+          clearStoredApplicationsViewPreferences(window.localStorage);
+        }
+      });
+    } else if (storedInitialViewPrefs.hasStoredPreferences) {
+      clearStoredApplicationsViewPreferences(window.localStorage);
     }
   }, [initialViewPrefs.hideArchived, initialViewPrefs.hideRejected, storedInitialViewPrefs]);
 
