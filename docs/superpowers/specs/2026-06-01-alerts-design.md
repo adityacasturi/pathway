@@ -1,7 +1,13 @@
 # Email Alerts (Resend)
 
 **Date:** 2026-06-01  
-**Status:** Approved
+**Status:** Historical (superseded)
+
+> Current production alerts support `company` and curated `sector` subscriptions only. Legacy `industry`
+> alert subscriptions were removed by the `remove_industry_alert_subscriptions` migration, and the old
+> public alert write RPCs were dropped by `drop_legacy_alert_write_rpcs`. See
+> [docs/architecture.md](../../architecture.md) and [supabase/README.md](../../../supabase/README.md)
+> for current behavior.
 
 ## Goal
 
@@ -160,7 +166,7 @@ Patterns: `PageShell`, `PageSection`, `Switch`, `SearchInput`, `FilterChip` (sam
 - `tests/unit/alert-match-postings.test.ts`
 - `tests/unit/alert-unsubscribe-token.test.ts`
 - `npm run verify`
-- Migration applied + `production_integrity_check()` → 0 rows
+- Migration applied + `production_integrity_check()` → every returned `violations` value is `0`
 - Manual: Resend test send with `RESEND_API_KEY`
 
 ## Docs updates

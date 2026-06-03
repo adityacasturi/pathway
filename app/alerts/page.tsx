@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 interface SubscriptionRow {
   id: string;
-  target_type: "company" | "industry" | "sector";
+  target_type: "company" | "sector";
   target_id: string;
 }
 

@@ -1,4 +1,4 @@
-export const ALERT_TARGET_TYPES = ["company", "industry", "sector"] as const;
+export const ALERT_TARGET_TYPES = ["company", "sector"] as const;
 export type AlertTargetType = (typeof ALERT_TARGET_TYPES)[number];
 
 export const ALERT_CADENCES = ["instant", "digest"] as const;

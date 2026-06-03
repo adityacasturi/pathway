@@ -65,16 +65,18 @@ test("matchPostingsToUsers skips sector when company not in group", () => {
   assert.equal(matches.length, 0);
 });
 
-test("matchPostingsToUsers matches industry subscription", () => {
-  const subs: AlertSubscription[] = [
-    { id: "s1", userId: "u1", targetType: "industry", targetId: "quant", cadence: "digest" },
-  ];
+test("matchPostingsToUsers skips invalid industry rows", () => {
+  const subs = [
+    { id: "s1", userId: "u1", targetType: "industry", targetId: "quant", cadence: "instant" },
+    { id: "s2", userId: "u1", targetType: "industry", targetId: "quant", cadence: "digest" },
+  ] as unknown as AlertSubscription[];
   const matches = matchPostingsToUsers([posting], subs, quantSectorMembers, {
     enabledUserIds: new Set(["u1"]),
     sentKeys: new Set<string>(),
     channel: "digest",
+    subscriptionCadences: ["instant", "digest"],
   });
-  assert.equal(matches.length, 1);
+  assert.equal(matches.length, 0);
 });
 
 test("matchPostingsToUsers matches instant follows for digest channel", () => {

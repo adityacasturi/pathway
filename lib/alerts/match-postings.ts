@@ -36,7 +36,6 @@ export function matchPostingsToUsers(
 
       const matched =
         (sub.targetType === "company" && sub.targetId === posting.companyId) ||
-        (sub.targetType === "industry" && sub.targetId === posting.industrySlug) ||
         (sub.targetType === "sector" &&
           isCompanyInCuratedSector(sub.targetId, posting.companySlug, sectorMembers));
       if (!matched) continue;
