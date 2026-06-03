@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+const LANDING_HERO = /Beat the crowd to new internships/i;
+
 test("login renders with public signup available", async ({ page }) => {
   await page.goto("/login");
 
@@ -28,20 +30,23 @@ test("signup accepts any valid email domain", async ({ page }) => {
 test("landing page renders for anonymous users", async ({ page }) => {
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: /Find roles faster/i })).toBeVisible();
-  await expect(page.getByText("Free for students", { exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/login");
-  await expect(page.getByRole("link", { name: /Get started/i })).toHaveAttribute("href", "/register");
+  const publicNav = page.getByLabel("Public navigation");
+  await expect(page.getByRole("heading", { name: LANDING_HERO })).toBeVisible();
+  await expect(page.getByText(/100% free/i)).toBeVisible();
+  await expect(publicNav.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/login");
+  await expect(publicNav.getByRole("link", { name: /Get started/i })).toHaveAttribute("href", "/register");
   await expect(page.getByRole("link", { name: "Pathway home" })).toBeVisible();
   await expect(page.getByRole("button", { name: /Join the waitlist/i })).toHaveCount(0);
   await expect(page.getByLabel("Universities using Pathway")).toBeVisible();
+  await expect(page.getByAltText("University of Washington logo")).toBeVisible();
   await expect(page.getByRole("link", { name: "View product" })).toHaveCount(0);
   await expect(page.getByText("Built for internship recruiting")).toHaveCount(0);
   await expect(page.getByAltText("University of Illinois Urbana-Champaign logo")).toHaveCount(0);
   await expect(page.getByAltText("Cornell University logo")).toHaveCount(0);
-  await expect(page.getByAltText("Pathway applications table with filters, application counts, and internship rows")).toBeVisible();
-  await expect(page.getByAltText("Pathway application detail panel with timeline, details, and event controls")).toBeVisible();
-  await expect(page.getByAltText("Pathway stats page showing recruiting metrics and Sankey flow")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Social proof" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Find roles at 400\+ companies/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Everything your search needs/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /New roles, the second they post/i })).toBeVisible();
   await expect(page.getByText("Notes and next steps together")).toHaveCount(0);
   await expect(page.getByText("Progress at a glance")).toHaveCount(0);
   await expect(page.getByText("Launchpad")).toHaveCount(0);
@@ -73,7 +78,7 @@ test("protected pages redirect anonymous users to landing", async ({ page }) => 
   for (const path of ["/applications", "/live", "/home", "/discover", "/stats", "/settings"]) {
     await page.goto(path);
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByRole("heading", { name: /Find roles faster/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: LANDING_HERO })).toBeVisible();
   }
 });
 

@@ -497,6 +497,7 @@
   .public-nav-button {
     position: relative;
     display: inline-flex;
+    flex: 0 0 auto;
     height: 36px;
     align-items: center;
     justify-content: center;
@@ -506,6 +507,7 @@
     padding: 0 14px;
     font-size: 13px;
     font-weight: 500;
+    white-space: nowrap;
     transition:
       background-color 180ms var(--motion-ease-standard),
       border-color 180ms var(--motion-ease-standard),
@@ -734,12 +736,20 @@
     font-style: normal;
     font-weight: 500;
     line-height: 0.94;
-    letter-spacing: -0.045em;
+    letter-spacing: 0;
     font-feature-settings: "ss01", "cv11", "liga";
   }
   .landing-hero-title > span {
     display: block;
     white-space: nowrap;
+  }
+  @media (max-width: 639px) {
+    .landing-shell .brand-wordmark {
+      max-width: 32vw;
+    }
+    .landing-hero-title > span {
+      white-space: normal;
+    }
   }
   @media (min-width: 1024px) {
     .landing-feature {

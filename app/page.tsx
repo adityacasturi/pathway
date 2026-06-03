@@ -55,11 +55,11 @@ function LandingPage() {
                 width={600}
                 height={148}
                 priority
-                className="brand-wordmark h-[36px] w-auto sm:h-[40px]"
+                className="brand-wordmark h-7 w-auto sm:h-[40px]"
               />
             </Link>
             <span
-              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border bg-card px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+              className="hidden items-center gap-1.5 whitespace-nowrap rounded-full border bg-card px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:inline-flex"
               style={{ borderColor: "var(--rule)" }}
             >
               <span className="block size-1.5 rounded-full bg-[color:var(--primary)]" />
@@ -95,7 +95,7 @@ function LandingPage() {
               </span>
             </p>
           </div>
-          <h1 className="landing-hero-title mx-auto max-w-6xl text-[3.4rem] text-foreground sm:text-[4.75rem] lg:text-[6.25rem]">
+          <h1 className="landing-hero-title mx-auto w-full max-w-6xl text-[3.4rem] text-foreground sm:text-[4.75rem] lg:text-[6.25rem]">
             <span>Beat the crowd</span>
             <span>to new internships.</span>
           </h1>
