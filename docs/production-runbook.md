@@ -66,18 +66,16 @@ npm run qstash:cron -- delete
 
 For US-region QStash tokens, set `QSTASH_URL=https://qstash-us-east-1.upstash.io`. For EU-region tokens, omit `QSTASH_URL` or set `https://qstash-eu-central-1.upstash.io`.
 
-`upsert` is idempotent because each schedule uses a stable `Upstash-Schedule-Id`. Scrape cadence is every 30 minutes. Each cycle fans out to four shards on staggered minute offsets:
+`upsert` is idempotent because each schedule uses a stable `Upstash-Schedule-Id`. It also removes retired Pathway schedule IDs after creating the current schedules so renamed jobs do not keep running in parallel. Scrape cadence is every 30 minutes. Each cycle fans out to four shards on staggered minute offsets:
 
 ```text
-:07,:37 /api/cron/scrape-postings?shard=0&shards=4&alerts=0
-:08,:38 /api/cron/scrape-postings?shard=1&shards=4&alerts=0
-:09,:39 /api/cron/scrape-postings?shard=2&shards=4&alerts=0
-:10,:40 /api/cron/scrape-postings?shard=3&shards=4&alerts=0
+pathway-discover-scrape-shard-0  :07,:37  /api/cron/scrape-postings?shard=0&shards=4&alerts=0
+pathway-discover-scrape-shard-1  :08,:38  /api/cron/scrape-postings?shard=1&shards=4&alerts=0
+pathway-discover-scrape-shard-2  :09,:39  /api/cron/scrape-postings?shard=2&shards=4&alerts=0
+pathway-discover-scrape-shard-3  :10,:40  /api/cron/scrape-postings?shard=3&shards=4&alerts=0
 ```
 
-QStash calls `/api/cron/send-instant-alerts` at `:15` and `:45` UTC. Digest remains daily at 14:11 UTC. QStash retries delivery failures; missed or failed scrape cycles are acceptable because the next 30-minute cycle rechecks the same sources.
-
-Do not put 30-minute crons in `vercel.json` on the Vercel Hobby plan — deploy will fail because Hobby cron is limited to daily schedules.
+QStash calls `pathway-alerts-instant-delivery` (`/api/cron/send-instant-alerts`) at `:15` and `:45` UTC. `pathway-alerts-daily-digest` (`/api/cron/send-alert-digests`) remains daily at 14:11 UTC. QStash retries delivery failures; missed or failed scrape cycles are acceptable because the next 30-minute cycle rechecks the same sources.
 
 **Optional:**
 

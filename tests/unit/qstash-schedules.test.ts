@@ -12,12 +12,12 @@ describe("getProductionQstashSchedules", () => {
     assert.deepEqual(
       schedules.map((schedule) => schedule.id),
       [
-        "pathway-scrape-shard-0",
-        "pathway-scrape-shard-1",
-        "pathway-scrape-shard-2",
-        "pathway-scrape-shard-3",
-        "pathway-instant-alerts",
-        "pathway-daily-digest",
+        "pathway-discover-scrape-shard-0",
+        "pathway-discover-scrape-shard-1",
+        "pathway-discover-scrape-shard-2",
+        "pathway-discover-scrape-shard-3",
+        "pathway-alerts-instant-delivery",
+        "pathway-alerts-daily-digest",
       ],
     );
 
@@ -53,7 +53,7 @@ describe("buildQstashScheduleRequest", () => {
       "Upstash-Forward-Authorization": "Bearer cron-secret",
       "Upstash-Method": "GET",
       "Upstash-Retries": "2",
-      "Upstash-Schedule-Id": "pathway-scrape-shard-0",
+      "Upstash-Schedule-Id": "pathway-discover-scrape-shard-0",
       "Upstash-Timeout": "10m",
     });
   });

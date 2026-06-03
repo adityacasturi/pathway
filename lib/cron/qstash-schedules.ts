@@ -12,11 +12,20 @@ export interface QstashScheduleRequest {
   headers: Record<string, string>;
 }
 
+const RETIRED_PRODUCTION_QSTASH_SCHEDULE_IDS = [
+  "pathway-scrape-shard-0",
+  "pathway-scrape-shard-1",
+  "pathway-scrape-shard-2",
+  "pathway-scrape-shard-3",
+  "pathway-instant-alerts",
+  "pathway-daily-digest",
+];
+
 export function getProductionQstashSchedules(baseUrl: string): QstashScheduleDefinition[] {
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
   const shardCount = 4;
   const scrapeSchedules = Array.from({ length: shardCount }, (_, shard) => ({
-    id: `pathway-scrape-shard-${shard}`,
+    id: `pathway-discover-scrape-shard-${shard}`,
     cron: `${7 + shard},${37 + shard} * * * *`,
     destination: `${normalizedBaseUrl}/api/cron/scrape-postings?shard=${shard}&shards=${shardCount}&alerts=0`,
     timeout: "10m",
@@ -25,13 +34,13 @@ export function getProductionQstashSchedules(baseUrl: string): QstashScheduleDef
   return [
     ...scrapeSchedules,
     {
-      id: "pathway-instant-alerts",
+      id: "pathway-alerts-instant-delivery",
       cron: "15,45 * * * *",
       destination: `${normalizedBaseUrl}/api/cron/send-instant-alerts`,
       timeout: "10m",
     },
     {
-      id: "pathway-daily-digest",
+      id: "pathway-alerts-daily-digest",
       cron: "11 14 * * *",
       destination: `${normalizedBaseUrl}/api/cron/send-alert-digests`,
       timeout: "10m",
@@ -41,13 +50,17 @@ export function getProductionQstashSchedules(baseUrl: string): QstashScheduleDef
 
 export function getProductionQstashScheduleIds(): string[] {
   return [
-    "pathway-scrape-shard-0",
-    "pathway-scrape-shard-1",
-    "pathway-scrape-shard-2",
-    "pathway-scrape-shard-3",
-    "pathway-instant-alerts",
-    "pathway-daily-digest",
+    "pathway-discover-scrape-shard-0",
+    "pathway-discover-scrape-shard-1",
+    "pathway-discover-scrape-shard-2",
+    "pathway-discover-scrape-shard-3",
+    "pathway-alerts-instant-delivery",
+    "pathway-alerts-daily-digest",
   ];
+}
+
+export function getRetiredProductionQstashScheduleIds(): string[] {
+  return RETIRED_PRODUCTION_QSTASH_SCHEDULE_IDS;
 }
 
 export function buildQstashScheduleRequest(

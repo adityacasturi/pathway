@@ -4,6 +4,7 @@ import {
   getProductionQstashScheduleIds,
   getProductionQstashSchedules,
   getQstashSchedulesUrl,
+  getRetiredProductionQstashScheduleIds,
   normalizeQstashSchedulesUrl,
   type QstashScheduleDefinition,
 } from "../lib/cron/qstash-schedules.ts";
@@ -62,10 +63,24 @@ async function upsertSchedules(
     await assertOk(response, `upsert ${schedule.id}`);
     console.log(formatScheduleLine("upserted", schedule));
   }
+
+  await deleteScheduleIds(token, qstashSchedulesUrl, getRetiredProductionQstashScheduleIds(), "retired");
 }
 
 async function deleteSchedules(token: string, qstashSchedulesUrl: string) {
-  for (const scheduleId of getProductionQstashScheduleIds()) {
+  await deleteScheduleIds(token, qstashSchedulesUrl, [
+    ...getProductionQstashScheduleIds(),
+    ...getRetiredProductionQstashScheduleIds(),
+  ]);
+}
+
+async function deleteScheduleIds(
+  token: string,
+  qstashSchedulesUrl: string,
+  scheduleIds: string[],
+  reason = "",
+) {
+  for (const scheduleId of scheduleIds) {
     const response = await fetch(`${qstashSchedulesUrl}/${encodeURIComponent(scheduleId)}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
@@ -75,7 +90,7 @@ async function deleteSchedules(token: string, qstashSchedulesUrl: string) {
       continue;
     }
     await assertOk(response, `delete ${scheduleId}`);
-    console.log(`deleted ${scheduleId}`);
+    console.log(["deleted", reason, scheduleId].filter(Boolean).join(" "));
   }
 }
 
@@ -85,7 +100,7 @@ async function listSchedules(token: string, qstashSchedulesUrl: string): Promise
   });
   await assertOk(response, "list schedules");
   const schedules = (await response.json()) as QstashScheduleListItem[];
-  const scheduleIds = new Set(getProductionQstashScheduleIds());
+  const scheduleIds = new Set([...getProductionQstashScheduleIds(), ...getRetiredProductionQstashScheduleIds()]);
   return schedules.filter((schedule) => scheduleIds.has(schedule.scheduleId));
 }
 
