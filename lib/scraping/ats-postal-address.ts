@@ -1,5 +1,3 @@
-import { normalizeCountryCode } from "./location.ts";
-
 export interface AtsPostalAddress {
   addressLocality?: string;
   addressRegion?: string;
@@ -24,19 +22,9 @@ export function formatAtsPostalAddress(address: AtsPostalAddress | null | undefi
   return parts.join(", ");
 }
 
-/** When country is present and not US, returns null; otherwise a display label. */
+/** @deprecated Use {@link formatAtsPostalAddress}; kept for adapter call sites. */
 export function formatUsAtsPostalAddress(
   address: AtsPostalAddress | null | undefined,
 ): string | null {
-  const label = formatAtsPostalAddress(address);
-  if (!label) {
-    return null;
-  }
-
-  const countryCode = normalizeCountryCode(address?.addressCountry);
-  if (countryCode && countryCode !== "US") {
-    return null;
-  }
-
-  return label;
+  return formatAtsPostalAddress(address);
 }

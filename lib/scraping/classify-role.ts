@@ -7,7 +7,6 @@ import {
   isNonTargetRoleTitle,
   matchesInternshipTitle,
 } from "../feed/roles.ts";
-import { trimToUsLocations } from "../feed/us-locations.ts";
 import { formatScrapedLocation, normalizeScrapedLocations } from "./location.ts";
 import { htmlToPlainText } from "./plain-text.ts";
 
@@ -27,7 +26,7 @@ export interface RoleClassification {
   include: boolean;
   reason: RoleClassificationReason;
   signals: string[];
-  /** Normalized US-only segments when {@link include} is true. */
+  /** Normalized location segments when {@link include} is true. */
   locations?: string[];
 }
 
@@ -39,7 +38,6 @@ export type RoleClassificationReason =
   | "title_false_positive"
   | "non_engineering_role"
   | "missing_location"
-  | "non_us_location";
 
 /** Lenient internship cues — prefer keeping borderline roles over dropping real interns. */
 const LENIENT_INTERNSHIP_TITLE_PATTERN =
@@ -97,14 +95,8 @@ export function classifyScrapeRole(candidate: ScrapeRoleCandidate): RoleClassifi
     return { include: false, reason: "missing_location", signals };
   }
 
-  const usLocations = trimToUsLocations(locations);
-  if (usLocations.length === 0) {
-    signals.push("non_us_location");
-    return { include: false, reason: "non_us_location", signals };
-  }
-
-  signals.push("has_location", "us_location");
-  return { include: true, reason: "included", signals, locations: usLocations };
+  signals.push("has_location");
+  return { include: true, reason: "included", signals, locations };
 }
 
 /** Storage-ready location string from a successful classification. */

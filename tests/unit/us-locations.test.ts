@@ -64,28 +64,28 @@ test("hasUsLocation reflects trim result", () => {
   assert.equal(hasUsLocation(["New York, NY · London, UK"]), true);
 });
 
-test("formatPrimaryWithCountryCode drops non-US country codes", () => {
-  assert.deepEqual(formatPrimaryWithCountryCode("London", "GB"), []);
+test("formatPrimaryWithCountryCode keeps non-US country codes", () => {
+  assert.deepEqual(formatPrimaryWithCountryCode("London", "GB"), ["London, GB"]);
   assert.deepEqual(formatPrimaryWithCountryCode("New York, NY", "US"), [
     "New York, NY, United States",
   ]);
 });
 
-test("classifyScrapeRole rejects international-only locations", async () => {
+test("classifyScrapeRole keeps international and multi-country locations", async () => {
   const { classifyScrapeRole } = await import("../../lib/scraping/classify-role.ts");
 
-  const rejected = classifyScrapeRole({
+  const international = classifyScrapeRole({
     title: "Software Engineer Intern",
     description: "Build backend services in Go and Python for our platform.",
     locations: ["London, UK"],
   });
-  assert.equal(rejected.reason, "non_us_location");
+  assert.equal(international.reason, "included");
 
-  const accepted = classifyScrapeRole({
+  const multiCountry = classifyScrapeRole({
     title: "Software Engineer Intern",
     description: "Build backend services in Go and Python for our platform.",
     locations: ["Seattle, WA · London, UK"],
   });
-  assert.equal(accepted.reason, "included");
-  assert.deepEqual(accepted.locations, ["Seattle, WA"]);
+  assert.equal(multiCountry.reason, "included");
+  assert.deepEqual(multiCountry.locations, ["Seattle, WA", "London, UK"]);
 });

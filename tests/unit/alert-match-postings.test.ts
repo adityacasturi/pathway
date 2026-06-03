@@ -23,8 +23,9 @@ const posting: AlertPostingCandidate = {
   firstSeenAt: "2026-06-01T12:00:00.000Z",
 };
 
-test("isAlertEligiblePosting rejects non-US locations", () => {
-  assert.equal(isAlertEligiblePosting({ ...posting, location: "London, UK" }), false);
+test("isAlertEligiblePosting requires a location string", () => {
+  assert.equal(isAlertEligiblePosting({ ...posting, location: "" }), false);
+  assert.equal(isAlertEligiblePosting({ ...posting, location: "London, UK" }), true);
   assert.equal(isAlertEligiblePosting(posting), true);
 });
 

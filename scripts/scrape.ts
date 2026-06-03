@@ -194,18 +194,9 @@ function printScrapeSummary(
       (sum, result) => sum + (result.stats?.rejected.length ?? 0),
       0,
     );
-    const rejectedNonUs = succeeded.reduce((sum, result) => {
-      const count =
-        result.stats?.rejected.filter((entry) => entry.reason === "non_us_location").length ?? 0;
-      return sum + count;
-    }, 0);
-
     if (totalFetched > 0) {
       console.log("");
       console.log(`Fetched ${totalFetched} postings, filtered out ${totalRejected}.`);
-      if (rejectedNonUs > 0) {
-        console.log(`  ${rejectedNonUs} rejected: non-US location`);
-      }
     }
 
     if (withRoles.length > 0) {

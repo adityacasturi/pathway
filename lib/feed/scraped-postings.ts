@@ -10,7 +10,7 @@ import {
   detectCountriesAcross,
   hasRemoteLocation,
 } from "./location.ts";
-import { formatUsLocations, trimToUsLocations } from "./us-locations.ts";
+import { expandLocationSegments } from "./us-locations.ts";
 import type { FeedPosting, FeedSeason } from "./types.ts";
 import { FEED_SEASONS } from "./types.ts";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -51,11 +51,8 @@ export function mapScrapedRowToFeedPosting(row: ScrapedPostingFeedRow): FeedPost
   if (!rawLocation) {
     return null;
   }
-  const usSegments = trimToUsLocations([rawLocation]);
-  if (usSegments.length === 0) {
-    return null;
-  }
-  const locations = [formatUsLocations(usSegments)!];
+  const segments = expandLocationSegments(rawLocation);
+  const locations = [rawLocation];
   const id = stablePostingId(url);
   const dateFields = {
     date_posted: row.date_posted,
@@ -82,8 +79,8 @@ export function mapScrapedRowToFeedPosting(row: ScrapedPostingFeedRow): FeedPost
     title,
     url,
     locations,
-    countries: detectCountriesAcross(locations),
-    hasRemote: hasRemoteLocation(locations),
+    countries: detectCountriesAcross(segments.length > 0 ? segments : locations),
+    hasRemote: hasRemoteLocation(segments.length > 0 ? segments : locations),
     season,
     datePosted,
     pathwayNewUnix,

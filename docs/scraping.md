@@ -74,16 +74,17 @@ Shared logic:
 
 - `lib/scraping/classify-role.ts` — intern signals + engineering scope
 - `lib/feed/roles.ts` — engineering title patterns for Live/Discover
-- `lib/feed/us-locations.ts` — US location trim and rejection
+- `lib/feed/location.ts` + `lib/feed/us-locations.ts` — country detection from location strings
+- `lib/feed/country-filter.ts` — Live and Applications country filters
 
 Rules (biased toward keeping real interns):
 
 - Title/metadata/description intern signals (`intern`, `co-op`, `university`, etc.). `early career` alone is **not** enough (often full-time new grad).
 - Must match engineering scope; non-engineering intern titles are dropped.
-- Must have a US location signal after normalization.
+- Must have a recognizable location after normalization (any country).
 - Reject false positives like `Internal Audit` unless a real intern signal exists.
 
-Adapters should prefer US-scoped ATS queries when the API supports it.
+Adapters may still use region-scoped ATS queries when that reduces noise, but non-US locations are kept when returned.
 
 ## ByteDance and TikTok
 

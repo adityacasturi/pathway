@@ -1,12 +1,9 @@
-import { trimToUsLocations } from "@/lib/feed/us-locations";
 import { isCompanyInCuratedSector } from "@/lib/alerts/curated-sectors";
 import type { AlertCadence, AlertChannel } from "@/lib/config/alerts";
 import type { AlertMatch, AlertPostingCandidate, AlertSubscription } from "@/lib/alerts/types";
 
 export function isAlertEligiblePosting(posting: AlertPostingCandidate): boolean {
-  const raw = posting.location?.trim() ?? "";
-  if (!raw) return false;
-  return trimToUsLocations([raw]).length > 0;
+  return Boolean(posting.location?.trim());
 }
 
 export function buildSentKey(userId: string, postingId: string, channel: AlertChannel): string {

@@ -4,7 +4,7 @@ import { stablePostingId } from "@/lib/feed/ids";
 import { resolvePostedDisplay } from "@/lib/feed/posted-display";
 import type { FeedSeason } from "@/lib/feed/types";
 import { FEED_SEASONS } from "@/lib/feed/types";
-import { formatUsLocations } from "@/lib/feed/us-locations";
+import { normalizeScrapedLocationField } from "@/lib/scraping/location";
 import type { PostedDateConfidence, PostedDateSource } from "@/lib/scraping/posted-date";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -39,10 +39,10 @@ interface PostingRow {
 }
 
 function mapPostingRow(row: PostingRow): ScrapedPostingRow | null {
-  const usLocation = row.location?.trim()
-    ? formatUsLocations([row.location.trim()])
+  const normalizedLocation = row.location?.trim()
+    ? normalizeScrapedLocationField(row.location.trim())
     : null;
-  if (row.location?.trim() && !usLocation) {
+  if (row.location?.trim() && !normalizedLocation) {
     return null;
   }
 
@@ -75,7 +75,7 @@ function mapPostingRow(row: PostingRow): ScrapedPostingRow | null {
     roleName: row.role_name,
     postingUrl: row.posting_url,
     season,
-    location: usLocation,
+    location: normalizedLocation,
     datePosted: displayIso,
     postedDisplay,
   };

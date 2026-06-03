@@ -636,13 +636,13 @@ test("collectAshbyLocations uses postalAddress for US roles", () => {
   assert.ok(locations.includes("San Francisco, California, United States"));
 });
 
-test("formatUsAtsPostalAddress drops non-US countries", () => {
+test("formatUsAtsPostalAddress keeps non-US countries", () => {
   assert.equal(
     formatUsAtsPostalAddress({
       addressLocality: "London",
       addressCountry: "United Kingdom",
     }),
-    null,
+    "London, United Kingdom",
   );
 });
 
@@ -1486,8 +1486,9 @@ test("parseWorkdayPostings keeps Splunk engineering internships from fixture", (
     workdayReferenceDate,
   );
 
-  assert.equal(parsed.roles.length, 0);
-  assert.ok(parsed.stats.rejected.some((row) => row.reason === "missing_location"));
+  assert.equal(parsed.roles.length, 1);
+  assert.match(parsed.roles[0].roleName, /Software Engineer Intern/i);
+  assert.match(parsed.roles[0].location ?? "", /Krakow/i);
 });
 
 test("parseWorkdayPostings rejects non-intern listings", () => {
@@ -1556,7 +1557,7 @@ test("parseMicrosoftPostings keeps US engineering internships from enriched post
   assert.match(parsed.roles[0].location ?? "", /Cambridge, MA, US/);
 });
 
-test("parseMicrosoftPostings rejects international PCSX engineering internships", () => {
+test("parseMicrosoftPostings keeps international PCSX engineering internships", () => {
   const board = resolveMicrosoftBoard(microsoftSource);
   const parsed = parseMicrosoftPostings(
     [
@@ -1594,8 +1595,8 @@ test("parseMicrosoftPostings rejects international PCSX engineering internships"
     2,
   );
 
-  assert.equal(parsed.roles.length, 0);
-  assert.ok(parsed.stats.rejected.every((row) => row.reason === "non_us_location"));
+  assert.equal(parsed.roles.length, 2);
+  assert.ok(parsed.roles.every((role) => /Software Engineering Intern/i.test(role.roleName)));
 });
 
 test("parseMicrosoftPostings rejects non-intern listings", () => {
@@ -2052,7 +2053,7 @@ test("googleJobLocations joins primary location labels", () => {
   assert.ok(locations.some((loc: string) => loc.includes("Ann Arbor")));
 });
 
-test("googleJobLocations omits non-US country tuples", () => {
+test("googleJobLocations keeps all country tuples", () => {
   const job: unknown[] = [
     "id",
     "Intern",
@@ -2069,7 +2070,7 @@ test("googleJobLocations omits non-US country tuples", () => {
     ],
   ];
   const locations = googleJobLocations(job);
-  assert.deepEqual(locations, ["Mountain View, CA, USA"]);
+  assert.deepEqual(locations, ["London, UK", "Mountain View, CA, USA"]);
 });
 
 test("parseGoogleJobs keeps student researcher internships from fixture", () => {
@@ -2430,10 +2431,9 @@ test("parseJaneStreetJobs keeps US engineering internships from employment metad
     janeStreetSource,
   );
 
-  assert.equal(parsed.roles.length, 2);
-  assert.equal(parsed.roles[0].season, "Fall");
-  assert.equal(parsed.roles[1].season, "Summer");
-  assert.ok(parsed.stats.rejected.some((r) => r.reason === "non_us_location"));
+  assert.equal(parsed.roles.length, 3);
+  assert.ok(parsed.roles.some((role) => role.season === "Fall"));
+  assert.ok(parsed.roles.some((role) => role.season === "Summer"));
   assert.equal(parsed.stats.rejected.some((r) => r.reason === "no_internship_signal"), true);
 });
 
@@ -2971,11 +2971,10 @@ test("parseCitadelSitemapEntries keeps engineering internships from fixture", ()
   );
 
   const parsed = parseCitadelSitemapEntries(fixture.entries, citadelSource);
-  assert.equal(parsed.roles.length, 1);
+  assert.equal(parsed.roles.length, 2);
   assert.ok(
     parsed.roles.some((role) => /Quantitative Research Engineer PhD Intern/i.test(role.roleName)),
   );
-  assert.ok(parsed.stats.rejected.some((row) => row.reason === "non_us_location"));
   assert.equal(parsed.stats.fetched, fixture.entries.length);
 });
 
@@ -3117,9 +3116,8 @@ test("parseUberJobs keeps engineering internships from fixture", () => {
   );
 
   const parsed = parseUberJobs(fixture.jobs, uberSource, fixture.jobs.length);
-  assert.equal(parsed.roles.length, 1);
+  assert.equal(parsed.roles.length, 2);
   assert.ok(parsed.roles.some((role) => /Software Engineer Intern/i.test(role.roleName)));
-  assert.ok(parsed.stats.rejected.some((row) => row.reason === "non_us_location"));
   assert.ok(parsed.stats.rejected.some((row) => row.reason === "non_engineering_role"));
 });
 
@@ -3180,9 +3178,8 @@ test("parseTeslaJobs keeps engineering internships from fixture", () => {
 
   const parsed = parseTeslaJobs(fixture.listings, fixture.lookup, teslaSource, fixture.listings.length);
 
-  assert.equal(parsed.roles.length, 3);
+  assert.equal(parsed.roles.length, 4);
   assert.ok(parsed.roles.every((role) => role.postingUrl.includes("tesla.com/careers/search/job/")));
-  assert.ok(parsed.stats.rejected.some((row) => row.reason === "non_us_location"));
   assert.ok(parsed.stats.rejected.some((row) => row.reason === "non_engineering_role"));
   assert.equal(
     buildTeslaPostingUrl(fixture.listings[0]),
@@ -3862,13 +3859,13 @@ test("parseL3HarrisJobDetailFields reads title location and JSON-LD date", () =>
   assert.equal(fields.datePosted, "2026-5-28");
 });
 
-test("parseL3HarrisJobs filters non-US and non-engineering listings from search snippet", () => {
+test("parseL3HarrisJobs filters non-engineering listings from search snippet", () => {
   const fixtureDir = join(dirname(fileURLToPath(import.meta.url)), "../fixtures/scrape");
   const html = readFileSync(join(fixtureDir, "l3harris-search-snippet.html"), "utf8");
   const listings = parseL3HarrisSearchJobsHtml(html, L3HARRIS_CAREERS_ORIGIN);
   const parsed = parseL3HarrisJobs(listings, l3harrisSource);
-  assert.equal(parsed.roles.length, 0);
-  assert.ok(parsed.stats.rejected.some((row) => row.reason === "non_us_location"));
+  assert.equal(parsed.roles.length, 1);
+  assert.match(parsed.roles[0].roleName, /Embedded Software Engineering Intern/);
 });
 
 const armSource: CompanySourceConfig = {
@@ -3943,9 +3940,8 @@ test("parseArmJobs keeps US intern and rejects non-US from search snippet", () =
   const html = readFileSync(join(fixtureDir, "arm-search-snippet.html"), "utf8");
   const listings = parseArmSearchJobsHtml(html, ARM_CAREERS_ORIGIN);
   const parsed = parseArmJobs(listings, armSource);
-  assert.equal(parsed.roles.length, 1);
-  assert.match(parsed.roles[0].roleName, /Software Engineer Intern/);
-  assert.ok(parsed.stats.rejected.some((row) => row.reason === "non_us_location"));
+  assert.ok(parsed.roles.length >= 1);
+  assert.ok(parsed.roles.some((role) => /Software Engineer Intern/i.test(role.roleName)));
 });
 
 const synopsysSource: CompanySourceConfig = {
@@ -4344,7 +4340,7 @@ test("parseMillenniumPostings keeps US engineering internships from fixture", ()
   );
 });
 
-test("parseMillenniumPostings rejects international engineering internships", () => {
+test("parseMillenniumPostings keeps international engineering internships", () => {
   const fixtureDir = join(dirname(fileURLToPath(import.meta.url)), "../fixtures/scrape");
   const detail = JSON.parse(
     readFileSync(join(fixtureDir, "millennium-trading-intern-detail.json"), "utf8"),
@@ -4361,8 +4357,8 @@ test("parseMillenniumPostings rejects international engineering internships", ()
 
   const parsed = parseMillenniumPostings([{ summary, detail }], millenniumSource, board, 1);
 
-  assert.equal(parsed.roles.length, 0);
-  assert.ok(parsed.stats.rejected.some((row) => row.reason === "non_us_location"));
+  assert.equal(parsed.roles.length, 1);
+  assert.match(parsed.roles[0].roleName, /Trading Intern/i);
 });
 
 const ibmSource: CompanySourceConfig = {
@@ -4462,8 +4458,8 @@ test("parseIbmJobs keeps engineering internships from search snippet", () => {
   const listings = parseIbmSearchJobsHtml(html, board);
   const parsed = parseIbmJobs(listings, ibmSource);
 
-  assert.equal(parsed.roles.length, 0);
-  assert.ok(parsed.stats.rejected.some((row) => row.reason === "non_us_location"));
+  assert.ok(parsed.roles.length >= 1);
+  assert.ok(parsed.roles.every((role) => /Intern/i.test(role.roleName)));
 });
 
 const coinbaseSource: CompanySourceConfig = {

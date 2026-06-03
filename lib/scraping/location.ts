@@ -28,20 +28,21 @@ export function isUsCountryCode(countryCode: string | null | undefined): boolean
 
 /**
  * Oracle / Goldman / JPMorgan-style primary + ISO country field.
- * Returns no locations when country is present and not US.
  */
 export function formatPrimaryWithCountryCode(
   primary: string,
   country: string | null | undefined,
 ): string[] {
   const normalizedCountry = normalizeCountryCode(country);
-  if (normalizedCountry && normalizedCountry !== "US") {
-    return [];
-  }
-
   const trimmedPrimary = primary.trim();
   if (!trimmedPrimary) {
-    return normalizedCountry === "US" ? ["United States"] : [];
+    if (normalizedCountry === "US") {
+      return ["United States"];
+    }
+    if (normalizedCountry) {
+      return [country?.trim() || normalizedCountry];
+    }
+    return [];
   }
 
   const countryToken = country?.trim() ?? "";

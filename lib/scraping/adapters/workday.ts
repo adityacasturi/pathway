@@ -1,5 +1,4 @@
 import { classifyForSource } from "../adapter-parse.ts";
-import { isUsCountryCode, normalizeCountryCode } from "../location.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
@@ -410,11 +409,6 @@ export function formatWorkdayLocation(
     detail?.jobRequisitionLocation?.country?.alpha2Code?.trim() ||
     detail?.country?.alpha2Code?.trim() ||
     null;
-  const normalizedAlpha2 = normalizeCountryCode(alpha2);
-  if (normalizedAlpha2 && !isUsCountryCode(normalizedAlpha2)) {
-    return null;
-  }
-
   const primary =
     detail?.location?.trim() ||
     detail?.jobRequisitionLocation?.descriptor?.trim() ||

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { countriesFromUsLocations, formatUsLocations } from "../feed/us-locations.ts";
+import { countriesFromLocations } from "../feed/us-locations.ts";
 import { normalizeScrapedLocationField } from "./location.ts";
 import {
   coerceScrapedRoleDates,
@@ -213,14 +213,11 @@ export function buildScrapedPostingUpsertRows(
   const nowDate = new Date(now);
 
   return roles.map((role) => {
-    const usFormatted = formatUsLocations(role.location ? [role.location] : []);
-    const location = normalizeScrapedLocationField(usFormatted, {
+    const location = normalizeScrapedLocationField(role.location, {
       companyName: role.companyName,
       companySlug,
     });
-    const countries = countriesFromUsLocations(
-      location ? [location] : usFormatted ? [usFormatted] : [],
-    );
+    const countries = countriesFromLocations(location ? [location] : []);
 
     const existing = existingByUrl.get(role.postingUrl);
     const firstSeenAt = existing?.first_seen_at ?? now;

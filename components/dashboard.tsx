@@ -12,6 +12,7 @@ import { ApplicationPipelineSummary } from "@/components/application-pipeline-su
 import { ApplicationsTable } from "@/components/applications-table";
 import { ApplicationDialog, type CreatedApplicationSummary } from "@/components/application-dialog";
 import { ApplicationDetail } from "@/components/application-detail";
+import { CountryFilterSection } from "@/components/country-filter-section";
 import { FilterSection, FilterToggle, SegmentedControl } from "@/components/ui/filter-menu";
 import { PageHeader, PageMain, PageShell } from "@/components/ui/page";
 import { getPageLabel } from "@/lib/config/nav";
@@ -32,6 +33,12 @@ import type {
   CompanyWebsiteByName,
 } from "@/lib/logo/company-website-lookup";
 import type { ApplicationsViewPreferences } from "@/lib/user-preferences/view-preferences";
+import {
+  buildCountryFilterOptions,
+  countriesFromLocationField,
+  countCountriesInDataset,
+  matchesCountryFilter,
+} from "@/lib/feed/country-filter";
 
 type StatusFilter = "all" | (typeof STATUSES)[number];
 type SortKey = "company" | "role" | "status" | "last_activity";
@@ -112,7 +119,8 @@ export function Dashboard({
   );
   const [searchFocused, setSearchFocused] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const listResetKey = `${query}|${statusFilter}|${seasonFilter}|${hideRejected}|${hideArchived}|${sortKey ?? ""}|${sortDirection}`;
+  const [selectedCountries, setSelectedCountries] = useState<Set<string>>(() => new Set());
+  const listResetKey = `${query}|${statusFilter}|${seasonFilter}|${hideRejected}|${hideArchived}|${[...selectedCountries].sort().join(",")}|${sortKey ?? ""}|${sortDirection}`;
   const [visibleState, setVisibleState] = useState({
     key: listResetKey,
     count: INITIAL_VISIBLE,
@@ -210,6 +218,33 @@ export function Dashboard({
 
   const searchTerms = useMemo(() => getSearchTerms(query), [query]);
 
+  const applicationCountriesById = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const application of applications) {
+      map.set(application.id, countriesFromLocationField(application.location));
+    }
+    return map;
+  }, [applications]);
+
+  const countryFilterOptions = useMemo(() => {
+    const items = applications.map((application) => ({
+      countries: applicationCountriesById.get(application.id) ?? [],
+    }));
+    return buildCountryFilterOptions(countCountriesInDataset(items));
+  }, [applications, applicationCountriesById]);
+
+  const onToggleCountry = (code: string) => {
+    setSelectedCountries((prev) => {
+      const out = new Set(prev);
+      if (out.has(code)) {
+        out.delete(code);
+      } else {
+        out.add(code);
+      }
+      return out;
+    });
+  };
+
   const filtered = useMemo(() => {
     return applications.filter((application) => {
       const isRejected = applicationHasReachedStatus(application, "rejected");
@@ -223,6 +258,14 @@ export function Dashboard({
         return false;
       }
       if (seasonFilter !== "all" && application.season !== seasonFilter) return false;
+      if (
+        !matchesCountryFilter(
+          applicationCountriesById.get(application.id) ?? [],
+          selectedCountries,
+        )
+      ) {
+        return false;
+      }
 
       const haystack = [
         application.company.toLowerCase(),
@@ -242,6 +285,8 @@ export function Dashboard({
     seasonFilter,
     archivedIds,
     searchTerms,
+    applicationCountriesById,
+    selectedCountries,
   ]);
 
   const sorted = useMemo(() => {
@@ -297,7 +342,8 @@ export function Dashboard({
     Number(seasonFilter !== "all") +
     Number(hasApplications && hideRejected) +
     Number(hasApplications && hideArchived) +
-    Number(sortKey !== null);
+    Number(sortKey !== null) +
+    selectedCountries.size;
 
   function handleSortChange(nextKey: SortKey) {
     if (sortKey !== nextKey) {
@@ -443,6 +489,12 @@ export function Dashboard({
                           onChange={setSeasonFilter}
                         />
                       </FilterSection>
+                      <CountryFilterSection
+                        options={countryFilterOptions}
+                        selected={selectedCountries}
+                        onToggle={onToggleCountry}
+                        onClear={() => setSelectedCountries(new Set())}
+                      />
                       <FilterSection title="Visibility">
                         <FilterToggle
                           label="Hide rejected"
@@ -468,7 +520,12 @@ export function Dashboard({
           companyWebsiteByName={companyWebsiteByName}
           companySlugByName={companySlugByName}
           companyLogoAssetByName={companyLogoAssetByName}
-          hasActiveFilters={Boolean(query || statusFilter !== "all" || seasonFilter !== "all")}
+          hasActiveFilters={Boolean(
+            query ||
+              statusFilter !== "all" ||
+              seasonFilter !== "all" ||
+              selectedCountries.size > 0,
+          )}
           searchQuery={query}
           onCreateApplication={() => setDialogOpen(true)}
           onOpen={(application) => setDetailId(application.id)}

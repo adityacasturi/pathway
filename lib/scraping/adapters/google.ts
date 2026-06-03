@@ -208,9 +208,6 @@ export function googleJobLocations(job: GoogleJobRow): string[] {
     const city = typeof entry[2] === "string" ? entry[2].trim() : "";
     const region = typeof entry[4] === "string" ? entry[4].trim() : "";
     const countryCode = typeof entry[5] === "string" ? entry[5].trim().toUpperCase() : "";
-    if (countryCode && countryCode !== "US") {
-      continue;
-    }
 
     const fromTuple = formatGoogleLocationTuple(city, region, countryCode);
     const candidate =

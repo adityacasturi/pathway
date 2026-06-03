@@ -15,6 +15,7 @@ import { CheckCheck, RefreshCw, SlidersHorizontal } from "lucide-react";
 import { ApplicationDialog } from "@/components/application-dialog";
 import { PostingRow } from "@/components/posting-row";
 import { InlineError } from "@/components/ui/inline-error";
+import { CountryFilterSection } from "@/components/country-filter-section";
 import { FilterSection, FilterToggle, SegmentedControl } from "@/components/ui/filter-menu";
 import { PageHeader, PageMain, PageShell } from "@/components/ui/page";
 import { SearchInput } from "@/components/search-input";
@@ -45,6 +46,12 @@ import {
   readStoredFeedViewPreferences,
 } from "@/lib/user-preferences/legacy-view-storage";
 import type { FeedViewPreferences } from "@/lib/user-preferences/view-preferences";
+import {
+  buildCountryFilterOptions,
+  countCountriesInDataset,
+  matchesCountryFilter,
+  resolvePostingCountries,
+} from "@/lib/feed/country-filter";
 
 // Progressive render window. The filter/search still runs over the full list
 // (cheap), but we only paint a chunk at a time. The IntersectionObserver
@@ -108,6 +115,7 @@ export function LiveFeed({
   const [actionError, setActionError] = useState<string | null>(null);
   const [searchFocused, setSearchFocused] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [selectedCountries, setSelectedCountries] = useState<Set<string>>(() => new Set());
   const filtersRef = useRef<HTMLDivElement | null>(null);
 
   const onRefresh = useCallback(() => {
@@ -314,6 +322,33 @@ export function LiveFeed({
 
   const searchTerms = useMemo(() => getSearchTerms(deferredQuery), [deferredQuery]);
 
+  const postingCountriesById = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const p of postings) {
+      map.set(p.id, resolvePostingCountries(p.countries, p.locations));
+    }
+    return map;
+  }, [postings]);
+
+  const countryFilterOptions = useMemo(() => {
+    const items = postings.map((p) => ({
+      countries: postingCountriesById.get(p.id) ?? [],
+    }));
+    return buildCountryFilterOptions(countCountriesInDataset(items));
+  }, [postings, postingCountriesById]);
+
+  const onToggleCountry = useCallback((code: string) => {
+    setSelectedCountries((prev) => {
+      const out = new Set(prev);
+      if (out.has(code)) {
+        out.delete(code);
+      } else {
+        out.add(code);
+      }
+      return out;
+    });
+  }, []);
+
   const filtered = useMemo(() => {
     const out: FeedPosting[] = [];
     for (const p of postings) {
@@ -322,6 +357,14 @@ export function LiveFeed({
       if (!showDismissed && isDismissed) continue;
       if (showSavedOnly && !hasAnyInteraction(savedSet, p.interactionIds)) continue;
       if (hideApplied && trackedIdSet.has(p.id)) continue;
+      if (
+        !matchesCountryFilter(
+          postingCountriesById.get(p.id) ?? [],
+          selectedCountries,
+        )
+      ) {
+        continue;
+      }
 
       const hay = haystacks.get(p.id) ?? "";
       if (searchTerms.length && !searchTerms.every((term) => hay.includes(term))) continue;
@@ -339,6 +382,8 @@ export function LiveFeed({
     trackedIdSet,
     haystacks,
     searchTerms,
+    postingCountriesById,
+    selectedCountries,
   ]);
 
   const isPostingNew = useCallback(
@@ -371,13 +416,15 @@ export function LiveFeed({
     showDismissed,
     showSavedOnly,
     hideApplied,
+    selectedCountries,
   ]);
 
   const activeFilterCount =
     Number(seasonFilter !== "all") +
     Number(showSavedOnly) +
     Number(hideApplied) +
-    Number(showDismissed);
+    Number(showDismissed) +
+    selectedCountries.size;
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -540,6 +587,13 @@ export function LiveFeed({
                           onChange={setSeasonFilter}
                         />
                       </FilterSection>
+
+                      <CountryFilterSection
+                        options={countryFilterOptions}
+                        selected={selectedCountries}
+                        onToggle={onToggleCountry}
+                        onClear={() => setSelectedCountries(new Set())}
+                      />
 
                       <FilterSection title="Visibility">
                         <FilterToggle

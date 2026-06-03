@@ -102,3 +102,16 @@ export function countriesFromUsLocations(locations: readonly string[]): string[]
   }
   return Array.from(codes);
 }
+
+/** ISO codes detected across all location segments (not US-only). */
+export function countriesFromLocations(locations: readonly string[]): string[] {
+  const codes = new Set<string>();
+  for (const raw of locations) {
+    for (const segment of expandLocationSegments(raw)) {
+      for (const code of detectSegmentCountries(segment)) {
+        codes.add(code);
+      }
+    }
+  }
+  return Array.from(codes).sort();
+}

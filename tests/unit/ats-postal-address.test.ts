@@ -17,13 +17,13 @@ test("formatAtsPostalAddress joins locality, region, and country", () => {
   assert.equal(formatAtsPostalAddress({}), null);
 });
 
-test("formatUsAtsPostalAddress drops non-US addresses", () => {
+test("formatUsAtsPostalAddress matches formatAtsPostalAddress", () => {
   assert.equal(
     formatUsAtsPostalAddress({
       addressLocality: "London",
       addressCountry: "GB",
     }),
-    null,
+    "London, GB",
   );
   assert.equal(
     formatUsAtsPostalAddress({

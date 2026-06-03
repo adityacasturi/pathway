@@ -24,15 +24,15 @@ test("classifyScrapeRole excludes Palantir Deployment Strategist internship", ()
   assert.equal(result.reason, "non_engineering_role");
 });
 
-test("classifyScrapeRole excludes non-US engineering internships", () => {
+test("classifyScrapeRole includes non-US engineering internships", () => {
   const result = classifyScrapeRole({
     title: "Forward Deployed Software Engineer, Internship - France",
     commitment: "Internship",
     locations: ["Paris, France"],
   });
 
-  assert.equal(result.include, false);
-  assert.equal(result.reason, "non_us_location");
+  assert.equal(result.include, true);
+  assert.equal(result.reason, "included");
 });
 
 test("classifyScrapeRole excludes Internal Audit false positives", () => {
