@@ -130,7 +130,7 @@ tests/unit/             Node unit tests
 - Public signup: open to any valid email. App-level hygiene (format + disposable-domain blocklist) lives in `lib/auth/validation.ts`. To restrict the audience later, enforce both in app code and at the Auth layer — see [docs/production-runbook.md](docs/production-runbook.md).
 - Default post-login route: **Home** (`/home`). Default accent: **midnight** (`user_preferences`).
 - Openings hides postings you already applied to (by normalized posting URL).
-- Scrape ingestion: GitHub Actions runs `npm run scrape` + `npm run alerts:instant` every 6 hours; local `npm run scrape`.
+- Scrape ingestion: Vercel Cron runs sharded `/api/cron/scrape-postings` + `/api/cron/send-instant-alerts` (four times daily on Hobby; `*/6` on Pro); local `npm run scrape`.
 - Email alerts (`/alerts`) send when `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and `ALERT_UNSUBSCRIBE_SECRET` are configured.
 - Scout is locked for now (`SCOUT_ENABLED = false` in `lib/config/scout.ts`); `/chat` redirects to `/home` and `/api/chat` returns 503. Re-enable later with `OPENAI_API_KEY`.
 

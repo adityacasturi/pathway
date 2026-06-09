@@ -11,7 +11,7 @@ Pathway is a Next.js 16 App Router app backed by Supabase Auth and Postgres. Stu
 | UI | HeroUI-backed primitives in `components/ui/`, design-system surfaces, TanStack Table, Recharts, Framer Motion, Lucide icons, Sonner |
 | Data | Supabase Auth, Postgres, RLS, SQL functions/triggers |
 | AI | Vercel AI SDK + OpenAI (`gpt-4o-mini`) for Scout |
-| Scraping | Node scripts + GitHub Actions schedule + Next route handlers (`lib/scraping/`) |
+| Scraping | Node scripts + Vercel Cron + Next route handlers (`lib/scraping/`) |
 | Tests | Node test runner (unit), Playwright public smoke (e2e) |
 | Runtime | Node.js 22.x |
 
@@ -38,9 +38,9 @@ Before changing routing, caching, `proxy.ts`, or Server Components, read the rel
 | `/alerts/unsubscribe` | Public | One-click email unsubscribe (signed token) |
 | `/api/logo` | Auth | Logo.dev proxy (not a public CDN) |
 | `/api/chat` | Auth | Streaming Scout API; returns 503 while locked |
-| `/api/cron/scrape-postings` | Cron | Unscheduled scrape handler (`Authorization: Bearer CRON_SECRET`) |
-| `/api/cron/send-instant-alerts` | Cron | Unscheduled instant alert handler (`Authorization: Bearer CRON_SECRET`) |
-| `/api/cron/send-alert-digests` | Cron | Unscheduled digest handler (`Authorization: Bearer CRON_SECRET`) |
+| `/api/cron/scrape-postings` | Cron | Sharded scrape handler (`Authorization: Bearer CRON_SECRET`) |
+| `/api/cron/send-instant-alerts` | Cron | Instant alert handler (`Authorization: Bearer CRON_SECRET`) |
+| `/api/cron/send-alert-digests` | Cron | Digest handler (`Authorization: Bearer CRON_SECRET`; not scheduled) |
 
 `proxy.ts` gates routes: unauthenticated users on protected routes go to `/login?next=<path>`; authenticated users on `/`, `/login`, or `/register` go to `/home`. Public routes include landing, auth, unsubscribe, cron handlers, and static logo assets under `/company-logos/`.
 
@@ -165,14 +165,14 @@ Loader: `lib/discover/companies.ts`. UI: `components/companies/companies-page.ts
 - **Instant alerts** — `alert_preferences.emails_enabled` + company/bundle subscriptions in `alert_subscriptions`.
 - Filter semantics: [alerts-filters.md](./alerts-filters.md).
 - Matching: `lib/alerts/match-postings.ts` (`first_seen_at` for new roles).
-- Send: Resend via `lib/email/resend-client.ts`; instant alerts run after GitHub Actions scrape. The digest handler remains available but is not scheduled in production.
+- Send: Resend via `lib/email/resend-client.ts`; instant alerts run after Vercel Cron scrape shards complete. The digest handler remains available but is not scheduled in production.
 - Env: `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `ALERT_UNSUBSCRIBE_SECRET`.
 - Unsubscribe: `GET /alerts/unsubscribe` confirm form; `POST` performs disable. HMAC token + single-use nonce.
 - Writes: server actions authenticate the user, then perform scoped service-role writes; direct client alert table writes are revoked.
 
 ## Scraping (summary)
 
-- Cron: `.github/workflows/scrape-and-alerts.yml` runs every 6 hours (`7 */6 * * *`, UTC). It runs `npm run scrape`, then `npm run alerts:instant`. There are no active QStash production schedules.
+- Cron: `vercel.json` schedules scrape and instant alerts via Vercel Cron. On Hobby, four daily windows (00/06/12/18 UTC) each run two scrape shards then instant alerts 30 minutes later; Pro can use `*/6` schedules with four shards. There are no active QStash production schedules.
 - Local: `npm run scrape` and `npm run alerts:instant` (need `SUPABASE_SERVICE_ROLE_KEY`; alerts also need Resend env vars to send email).
 - Adapters: `lib/scraping/registry.ts` keyed by `company_sources.source_type`.
 - Full detail: [scraping.md](./scraping.md).

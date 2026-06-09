@@ -40,4 +40,4 @@ npm run verify             # lint + typecheck + audit + unit + build
 npm run test:preprod:full  # verify + Playwright e2e
 ```
 
-GitHub Actions (`.github/workflows/pr-checks.yml`) runs `test:preprod:full` on pull requests.
+Run `npm run test:preprod:full` locally before production deploys.

@@ -16,7 +16,7 @@ const SAMPLE_SCHEDULE: QstashScheduleDefinition = {
 };
 
 describe("getProductionQstashSchedules", () => {
-  it("keeps QStash production schedules disabled while GitHub Actions owns cron", () => {
+  it("keeps QStash production schedules disabled while Vercel Cron owns cron", () => {
     const schedules = getProductionQstashSchedules("https://www.trypathway.app/");
 
     assert.deepEqual(schedules, []);

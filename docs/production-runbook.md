@@ -2,7 +2,7 @@
 
 ## Pre-deploy checklist
 
-- [ ] Node.js 22.x in CI and Vercel
+- [ ] Node.js 22.x on Vercel
 - [ ] `npm run test:preprod:full` green (lint, typecheck, audit, unit, build, public e2e)
 - [ ] New DB changes present in Supabase `list_migrations` (not ad-hoc SQL only)
 - [ ] `select * from app_private.production_integrity_check();` → every returned `violations` value is **0**
@@ -33,34 +33,36 @@ SUPABASE_SERVICE_ROLE_KEY=...   # server/cron only — never NEXT_PUBLIC_
 RESEND_API_KEY=...              # Email alerts (Resend)
 RESEND_FROM_EMAIL=...           # Verified sender, e.g. Pathway Alerts <alerts@yourdomain.com>
 ALERT_UNSUBSCRIBE_SECRET=...    # Random secret for signed unsubscribe tokens
+CRON_SECRET=...                 # Vercel Cron auth (Bearer token for /api/cron/*)
 ```
 
 **Alerts email delivery:** requires `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and `ALERT_UNSUBSCRIBE_SECRET`. The instant-alert script skips outbound email when Resend is not configured.
 
-**GitHub Actions cron (scrape + instant alerts):**
+**Vercel Cron (scrape + instant alerts):**
 
-Production scraping runs from `.github/workflows/scrape-and-alerts.yml` every 6 hours (`7 */6 * * *`, UTC) and can also be run manually with `workflow_dispatch`.
+Production scraping and instant alerts are scheduled in `vercel.json`. Vercel sends `Authorization: Bearer $CRON_SECRET` on each invocation.
 
-Add these repository secrets in GitHub:
+**Hobby plan (current):** each cron expression may run at most once per day. Sub-hourly schedules such as `7 */6 * * *` fail deployment. Pathway uses four daily windows (00:07, 06:07, 12:07, 18:07 UTC) with two scrape shards per window and instant alerts 30 minutes later:
 
-| Secret | Purpose |
-| --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
-| `NEXT_PUBLIC_SITE_URL` | Canonical production URL for email links |
-| `SUPABASE_SERVICE_ROLE_KEY` | Scrape writes and alert reads/writes |
-| `RESEND_API_KEY` | Resend API key |
-| `RESEND_FROM_EMAIL` | Verified sender |
-| `ALERT_UNSUBSCRIBE_SECRET` | Signed unsubscribe tokens |
+| Window (UTC) | Scrape shards | Instant alerts |
+| --- | --- | --- |
+| `7 0 * * *` | `shard=0&shards=2`, `shard=1&shards=2` | `37 0 * * *` |
+| `7 6 * * *` | same | `37 6 * * *` |
+| `7 12 * * *` | same | `37 12 * * *` |
+| `7 18 * * *` | same | `37 18 * * *` |
 
-The workflow runs:
+Hobby timing is hourly-precision (±59 min within the scheduled hour).
+
+**Pro plan:** you can switch to five crons with `7 */6 * * *` (four `shards=4` scrape jobs + `37 */6 * * *` instant alerts) for per-minute scheduling and more shards.
+
+Manual fallback (local or one-off):
 
 ```bash
 npm run scrape
 npm run alerts:instant
 ```
 
-The scheduled workflow sets `SCRAPE_EXCLUDE_SLUGS=salesforce,sap,slack,wayfair` because those sources scrape locally but are blocked or unstable from GitHub-hosted runner IPs (`403`, `429`, or network failure). Run `npm run scrape -- <slug>` locally when you need to refresh one of those sources manually.
+If a specific source needs immediate attention, run `npm run scrape -- <slug>` locally to reproduce and refresh it.
 
 **QStash cleanup:**
 
@@ -141,7 +143,7 @@ Signup is open to any valid email address. App code (`lib/auth/validation.ts`, u
 npm run test:e2e
 ```
 
-Public smoke only (landing, auth, redirects, security headers). No credentials required. CI runs this via `npm run test:preprod:full`.
+Public smoke only (landing, auth, redirects, security headers). No credentials required. Run via `npm run test:preprod:full` before production deploys.
 
 ## Incidents
 
@@ -153,7 +155,7 @@ Public smoke only (landing, auth, redirects, security headers). No credentials r
 ### Empty or stale Openings / Companies
 
 1. **Openings and Companies read `scraped_postings`** — UI refresh does not scrape.
-2. Check the latest `Scrape and alerts` GitHub Actions run. If needed, run `npm run scrape` locally with `SUPABASE_SERVICE_ROLE_KEY`.
+2. Check Vercel Cron logs for `/api/cron/scrape-postings` and `/api/cron/send-instant-alerts`. If needed, run `npm run scrape` locally with `SUPABASE_SERVICE_ROLE_KEY`.
 3. Inspect `company_sources.last_success_at` / `last_failure_at` for failing companies.
 4. Run `npm run scrape -- --verbose <slug>` locally with service role to reproduce.
 5. After deploy, run `npm run scrape` once if data is needed before the next cron tick.

@@ -30,11 +30,11 @@ Environment:
 | `RESEND_API_KEY` | Required by `npm run alerts:instant` to send email |
 | `RESEND_FROM_EMAIL` | Verified sender for alert email |
 | `ALERT_UNSUBSCRIBE_SECRET` | Required to sign unsubscribe links |
+| `CRON_SECRET` | Required for Vercel Cron auth on `/api/cron/*` |
 | `SCRAPER_VERBOSE=1` | Same as `--verbose` |
 | `SCRAPE_COMPANY_CONCURRENCY` | Parallel companies (default 8, max 16) |
-| `SCRAPE_EXCLUDE_SLUGS` | Optional comma-separated company slugs to skip in a scheduled environment |
 
-Cron (production): `.github/workflows/scrape-and-alerts.yml` runs every 6 hours (`7 */6 * * *`, UTC). It runs `npm run scrape`, then `npm run alerts:instant`, using GitHub repository secrets. The workflow sets `SCRAPE_EXCLUDE_SLUGS=salesforce,sap,slack,wayfair` because those sources scrape locally but are blocked or unstable from GitHub-hosted runner IPs (`403`, `429`, or network failure); manual/local scrapes can still run `npm run scrape -- <slug>`. The `/api/cron/*` routes remain available for authenticated manual calls but are not scheduled in production.
+Cron (production): `vercel.json` schedules scrape and instant alerts via Vercel Cron (`Authorization: Bearer $CRON_SECRET`). On **Hobby**, each cron expression runs at most once per day — Pathway uses four UTC windows (00:07, 06:07, 12:07, 18:07) with two scrape shards per window (`shards=2`) and instant alerts 30 minutes later. On **Pro**, you can use `7 */6 * * *` with four shards (`shards=4`) instead. Manual/local scrapes can still run `npm run scrape -- <slug>`.
 
 ## Location normalization
 

@@ -126,7 +126,7 @@ export async function unsavePosting(postingIds: string | string[]) {
 
 /**
  * Re-read scraped postings from Supabase for Openings. Does not run scrape
- * jobs — scheduled ingestion runs from GitHub Actions.
+ * jobs — scheduled ingestion runs from Vercel Cron.
  * Pair with `router.refresh()` on the client.
  */
 export async function refreshFeed() {

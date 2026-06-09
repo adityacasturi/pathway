@@ -38,7 +38,7 @@ npm run qstash:cron      # cleanup/list retired QStash schedules
 npm run verify           # lint + test:preprod
 ```
 
-Scrape/alerts cron: GitHub Actions runs `npm run scrape` + `npm run alerts:instant` every 6 hours. Required GitHub secrets: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `ALERT_UNSUBSCRIBE_SECRET`. Scout is locked (`SCOUT_ENABLED = false`); `OPENAI_API_KEY` is only needed when re-enabled.
+Scrape/alerts cron: Vercel Cron (`vercel.json`). Hobby: four daily UTC windows (00/06/12/18) with two scrape shards + delayed instant alerts (no `*/6` — Hobby allows once-per-day expressions only). Pro: can use `7 */6 * * *` with four shards. Required Vercel Production env: `CRON_SECRET`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `ALERT_UNSUBSCRIBE_SECRET`. Scout is locked (`SCOUT_ENABLED = false`); `OPENAI_API_KEY` is only needed when re-enabled.
 
 ## Next.js 16
 
@@ -65,9 +65,9 @@ Public signup (any valid email) · **Home** briefing · application tracker with
 | `/alerts/unsubscribe` | One-click unsubscribe (signed token, public) |
 | `/api/logo` | Authenticated logo proxy (logo.dev) |
 | `/api/chat` | Streaming Scout API (503 while locked) |
-| `/api/cron/scrape-postings` | Unscheduled scrape handler (cron secret) |
-| `/api/cron/send-instant-alerts` | Unscheduled instant alert handler (cron secret) |
-| `/api/cron/send-alert-digests` | Unscheduled digest handler (cron secret) |
+| `/api/cron/scrape-postings` | Sharded scrape handler (cron secret) |
+| `/api/cron/send-instant-alerts` | Instant alert handler (cron secret) |
+| `/api/cron/send-alert-digests` | Digest handler (cron secret; not scheduled) |
 
 `proxy.ts`: unauthenticated users on protected routes → `/login?next=<path>`; authenticated users on `/`, `/login`, `/register` → `/home`. Public assets include `/company-logos/*` and cron routes.
 
@@ -86,7 +86,7 @@ Clients: `lib/supabase/server.ts` (user, RLS), `lib/supabase/admin.ts` (service 
 
 - **Openings:** `lib/feed/scraped-postings.ts` — `feed_interactions`, hide applied URLs, refresh does not scrape.
 - **Companies:** `lib/discover/companies.ts` + `lib/discover/catalog.ts` — same scrape store; industries from `discover_industries`.
-- **Alerts:** `lib/alerts/*` — match new postings to subscriptions, instant emails after GitHub Actions scrape, Resend delivery.
+- **Alerts:** `lib/alerts/*` — match new postings to subscriptions, instant emails after Vercel Cron scrape, Resend delivery.
 
 ## Database
 
