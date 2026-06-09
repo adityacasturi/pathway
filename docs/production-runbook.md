@@ -60,6 +60,8 @@ npm run scrape
 npm run alerts:instant
 ```
 
+The scheduled workflow sets `SCRAPE_EXCLUDE_SLUGS=wayfair` because Wayfair returns `429` from GitHub-hosted runner IPs. Run `npm run scrape -- wayfair` locally when you need to refresh that source manually.
+
 **QStash cleanup:**
 
 QStash no longer owns production scrape or alert schedules. The `qstash:cron` command remains only to list/delete retired Pathway schedules during cleanup. Add these local-only values to `.env.local` if you need to clean QStash:

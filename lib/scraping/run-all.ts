@@ -13,6 +13,7 @@ export interface RunAllScrapesOptions {
   filterSlug?: string;
   dryRun?: boolean;
   onProgress?: ScrapeProgressHandler;
+  excludedCompanySlugs?: ReadonlySet<string>;
   /** Override `SCRAPE_COMPANY_CONCURRENCY` for this run. */
   companyConcurrency?: number;
   /** Deterministically run only a subset of sources for distributed cron jobs. */
@@ -60,6 +61,8 @@ export async function runAllScrapes(
   }
 
   const rows = (data ?? []) as unknown as CompanySourceRow[];
+  const excludedCompanySlugs =
+    options.excludedCompanySlugs ?? parseExcludedCompanySlugs(process.env.SCRAPE_EXCLUDE_SLUGS);
   rows.sort((a, b) =>
     (a.companies?.name ?? "").localeCompare(b.companies?.name ?? "", undefined, {
       sensitivity: "base",
@@ -74,6 +77,9 @@ export async function runAllScrapes(
       continue;
     }
     if (options.filterSlug && config.companySlug !== options.filterSlug) {
+      continue;
+    }
+    if (excludedCompanySlugs.has(config.companySlug)) {
       continue;
     }
     if (options.sourceShard && !sourceBelongsToShard(config, options.sourceShard)) {
@@ -183,6 +189,15 @@ export function stableShardForKey(key: string, shardCount: number): number {
     hash = Math.imul(hash, 16777619);
   }
   return (hash >>> 0) % shardCount;
+}
+
+export function parseExcludedCompanySlugs(value: string | null | undefined): Set<string> {
+  return new Set(
+    (value ?? "")
+      .split(",")
+      .map((slug) => slug.trim().toLowerCase())
+      .filter(Boolean),
+  );
 }
 
 function createProgressEmitter(onProgress?: ScrapeProgressHandler) {

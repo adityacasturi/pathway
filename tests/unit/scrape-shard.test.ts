@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { parseScrapeCronParams } from "../../lib/cron/scrape-request.ts";
 import {
+  parseExcludedCompanySlugs,
   sourceBelongsToShard,
   stableShardForKey,
   type ScrapeSourceShard,
@@ -42,6 +43,10 @@ test("sourceBelongsToShard assigns each source to exactly one shard", () => {
     sourceBelongsToShard(source, { index, count: 4 } satisfies ScrapeSourceShard),
   );
   assert.equal(matches.filter(Boolean).length, 1);
+});
+
+test("parseExcludedCompanySlugs normalizes comma-separated slugs", () => {
+  assert.deepEqual(parseExcludedCompanySlugs(" Wayfair, salesforce ,,SAP "), new Set(["wayfair", "salesforce", "sap"]));
 });
 
 function sampleSource(companySlug: string): CompanySourceConfig {
