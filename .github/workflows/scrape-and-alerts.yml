@@ -16,6 +16,7 @@ jobs:
   scrape-and-alerts:
     name: Scrape postings and send instant alerts
     runs-on: ubuntu-latest
+    environment: Production
     timeout-minutes: 30
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
