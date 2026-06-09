@@ -34,7 +34,7 @@ Environment:
 | `SCRAPE_COMPANY_CONCURRENCY` | Parallel companies (default 8, max 16) |
 | `SCRAPE_EXCLUDE_SLUGS` | Optional comma-separated company slugs to skip in a scheduled environment |
 
-Cron (production): `.github/workflows/scrape-and-alerts.yml` runs every 6 hours (`7 */6 * * *`, UTC). It runs `npm run scrape`, then `npm run alerts:instant`, using GitHub repository secrets. The workflow sets `SCRAPE_EXCLUDE_SLUGS=wayfair` because Wayfair rate-limits GitHub-hosted runner IPs with `429`; manual/local scrapes can still run `npm run scrape -- wayfair`. The `/api/cron/*` routes remain available for authenticated manual calls but are not scheduled in production.
+Cron (production): `.github/workflows/scrape-and-alerts.yml` runs every 6 hours (`7 */6 * * *`, UTC). It runs `npm run scrape`, then `npm run alerts:instant`, using GitHub repository secrets. The workflow sets `SCRAPE_EXCLUDE_SLUGS=salesforce,sap,slack,wayfair` because those sources scrape locally but are blocked or unstable from GitHub-hosted runner IPs (`403`, `429`, or network failure); manual/local scrapes can still run `npm run scrape -- <slug>`. The `/api/cron/*` routes remain available for authenticated manual calls but are not scheduled in production.
 
 ## Location normalization
 

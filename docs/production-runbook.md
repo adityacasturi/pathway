@@ -60,7 +60,7 @@ npm run scrape
 npm run alerts:instant
 ```
 
-The scheduled workflow sets `SCRAPE_EXCLUDE_SLUGS=wayfair` because Wayfair returns `429` from GitHub-hosted runner IPs. Run `npm run scrape -- wayfair` locally when you need to refresh that source manually.
+The scheduled workflow sets `SCRAPE_EXCLUDE_SLUGS=salesforce,sap,slack,wayfair` because those sources scrape locally but are blocked or unstable from GitHub-hosted runner IPs (`403`, `429`, or network failure). Run `npm run scrape -- <slug>` locally when you need to refresh one of those sources manually.
 
 **QStash cleanup:**
 

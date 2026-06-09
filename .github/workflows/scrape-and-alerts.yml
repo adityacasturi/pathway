@@ -26,7 +26,7 @@ jobs:
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
       RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
       ALERT_UNSUBSCRIBE_SECRET: ${{ secrets.ALERT_UNSUBSCRIBE_SECRET }}
-      SCRAPE_EXCLUDE_SLUGS: wayfair
+      SCRAPE_EXCLUDE_SLUGS: salesforce,sap,slack,wayfair
 
     steps:
       - uses: actions/checkout@v4
