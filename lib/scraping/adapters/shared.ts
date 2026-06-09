@@ -1,6 +1,7 @@
 import type { CompanySourceConfig } from "../types.ts";
 
-const SCRAPER_USER_AGENT = "Pathway internship tracker scraper (+https://pathway.app)";
+const SCRAPER_USER_AGENT =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36";
 /** Per-request ceiling; large Greenhouse boards and rate-limited ATS APIs can exceed 8s. */
 const SOURCE_TIMEOUT_MS = 20_000;
 const FETCH_MAX_ATTEMPTS = 3;
@@ -16,6 +17,12 @@ interface FetchWithTimeoutOptions {
 export function atsJsonHeaders(): HeadersInit {
   return {
     accept: "application/json",
+    "accept-language": "en-US,en;q=0.9",
+    "cache-control": "no-cache",
+    pragma: "no-cache",
+    "sec-fetch-dest": "empty",
+    "sec-fetch-mode": "cors",
+    "sec-fetch-site": "same-origin",
     "user-agent": SCRAPER_USER_AGENT,
   };
 }
