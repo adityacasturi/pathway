@@ -1,6 +1,6 @@
 /**
- * Download company logos from logo.dev into public/company-logos/{slug}.png
- * and regenerate lib/logo/static-slug-manifest.json.
+ * Download company logos from logo.dev into public/company-logos/{slug}.png,
+ * then regenerate the manifest.
  *
  * Usage:
  *   npm run company-logos              # all active companies (skip existing)
@@ -47,7 +47,9 @@ function parseArgs(argv: string[]) {
     } else if (arg === "--concurrency" && argv[i + 1]) {
       concurrency = Math.max(1, Number.parseInt(argv[++i]!, 10) || DEFAULT_CONCURRENCY);
     } else if (arg === "--help" || arg === "-h") {
-      console.log(`Usage: npm run company-logos [-- --slug <slug>] [--force] [--manifest-only]`);
+      console.log(
+        `Usage: npm run company-logos [-- --slug <slug>] [--force] [--manifest-only]`,
+      );
       process.exit(0);
     }
   }
@@ -115,8 +117,8 @@ async function main() {
   const { slug, force, manifestOnly, concurrency } = parseArgs(process.argv.slice(2));
 
   if (manifestOnly) {
-    const slugs = await writeStaticSlugManifest();
-    console.log(`Wrote manifest (${slugs.length} slugs)`);
+    const lightSlugs = await writeStaticSlugManifest();
+    console.log(`Wrote manifest (${lightSlugs.length} logos)`);
     return;
   }
 
@@ -133,8 +135,9 @@ async function main() {
   }
 
   console.log(
-    `Downloading ${companies.length} logo(s) → ${COMPANY_LOGOS_DIR} (concurrency=${concurrency}, force=${force})`,
+    `Downloading ${companies.length} logo(s) (concurrency=${concurrency}, force=${force})`,
   );
+  console.log(`Output → ${COMPANY_LOGOS_DIR}`);
 
   const counts: Record<DownloadLogoResult, number> = { ok: 0, skipped: 0, failed: 0 };
 
@@ -157,12 +160,12 @@ async function main() {
       }
     }
 
-    return result;
+    return "ok" as const;
   });
 
-  const slugs = await writeStaticSlugManifest();
+  const lightSlugs = await writeStaticSlugManifest();
   console.log(
-    `Done: ok=${counts.ok} skipped=${counts.skipped} failed=${counts.failed}; manifest=${slugs.length} slugs`,
+    `Done: ok=${counts.ok} skipped=${counts.skipped} failed=${counts.failed}; logos=${lightSlugs.length}`,
   );
 
   if (counts.failed > 0) {

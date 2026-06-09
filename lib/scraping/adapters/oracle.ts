@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { atsPublishDate, unknownScrapedDates } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
-import { formatPrimaryWithCountryCode } from "../location.ts";
+import { structuredPlaceFromPrimaryAndCountry } from "../structured-place.ts";
+import type { StructuredPlaceInput } from "../../geo/types.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl, safeToIsoDate, scraperDelay } from "./shared.ts";
+import { fetchJsonWithTimeout, isHttpUrl, scraperDelay } from "./shared.ts";
 import { mapWithConcurrency } from "../scrape-concurrency.ts";
 
 /** Oracle Corporation careers use Oracle Fusion CE at eeho.fa.us2.oraclecloud.com (site CX_1). */
@@ -236,15 +236,26 @@ export function formatOracleDescription(
   return parts.join("\n\n");
 }
 
-export function formatOracleLocations(
+export function formatOracleStructuredLocations(
   summary: OracleRequisitionSummary,
   detail: OracleRequisitionDetail | null | undefined,
-): string[] {
+): StructuredPlaceInput[] {
   const primary = detail?.PrimaryLocation?.trim() || summary.PrimaryLocation?.trim() || "";
   const country =
     detail?.PrimaryLocationCountry?.trim() || summary.PrimaryLocationCountry?.trim() || "";
 
-  return formatPrimaryWithCountryCode(primary, country);
+  const place = structuredPlaceFromPrimaryAndCountry(primary, country);
+  return place.rawLabel || place.countryCode ? [place] : [];
+}
+
+/** @deprecated Prefer {@link formatOracleStructuredLocations}. */
+export function formatOracleLocations(
+  summary: OracleRequisitionSummary,
+  detail: OracleRequisitionDetail | null | undefined,
+): string[] {
+  return formatOracleStructuredLocations(summary, detail).map(
+    (place) => place.rawLabel ?? place.city ?? "",
+  ).filter(Boolean);
 }
 
 export function isOracleListCandidate(summary: OracleRequisitionSummary): boolean {
@@ -271,7 +282,7 @@ export function parseOraclePostings(
     const roleName = (detail?.Title ?? summary.Title)?.trim() || "";
     const requisitionId = (detail?.Id ?? summary.Id)?.trim() || "";
     const description = formatOracleDescription(summary, detail);
-    const locations = formatOracleLocations(summary, detail);
+    const structuredLocations = formatOracleStructuredLocations(summary, detail);
     const postingUrl = requisitionId ? buildOraclePostingUrl(board, requisitionId) : "";
 
     const classification = classifyForSource(source, {
@@ -280,7 +291,7 @@ export function parseOraclePostings(
       departments: [detail?.Category, detail?.JobFunction, summary.JobFamily].filter(
         (value): value is string => Boolean(value?.trim()),
       ),
-      locations,
+      structuredLocations,
     });
 
     if (!classification.include) {
@@ -295,9 +306,6 @@ export function parseOraclePostings(
       continue;
     }
 
-    const posted =
-      detail?.ExternalPostedStartDate?.trim() || summary.PostedDate?.trim() || null;
-
     roles.push(
       buildScrapedRole({
         postingUrl,
@@ -306,7 +314,6 @@ export function parseOraclePostings(
         companySlug: source.companySlug,
         classification,
         description: formatOracleDescription(summary, detail),
-        dates: posted ? atsPublishDate(safeToIsoDate(posted)) : unknownScrapedDates(),
       }),
     );
   }

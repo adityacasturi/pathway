@@ -1,11 +1,10 @@
 import { classifyForSource } from "../adapter-parse.ts";
 import { formatScrapedLocation } from "../location.ts";
 import { htmlToPlainText } from "../plain-text.ts";
-import { atsPublishWithModified } from "../posted-date.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl, safeToIsoDate } from "./shared.ts";
+import { fetchJsonWithTimeout, isHttpUrl } from "./shared.ts";
 
 export interface PinpointBoardConfig {
   careersOrigin: string;
@@ -25,9 +24,6 @@ export interface PinpointPosting {
   employment_type_text?: string;
   workplace_type?: string;
   workplace_type_text?: string;
-  published_at?: string;
-  created_at?: string;
-  updated_at?: string;
   location?: {
     city?: string;
     name?: string;
@@ -110,9 +106,6 @@ export function parsePinpointJobs(
       continue;
     }
 
-    const publishedAt = safeToIsoDate(posting.published_at ?? posting.created_at);
-    const updatedAt = safeToIsoDate(posting.updated_at);
-
     roles.push(
       buildScrapedRole({
         postingUrl,
@@ -121,7 +114,6 @@ export function parsePinpointJobs(
         companySlug: source.companySlug,
         classification,
         description,
-        dates: atsPublishWithModified(publishedAt, updatedAt),
       }),
     );
   }

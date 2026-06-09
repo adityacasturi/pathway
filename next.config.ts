@@ -53,7 +53,9 @@ const nextConfig: NextConfig = {
     return [
       { source: "/live", destination: "/openings", permanent: true },
       { source: "/discover", destination: "/companies", permanent: true },
-      { source: "/stats", destination: "/insights", permanent: true },
+      { source: "/stats", destination: "/home", permanent: true },
+      { source: "/insights", destination: "/home", permanent: true },
+      { source: "/lens", destination: "/home", permanent: true },
     ];
   },
   async headers() {

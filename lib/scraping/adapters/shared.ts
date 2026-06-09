@@ -119,7 +119,9 @@ export function isRetryableFetchStatus(status: number): boolean {
     status === 500 ||
     status === 502 ||
     status === 503 ||
-    status === 504
+    status === 504 ||
+    /** Cloudflare origin error — common when Workday tenants are in rolling maintenance. */
+    status === 520
   );
 }
 

@@ -1,4 +1,3 @@
-import { atsPublishDate } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
@@ -213,7 +212,6 @@ export function parseShopifyJobs(
         companySlug: source.companySlug,
         classification,
         description: formatShopifyDescription(job),
-        dates: atsPublishDate(parseShopifyListDate(job.listDate)),
       }),
     );
   }

@@ -1,5 +1,5 @@
-import { DiscoverBoardSkeleton } from "@/components/route-skeletons";
+import { CompaniesSkeleton } from "@/components/route-skeletons";
 
 export default function Loading() {
-  return <DiscoverBoardSkeleton />;
+  return <CompaniesSkeleton />;
 }

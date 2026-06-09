@@ -13,7 +13,9 @@ Pathway: Next.js 16, React 19, Supabase internship tracker. **Read this file fir
 | Doc | Use for |
 | --- | --- |
 | [docs/README.md](docs/README.md) | Index |
-| [docs/architecture.md](docs/architecture.md) | Routes, tables, Live/Discover, actions |
+| [docs/architecture.md](docs/architecture.md) | Routes, tables, Openings/Companies/Home, Scout, actions |
+| [docs/alerts-filters.md](docs/alerts-filters.md) | Alert filter matching rules |
+| [tests/README.md](tests/README.md) | Unit and e2e test layout |
 | [docs/scraping.md](docs/scraping.md) | Scrape, adapters, company onboarding |
 | [docs/discover-industries.md](docs/discover-industries.md) | `discover_industries` taxonomy; `companies.industry` FK |
 | [docs/production-runbook.md](docs/production-runbook.md) | Deploy / incidents |
@@ -28,9 +30,8 @@ Do **not** search `supabase/migrations_archive/` for current schema or whether a
 - Next.js routes, layouts, metadata, Server Actions, `proxy.ts`, caching, Server Components → read `node_modules/next/dist/docs/` for that topic.
 - Node.js **22.x**.
 - Match patterns in `app/`, `components/`, `lib/actions/`, `lib/config/`, `lib/supabase/`.
-- `npm run test:unit` / `npm run test:preprod` before claiming production readiness; `npm run test:preprod:full` when e2e credentials are available.
+- `npm run test:unit` / `npm run test:preprod` before claiming production readiness; `npm run test:preprod:full` includes public Playwright smoke tests (no credentials).
 - `npm run verify` = `lint` + `test:preprod` (i.e. lint, typecheck, `npm audit`, unit tests, build).
-- E2e: `npm run test:e2e` with `E2E_USER_EMAIL` / `E2E_USER_PASSWORD`; mutations need `E2E_ALLOW_MUTATION=1`.
 
 ## Discover queue
 
@@ -63,10 +64,12 @@ Do **not** search `supabase/migrations_archive/` for current schema or whether a
 ## Product state
 
 - Public signup enabled for any valid email (app-level format + disposable-domain checks only).
-- Default accent: midnight.
-- Discover hides applied postings by default.
-- Dashboard rows: simple, consistent with Discover (no row animation flourishes).
-- Email alerts (`/alerts`) are launch-gated by `lib/config/alerts-launch.ts`; pre-launch the page renders a preview gate.
+- Default accent: midnight (black). Accents: midnight, indigo, rose.
+- Openings hides applied postings by default.
+- Default post-login route: `/home`.
+- Scout is locked for now (`SCOUT_ENABLED = false`); do not route users into `/chat` unless re-enabling it.
+- Listing rows: simple, consistent across Openings/Companies/Applications (no row animation flourishes).
+- Email alerts (`/alerts`) require `RESEND_API_KEY` + `RESEND_FROM_EMAIL` + `ALERT_UNSUBSCRIBE_SECRET` for outbound delivery.
 
 ## UI
 

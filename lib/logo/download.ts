@@ -6,7 +6,6 @@ import {
   APP_LOGO_PX,
   buildLogoDevImageUrl,
   resolveLogoDevTarget,
-  type LogoDevImageTarget,
 } from "./logo-dev-url.ts";
 
 export interface CompanyLogoDownloadEntry {
@@ -18,14 +17,29 @@ export interface CompanyLogoDownloadEntry {
 export const REPO_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
 export const COMPANY_LOGOS_DIR = path.join(REPO_ROOT, "public/company-logos");
 export const STATIC_SLUG_MANIFEST_PATH = path.join(REPO_ROOT, "lib/logo/static-slug-manifest.json");
+const COMPANY_LOGO_SLUG_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 
 export type DownloadLogoResult = "ok" | "skipped" | "failed";
 
-export function companyLogoFilePath(slug: string, outDir = COMPANY_LOGOS_DIR): string {
+export function isSafeCompanyLogoSlug(slug: string): boolean {
+  return COMPANY_LOGO_SLUG_PATTERN.test(slug);
+}
+
+export function companyLogoFilePath(
+  slug: string,
+  options?: { outDir?: string },
+): string {
+  if (!isSafeCompanyLogoSlug(slug)) {
+    throw new Error(`Invalid company logo slug: ${slug}`);
+  }
+  const outDir = options?.outDir ?? COMPANY_LOGOS_DIR;
   return path.join(outDir, `${slug}.png`);
 }
 
-export async function writeStaticSlugManifest(outDir = COMPANY_LOGOS_DIR): Promise<string[]> {
+async function writeManifestForDir(
+  outDir: string,
+  manifestPath: string,
+): Promise<string[]> {
   await mkdir(outDir, { recursive: true });
   const files = await readdir(outDir);
   const slugs = files
@@ -33,8 +47,12 @@ export async function writeStaticSlugManifest(outDir = COMPANY_LOGOS_DIR): Promi
     .map((name) => name.slice(0, -".png".length))
     .filter((slug) => slug.length > 0)
     .sort((a, b) => a.localeCompare(b));
-  await writeFile(STATIC_SLUG_MANIFEST_PATH, `${JSON.stringify(slugs, null, 2)}\n`, "utf8");
+  await writeFile(manifestPath, `${JSON.stringify(slugs, null, 2)}\n`, "utf8");
   return slugs;
+}
+
+export async function writeStaticSlugManifest(outDir = COMPANY_LOGOS_DIR): Promise<string[]> {
+  return writeManifestForDir(outDir, STATIC_SLUG_MANIFEST_PATH);
 }
 
 export async function downloadCompanyLogoFile(
@@ -47,7 +65,7 @@ export async function downloadCompanyLogoFile(
   },
 ): Promise<DownloadLogoResult> {
   const outDir = options?.outDir ?? COMPANY_LOGOS_DIR;
-  const outPath = companyLogoFilePath(entry.slug, outDir);
+  const outPath = companyLogoFilePath(entry.slug, { outDir });
   const size = options?.size ?? APP_LOGO_PX;
   const force = options?.force ?? false;
 
@@ -83,14 +101,4 @@ async function fileExists(filePath: string): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-export async function downloadCompanyLogoByTarget(
-  slug: string,
-  target: LogoDevImageTarget,
-  token: string,
-  options?: { size?: number; force?: boolean; outDir?: string },
-): Promise<DownloadLogoResult> {
-  const name = target.company ?? target.domain ?? slug;
-  return downloadCompanyLogoFile({ slug, name, websiteUrl: null }, token, options);
 }

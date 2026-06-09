@@ -2,17 +2,12 @@ export const ACCENT_OPTIONS = [
   {
     id: "midnight",
     label: "Midnight",
-    swatch: "oklch(0.3 0.045 270)",
+    swatch: "oklch(0.18 0.01 265)",
   },
   {
-    id: "sage",
-    label: "Sage",
-    swatch: "oklch(0.52 0.055 150)",
-  },
-  {
-    id: "sky",
-    label: "Sky",
-    swatch: "oklch(0.54 0.06 245)",
+    id: "indigo",
+    label: "Indigo",
+    swatch: "oklch(0.43 0.09 262)",
   },
   {
     id: "rose",
@@ -26,12 +21,14 @@ export type AccentColor = (typeof ACCENT_OPTIONS)[number]["id"];
 export const DEFAULT_ACCENT_COLOR: AccentColor = "midnight";
 
 const LEGACY_ACCENT_ALIASES: Record<string, AccentColor> = {
-  powder: "sky",
-  "powder-blue": "sky",
+  powder: "indigo",
+  "powder-blue": "indigo",
+  sky: "indigo",
   rosewood: "rose",
   "dusty-plum": "rose",
   clay: "rose",
   slate: "midnight",
+  sage: "midnight",
 };
 
 export function isAccentColor(value: unknown): value is AccentColor {

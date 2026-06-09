@@ -6,7 +6,6 @@ import { buildRoleParseResult } from "../role-parse-result.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import { inferSeason } from "../season.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { atsModifiedOnly, atsPublishDate, parseFlexiblePostedDate } from "../posted-date.ts";
 import { fetchWithTimeout, isHttpUrl } from "./shared.ts";
 
 /**
@@ -365,21 +364,12 @@ export function parseLockheedMartinJobs(
         companySlug: source.companySlug,
         classification,
         description: buildLockheedClassificationDescription(detail),
-        dates: lockheedRoleDates(detail.lastUpdated),
         season: inferSeason(seasonText),
       }),
     );
   }
 
   return buildRoleParseResult(fetched, roles, rejected);
-}
-
-export function lockheedRoleDates(lastUpdated: string | null | undefined) {
-  const published = parseFlexiblePostedDate(lastUpdated ?? null);
-  if (published) {
-    return atsPublishDate(published, "medium", lastUpdated ?? null);
-  }
-  return atsModifiedOnly(lastUpdated ?? null);
 }
 
 export function parseBrassRingMatchedJobsResponse(

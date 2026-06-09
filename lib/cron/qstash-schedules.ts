@@ -13,50 +13,27 @@ export interface QstashScheduleRequest {
 }
 
 const RETIRED_PRODUCTION_QSTASH_SCHEDULE_IDS = [
+  "pathway-discover-scrape-shard-0",
+  "pathway-discover-scrape-shard-1",
+  "pathway-discover-scrape-shard-2",
+  "pathway-discover-scrape-shard-3",
+  "pathway-alerts-instant-delivery",
   "pathway-scrape-shard-0",
   "pathway-scrape-shard-1",
   "pathway-scrape-shard-2",
   "pathway-scrape-shard-3",
   "pathway-instant-alerts",
   "pathway-daily-digest",
+  "pathway-alerts-daily-digest",
+  "pathway-sync-search-index",
 ];
 
-export function getProductionQstashSchedules(baseUrl: string): QstashScheduleDefinition[] {
-  const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
-  const shardCount = 4;
-  const scrapeSchedules = Array.from({ length: shardCount }, (_, shard) => ({
-    id: `pathway-discover-scrape-shard-${shard}`,
-    cron: `${7 + shard},${37 + shard} * * * *`,
-    destination: `${normalizedBaseUrl}/api/cron/scrape-postings?shard=${shard}&shards=${shardCount}&alerts=0`,
-    timeout: "10m",
-  }));
-
-  return [
-    ...scrapeSchedules,
-    {
-      id: "pathway-alerts-instant-delivery",
-      cron: "15,45 * * * *",
-      destination: `${normalizedBaseUrl}/api/cron/send-instant-alerts`,
-      timeout: "10m",
-    },
-    {
-      id: "pathway-alerts-daily-digest",
-      cron: "11 14 * * *",
-      destination: `${normalizedBaseUrl}/api/cron/send-alert-digests`,
-      timeout: "10m",
-    },
-  ];
+export function getProductionQstashSchedules(_baseUrl: string): QstashScheduleDefinition[] {
+  return [];
 }
 
 export function getProductionQstashScheduleIds(): string[] {
-  return [
-    "pathway-discover-scrape-shard-0",
-    "pathway-discover-scrape-shard-1",
-    "pathway-discover-scrape-shard-2",
-    "pathway-discover-scrape-shard-3",
-    "pathway-alerts-instant-delivery",
-    "pathway-alerts-daily-digest",
-  ];
+  return [];
 }
 
 export function getRetiredProductionQstashScheduleIds(): string[] {
@@ -84,14 +61,6 @@ export function buildQstashScheduleRequest(
 
 export function getQstashSchedulesUrl(): string {
   return QSTASH_SCHEDULES_URL;
-}
-
-function normalizeBaseUrl(baseUrl: string): string {
-  const trimmed = baseUrl.trim().replace(/\/+$/, "");
-  if (!/^https?:\/\//i.test(trimmed)) {
-    throw new Error("CRON_BASE_URL must include http:// or https://");
-  }
-  return trimmed;
 }
 
 export function normalizeQstashSchedulesUrl(qstashUrl: string): string {

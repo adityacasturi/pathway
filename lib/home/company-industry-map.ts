@@ -1,6 +1,10 @@
 import { loadDiscoverIndustryCatalog } from "../discover/catalog.ts";
-import type { CompanyIndustryInfo } from "./briefing.ts";
 import type { SupabaseClient } from "@supabase/supabase-js";
+
+export interface CompanyIndustryInfo {
+  industrySlug: string;
+  industryLabel: string;
+}
 
 interface CompanyIndustryRow {
   slug: string;

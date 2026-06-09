@@ -1,11 +1,10 @@
-import { atsPublishDate } from "../posted-date.ts";
 import { decodeHtmlEntities, stripHtml } from "../html-utils.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl, resolveBoardToken, safeToIsoDate } from "./shared.ts";
+import { fetchJsonWithTimeout, isHttpUrl, resolveBoardToken } from "./shared.ts";
 import { INTERNSHIP_LIST_TITLE_PATTERN } from "../list-filters.ts";
 
 /**
@@ -166,7 +165,6 @@ export function parseIntuitJobs(listings: IntuitListing[], source: CompanySource
       continue;
     }
 
-
     roles.push(
       buildScrapedRole({
         postingUrl,
@@ -175,7 +173,6 @@ export function parseIntuitJobs(listings: IntuitListing[], source: CompanySource
         companySlug: source.companySlug,
         classification,
         description: buildIntuitClassificationDescription(listing),
-        dates: atsPublishDate(safeToIsoDate(listing.datePosted)),
       }),
     );
   }

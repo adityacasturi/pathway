@@ -1,5 +1,4 @@
 import { classifyForSource } from "../adapter-parse.ts";
-import { atsPublishWithModified } from "../posted-date.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
@@ -8,7 +7,6 @@ import {
   isHttpUrl,
   parseLeadingPathToken,
   resolveBoardToken,
-  safeToIsoDate,
 } from "./shared.ts";
 
 interface LeverJob {
@@ -24,8 +22,6 @@ interface LeverJob {
     team?: string;
     department?: string;
   };
-  createdAt?: number;
-  updatedAt?: number;
   workplaceType?: string;
 }
 
@@ -85,11 +81,6 @@ export function parseLeverJobs(jobs: LeverJob[], source: CompanySourceConfig): R
       continue;
     }
 
-    const published =
-      typeof job.createdAt === "number" ? safeToIsoDate(new Date(job.createdAt)) : null;
-    const modified =
-      typeof job.updatedAt === "number" ? safeToIsoDate(new Date(job.updatedAt)) : null;
-
     roles.push(
       buildScrapedRole({
         postingUrl,
@@ -98,7 +89,6 @@ export function parseLeverJobs(jobs: LeverJob[], source: CompanySourceConfig): R
         companySlug: source.companySlug,
         classification,
         description,
-        dates: atsPublishWithModified(published, modified),
         seasonHints: {
           commitment: job.categories?.commitment ?? null,
           departments,

@@ -4,7 +4,6 @@ import {
   appendClassifiedRole,
   finishAdapterParse,
 } from "../../lib/scraping/adapter-parse.ts";
-import { atsPublishDate, unknownScrapedDates } from "../../lib/scraping/posted-date.ts";
 
 const context = { companyName: "Acme", companySlug: "acme" };
 
@@ -15,7 +14,6 @@ test("appendClassifiedRole rejects non-target roles", () => {
       title: "Marketing Intern",
       roleName: "Marketing Intern",
       locations: ["New York, NY"],
-      dates: unknownScrapedDates(),
     },
     context,
   );
@@ -32,7 +30,6 @@ test("appendClassifiedRole rejects invalid URLs", () => {
       title: "Software Engineering Intern",
       roleName: "Software Engineering Intern",
       locations: ["San Francisco, CA"],
-      dates: unknownScrapedDates(),
     },
     context,
   );
@@ -49,7 +46,6 @@ test("appendClassifiedRole accepts engineering internships", () => {
       title: "Software Engineering Intern",
       roleName: "Software Engineering Intern",
       locations: ["San Francisco, CA"],
-      dates: atsPublishDate("2026-01-01"),
     },
     context,
   );
@@ -67,7 +63,6 @@ test("finishAdapterParse aggregates roles and rejections", () => {
       title: "Software Engineering Intern",
       roleName: "Software Engineering Intern",
       locations: ["Remote US"],
-      dates: unknownScrapedDates(),
     },
     context,
   );
@@ -77,7 +72,6 @@ test("finishAdapterParse aggregates roles and rejections", () => {
       title: "Sales Intern",
       roleName: "Sales Intern",
       locations: ["Chicago, IL"],
-      dates: unknownScrapedDates(),
     },
     context,
   );

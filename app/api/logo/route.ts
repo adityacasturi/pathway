@@ -4,6 +4,7 @@ import {
   markLogoDevDegraded,
   shouldOpenLogoDevCircuit,
 } from "@/lib/logo/degraded";
+import { buildLogoDevImageUrl } from "@/lib/logo/logo-dev-url";
 import { logoDevReferer, logoProxyStatusFromUpstream } from "@/lib/logo/upstream";
 import { logServerEvent } from "@/lib/observability";
 import { limitRequestByIpAsync } from "@/lib/rate-limit-buckets";
@@ -47,28 +48,18 @@ async function fetchWithTimeout(url: string): Promise<Response> {
   }
 }
 
-function logoDevUpstreamUrl(domain: string | null, company: string | null): string | null {
+function logoDevUpstreamUrl(
+  domain: string | null,
+  company: string | null,
+): string | null {
   if (!LOGO_DEV_TOKEN) return null;
 
-  const token = encodeURIComponent(LOGO_DEV_TOKEN);
-  const size = CANONICAL_SIZE;
-  const format = "png";
-
-  if (domain) {
-    return (
-      `https://img.logo.dev/${encodeURIComponent(domain)}` +
-      `?token=${token}&size=${size}&format=${format}`
-    );
-  }
-
-  if (company) {
-    return (
-      `https://img.logo.dev/name/${encodeURIComponent(company)}` +
-      `?token=${token}&size=${size}&format=${format}`
-    );
-  }
-
-  return null;
+  const target = domain
+    ? { domain }
+    : company
+      ? { company }
+      : {};
+  return buildLogoDevImageUrl(target, LOGO_DEV_TOKEN, CANONICAL_SIZE);
 }
 
 export async function GET(request: NextRequest) {

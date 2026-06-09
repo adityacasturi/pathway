@@ -2,68 +2,64 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   buildQstashScheduleRequest,
+  getProductionQstashScheduleIds,
   getProductionQstashSchedules,
+  getRetiredProductionQstashScheduleIds,
+  type QstashScheduleDefinition,
 } from "../../lib/cron/qstash-schedules.ts";
 
+const SAMPLE_SCHEDULE: QstashScheduleDefinition = {
+  id: "pathway-example",
+  cron: "7 0,6,12,18 * * *",
+  destination: "https://www.trypathway.app/api/cron/example",
+  timeout: "10m",
+};
+
 describe("getProductionQstashSchedules", () => {
-  it("defines four 30-minute scrape shard schedules and alert schedules", () => {
+  it("keeps QStash production schedules disabled while GitHub Actions owns cron", () => {
     const schedules = getProductionQstashSchedules("https://www.trypathway.app/");
 
+    assert.deepEqual(schedules, []);
+    assert.deepEqual(getProductionQstashScheduleIds(), []);
+  });
+
+  it("retires the previous scrape and alert QStash schedules", () => {
     assert.deepEqual(
-      schedules.map((schedule) => schedule.id),
+      getRetiredProductionQstashScheduleIds().filter((id) => id.startsWith("pathway-discover-")),
       [
         "pathway-discover-scrape-shard-0",
         "pathway-discover-scrape-shard-1",
         "pathway-discover-scrape-shard-2",
         "pathway-discover-scrape-shard-3",
-        "pathway-alerts-instant-delivery",
-        "pathway-alerts-daily-digest",
       ],
     );
-
-    assert.deepEqual(
-      schedules.slice(0, 4).map((schedule) => schedule.cron),
-      ["7,37 * * * *", "8,38 * * * *", "9,39 * * * *", "10,40 * * * *"],
-    );
-    assert.equal(
-      schedules[0]?.destination,
-      "https://www.trypathway.app/api/cron/scrape-postings?shard=0&shards=4&alerts=0",
-    );
-    assert.equal(schedules[4]?.cron, "15,45 * * * *");
-    assert.equal(schedules[4]?.destination, "https://www.trypathway.app/api/cron/send-instant-alerts");
-    assert.equal(schedules[5]?.cron, "11 14 * * *");
-    assert.equal(schedules[5]?.destination, "https://www.trypathway.app/api/cron/send-alert-digests");
+    assert.ok(getRetiredProductionQstashScheduleIds().includes("pathway-alerts-instant-delivery"));
+    assert.ok(getRetiredProductionQstashScheduleIds().includes("pathway-alerts-daily-digest"));
   });
 });
 
 describe("buildQstashScheduleRequest", () => {
   it("builds an idempotent QStash create request with forwarded cron auth", () => {
-    const [schedule] = getProductionQstashSchedules("https://www.trypathway.app");
-    assert.ok(schedule);
-
-    const request = buildQstashScheduleRequest(schedule, "cron-secret");
+    const request = buildQstashScheduleRequest(SAMPLE_SCHEDULE, "cron-secret");
 
     assert.equal(
       request.url,
-      "https://qstash.upstash.io/v2/schedules/https://www.trypathway.app/api/cron/scrape-postings?shard=0&shards=4&alerts=0",
+      "https://qstash.upstash.io/v2/schedules/https://www.trypathway.app/api/cron/example",
     );
     assert.deepEqual(request.headers, {
       "Content-Type": "text/plain",
-      "Upstash-Cron": "7,37 * * * *",
+      "Upstash-Cron": "7 0,6,12,18 * * *",
       "Upstash-Forward-Authorization": "Bearer cron-secret",
       "Upstash-Method": "GET",
       "Upstash-Retries": "2",
-      "Upstash-Schedule-Id": "pathway-discover-scrape-shard-0",
+      "Upstash-Schedule-Id": "pathway-example",
       "Upstash-Timeout": "10m",
     });
   });
 
   it("supports a regional QStash API URL", () => {
-    const [schedule] = getProductionQstashSchedules("https://www.trypathway.app");
-    assert.ok(schedule);
-
     const request = buildQstashScheduleRequest(
-      schedule,
+      SAMPLE_SCHEDULE,
       "cron-secret",
       "https://qstash-us-east-1.upstash.io/",
     );

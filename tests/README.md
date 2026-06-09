@@ -1,27 +1,43 @@
 # Tests
 
+Focused unit tests and public Playwright smoke tests. No authenticated e2e or credential env vars.
+
 ## Unit (`npm run test:unit`)
 
-Node’s built-in test runner with TypeScript stripping. Tests live under `tests/unit/**/*.test.ts` and import production code from `lib/` (path aliases via `tests/register-alias.mjs`).
+Node’s built-in test runner with TypeScript stripping (`tests/run-unit.mjs`). **24 test files**, ~130 assertions covering:
 
-- **Coverage:** `npm run test:unit:coverage` (excludes `lib/scraping/adapters/**` — covered indirectly via shared scrape helpers and audits).
-- **Focus:** pure logic (scraping filters, feed IDs, auth validation, application state, stats, discover search, etc.).
+| Area | Files |
+| --- | --- |
+| Auth | `auth-validation.test.ts`, `auth-redirect.test.ts` |
+| Alerts | `alert-filters.test.ts`, `alert-match-postings.test.ts`, `subscription-filters.test.ts`, `alert-unsubscribe-token.test.ts`, `alert-email-template.test.ts` |
+| Scrape | `scrape-classify.test.ts`, `scrape-upsert.test.ts`, `scrape-shard.test.ts`, `adapter-parse.test.ts`, `role-parse-result.test.ts`, `ats-postal-address.test.ts` |
+| Feed / Discover | `feed-visibility.test.ts`, `feed-interactions.test.ts`, `discover-posting-visibility.test.ts` |
+| Applications | `application-state.test.ts`, `application-events.test.ts` |
+| Infra | `cron-auth.test.ts`, `rate-limit.test.ts`, `qstash-schedules.test.ts`, `geo-resolve.test.ts`, `url-validation.test.ts`, `build-track-form-data.test.ts` |
+
+No env vars required. Optional coverage: `npm run test:unit:coverage`.
+
+Adapter HTML/JSON fixture regressions: `npm run scrape:audit-adapters` and local `npm run scrape` — not duplicated in unit tests.
 
 ## E2E (`npm run test:e2e`)
 
-Playwright against a dev server (or `E2E_BASE_URL`).
+Playwright smoke tests in `tests/e2e/public.spec.ts`:
 
-| Env | Purpose |
-| --- | --- |
-| `E2E_USER_EMAIL`, `E2E_USER_PASSWORD` | Authenticated smoke tests (skipped if unset) |
-| `E2E_ALLOW_MUTATION=1` | Create/delete application, dismiss/restore posting (single worker) |
+1. Landing page for anonymous users
+2. Login and register are public
+3. Protected routes redirect to `/login?next=…`
+4. Static company logos + logo proxy auth gate
+5. Security headers on `/login`
 
-## Pre-production gate
+**No login credentials required.**
+
+Starts the production build on port 3100 (`npm run build` first, or use `npm run test:preprod:full`). Set `E2E_BASE_URL` to hit an existing server instead.
+
+## CI gate
 
 ```bash
-npm run test:preprod       # typecheck + audit + unit + build
-npm run test:preprod:full  # lint + preprod + Playwright e2e
-npm run verify             # lint + test:preprod
+npm run verify             # lint + typecheck + audit + unit + build
+npm run test:preprod:full  # verify + Playwright e2e
 ```
 
-Run `test:preprod:full` locally before shipping; CI runs `verify` and public/authenticated e2e on every PR.
+GitHub Actions (`.github/workflows/pr-checks.yml`) runs `test:preprod:full` on pull requests.

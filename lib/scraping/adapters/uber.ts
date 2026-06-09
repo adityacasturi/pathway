@@ -1,9 +1,8 @@
-import { atsPublishWithModified } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl, safeToIsoDate } from "./shared.ts";
+import { fetchJsonWithTimeout, isHttpUrl } from "./shared.ts";
 import { INTERNSHIP_LIST_TITLE_PATTERN } from "../list-filters.ts";
 
 /** Uber careers search API on uber.com (custom ATS, not Greenhouse/Lever). */
@@ -28,8 +27,6 @@ export interface UberJob {
   programAndPlatform?: string;
   location?: UberLocation;
   level?: string;
-  creationDate?: string;
-  updatedDate?: string;
   team?: string;
   timeType?: string;
   allLocations?: UberLocation[];
@@ -161,10 +158,6 @@ export function parseUberJobs(
         companySlug: source.companySlug,
         classification,
         description: job.description?.trim() || "",
-        dates: atsPublishWithModified(
-        safeToIsoDate(job.creationDate ?? null),
-        safeToIsoDate(job.updatedDate ?? null),
-      ),
       }),
     );
   }

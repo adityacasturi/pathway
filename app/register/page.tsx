@@ -100,7 +100,7 @@ export default function RegisterPage() {
     }
 
     setState("success");
-    router.replace("/home");
+    router.replace("/applications");
     router.refresh();
   }
 
@@ -162,16 +162,15 @@ export default function RegisterPage() {
                     setError(null);
                   }}
                   aria-invalid={Boolean(signupEmailError)}
-                  aria-describedby="signup-email-help"
+                  aria-describedby={signupEmailError ? "signup-email-help" : undefined}
                   placeholder="you@example.com"
                   className={AUTH_INPUT_CLASS}
                 />
-                <AuthHelpText
-                  id="signup-email-help"
-                  tone={signupEmailError ? "error" : "muted"}
-                >
-                  {signupEmailError ?? "We'll send a confirmation link to this address."}
-                </AuthHelpText>
+                {signupEmailError && (
+                  <AuthHelpText id="signup-email-help" tone="error">
+                    {signupEmailError}
+                  </AuthHelpText>
+                )}
               </div>
 
               <div className="space-y-2">

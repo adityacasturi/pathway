@@ -1,5 +1,4 @@
-import { createWorkdayAdapter } from "./workday.ts";
-import type { CompanySourceConfig, ScrapeAdapter } from "../types.ts";
+import type { CompanySourceConfig } from "../types.ts";
 
 /** Public Workday careers site (CXS JSON API). jobs.nvidia.com is Eightfold and not scrapeable. */
 export const NVIDIA_WORKDAY_CAREERS_URL =
@@ -29,8 +28,4 @@ export function isNvidiaWorkdayCareersUrl(sourceUrl: string): boolean {
   } catch {
     return false;
   }
-}
-
-export function createNvidiaAdapter(source: CompanySourceConfig): ScrapeAdapter {
-  return createWorkdayAdapter(resolveNvidiaWorkdaySource(source));
 }

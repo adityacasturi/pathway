@@ -1,4 +1,3 @@
-import { greenhouseRoleDates } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
@@ -240,7 +239,6 @@ export function parseCoinbaseJobs(
         companySlug: source.companySlug,
         classification,
         description: descriptionPlain,
-        dates: greenhouseRoleDates(job),
         seasonHints: {
           employmentType: employment.employmentType,
           commitment: employment.commitment,

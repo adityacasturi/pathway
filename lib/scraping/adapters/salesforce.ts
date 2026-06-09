@@ -1,4 +1,3 @@
-import { atsPublishDate } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
@@ -181,7 +180,6 @@ export function parseSalesforceJobs(
         companySlug: source.companySlug,
         classification,
         description: job.description ?? "",
-        dates: atsPublishDate(safeToIsoDate(job.datePosted)),
       }),
     );
   }

@@ -1,11 +1,10 @@
-import { atsPublishDate } from "../posted-date.ts";
 import { stripHtml } from "../html-utils.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl, resolveBoardToken, safeToIsoDate } from "./shared.ts";
+import { fetchJsonWithTimeout, isHttpUrl, resolveBoardToken } from "./shared.ts";
 
 /**
  * LinkedIn employee recruiting is listed on linkedin.com/jobs (see careers.linkedin.com).
@@ -61,7 +60,6 @@ export interface LinkedInJobDetail {
   employmentType: string | null;
   seniorityLevel: string | null;
   jobFunction: string | null;
-  datePosted: string | null;
 }
 
 export function createLinkedInAdapter(source: CompanySourceConfig): ScrapeAdapter {
@@ -195,9 +193,6 @@ export function parseLinkedInJobPostingHtml(html: string, jobId: string): Linked
     /<div\s+class="description__text description__text--rich"[^>]*>([\s\S]*?)<\/div>/i,
   )?.[1];
   const description = descriptionHtml ? htmlToPlainText(descriptionHtml) : "";
-  const datePosted = stripHtml(
-    html.match(/<span[^>]*class="[^"]*posted-time-ago__text[^"]*"[^>]*>([\s\S]*?)<\/span>/i)?.[1] ?? "",
-  );
 
   const canonicalUrl =
     html.match(/href="(https:\/\/www\.linkedin\.com\/jobs\/view\/[^"]+)"/i)?.[1]?.split("?")[0] ??
@@ -213,7 +208,6 @@ export function parseLinkedInJobPostingHtml(html: string, jobId: string): Linked
     employmentType: criteria.get("employment type") ?? null,
     seniorityLevel: criteria.get("seniority level") ?? null,
     jobFunction: criteria.get("job function") ?? null,
-    datePosted: datePosted || null,
   };
 }
 
@@ -262,7 +256,6 @@ export function parseLinkedInJobs(
         companySlug: source.companySlug,
         classification,
         description: buildLinkedInClassificationDescription(detail),
-        dates: atsPublishDate(safeToIsoDate(detail.datePosted)),
       }),
     );
   }

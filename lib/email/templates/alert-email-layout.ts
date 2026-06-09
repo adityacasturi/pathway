@@ -18,6 +18,7 @@ export function buildUnsubscribeUrl(userId: string): string | null {
   return `${getSiteUrl()}/alerts/unsubscribe?token=${encodeURIComponent(token)}`;
 }
 
+/** Email clients render on light backgrounds — always use light static logos. */
 export function buildCompanyLogoUrl(companySlug: string): string {
   return `${getSiteUrl()}/company-logos/${encodeURIComponent(companySlug)}.png`;
 }

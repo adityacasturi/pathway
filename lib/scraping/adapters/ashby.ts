@@ -1,5 +1,6 @@
 import { formatUsAtsPostalAddress, type AtsPostalAddress } from "../ats-postal-address.ts";
-import { atsPublishWithModified } from "../posted-date.ts";
+import { structuredPlaceFromPostalAddress } from "../structured-place.ts";
+import type { StructuredPlaceInput } from "../../geo/types.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
@@ -9,7 +10,6 @@ import {
   isHttpUrl,
   parseLeadingPathToken,
   resolveBoardToken,
-  safeToIsoDate,
 } from "./shared.ts";
 
 interface AshbyJob {
@@ -21,9 +21,6 @@ interface AshbyJob {
   description?: string;
   descriptionHtml?: string;
   descriptionPlain?: string;
-  publishedAt?: string;
-  publishedDate?: string;
-  updatedAt?: string;
   employmentType?: string;
   team?: string;
   department?: string;
@@ -74,7 +71,7 @@ export function parseAshbyJobs(jobs: AshbyJob[], source: CompanySourceConfig): R
       job.description?.trim() ||
       job.descriptionHtml ||
       "";
-    const locations = collectAshbyLocations(job);
+    const structuredLocations = collectAshbyStructuredPlaces(job);
     const departments = [job.department?.trim(), job.team?.trim()].filter(Boolean) as string[];
 
     const classification = classifyForSource(source, {
@@ -83,7 +80,7 @@ export function parseAshbyJobs(jobs: AshbyJob[], source: CompanySourceConfig): R
       employmentType: normalizeAshbyEmploymentType(job.employmentType, job.workplaceType),
       team: job.team ?? null,
       departments,
-      locations,
+      structuredLocations,
     });
 
     if (!classification.include) {
@@ -106,10 +103,6 @@ export function parseAshbyJobs(jobs: AshbyJob[], source: CompanySourceConfig): R
         companySlug: source.companySlug,
         classification,
         description,
-        dates: atsPublishWithModified(
-          safeToIsoDate(job.publishedAt || job.publishedDate || null),
-          safeToIsoDate(job.updatedAt ?? null),
-        ),
         seasonHints: {
           employmentType: job.employmentType ?? null,
           departments,
@@ -146,6 +139,36 @@ export function normalizeAshbyEmploymentType(
 export function formatAshbyLocation(job: AshbyJob): string | null {
   const locations = collectAshbyLocations(job);
   return locations.length > 0 ? locations.join(" · ") : null;
+}
+
+export function collectAshbyStructuredPlaces(job: AshbyJob): StructuredPlaceInput[] {
+  const out: StructuredPlaceInput[] = [];
+  const remote = job.isRemote === true;
+
+  const fromPostal = structuredPlaceFromPostalAddress(job.address?.postalAddress, remote);
+  if (fromPostal) {
+    out.push(fromPostal);
+    return out;
+  }
+
+  const primary = job.location?.trim();
+  if (primary) out.push({ rawLabel: primary, remote });
+
+  for (const sec of job.secondaryLocations ?? []) {
+    if (typeof sec === "string") {
+      const trimmed = sec.trim();
+      if (trimmed) out.push({ rawLabel: trimmed, remote });
+    } else if (sec && typeof sec === "object") {
+      const val = (sec.location || sec.name || "").trim();
+      if (val) out.push({ rawLabel: val, remote });
+    }
+  }
+
+  if (remote && out.length === 0) {
+    out.push({ remote: true, countryCode: "US" });
+  }
+
+  return out;
 }
 
 export function collectAshbyLocations(job: AshbyJob): string[] {

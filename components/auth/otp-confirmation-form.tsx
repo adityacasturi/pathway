@@ -13,7 +13,7 @@ import { motionVariants } from "@/lib/ui/motion";
 
 export function OtpConfirmationForm({
   email,
-  nextPath = "/home",
+  nextPath = "/applications",
   onExit,
   initialMessage,
 }: {

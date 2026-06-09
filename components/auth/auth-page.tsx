@@ -1,41 +1,35 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { motion } from "framer-motion";
-import Image from "next/image";
 import Link from "next/link";
+import { PathwayLogo } from "@/components/brand/pathway-logo";
+import { Surface } from "@/components/design-system/surface";
 import { cn } from "@/lib/utils";
-import { motionVariants } from "@/lib/ui/motion";
 
 export const AUTH_INPUT_CLASS =
-  "h-11 rounded-lg bg-card px-3 text-[15px] placeholder:text-muted-foreground/40 focus-visible:border-foreground/30";
+  "h-10 rounded-md bg-card px-3 text-sm placeholder:text-muted-foreground/50 focus-visible:border-ring";
 
 export const AUTH_PASSWORD_INPUT_CLASS =
-  "h-11 rounded-lg bg-card px-3 pr-11 text-[15px] placeholder:text-muted-foreground/40 focus-visible:border-foreground/30";
+  "h-10 rounded-md bg-card px-3 pr-10 text-sm placeholder:text-muted-foreground/50 focus-visible:border-ring";
 
 export const AUTH_ICON_BUTTON_CLASS =
-  "absolute right-2 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-45";
+  "absolute right-1.5 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-45";
 
-export const AUTH_PRIMARY_BUTTON_CLASS = "primary-surface h-11 w-full rounded-lg text-[14px]";
+export const AUTH_PRIMARY_BUTTON_CLASS = "h-10 w-full rounded-md text-sm";
 
-export const AUTH_FOOTER_CLASS = "mt-7 text-center text-[13px] leading-relaxed text-muted-foreground";
+export const AUTH_FOOTER_CLASS = "mt-6 text-center text-xs leading-relaxed text-muted-foreground";
 
-export const AUTH_LINK_CLASS = "font-medium text-foreground transition-colors duration-150 hover:text-primary";
+export const AUTH_LINK_CLASS = "font-medium text-foreground transition-colors hover:text-primary";
 
-const AUTH_HELP_TEXT_CLASS = "text-[12px] leading-relaxed";
+const AUTH_HELP_TEXT_CLASS = "text-xs leading-relaxed";
 
 export function AuthPageShell({ children }: { children: ReactNode }) {
   return (
-    <div className="page-shell min-h-screen bg-background">
-      <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-6 py-12 sm:px-8">
-        <motion.div
-          className="w-full"
-          variants={motionVariants.riseIn}
-          initial={false}
-          animate="visible"
-        >
+    <div className="min-h-screen bg-background">
+      <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-6 py-10 sm:max-w-lg">
+        <Surface padding="p-6 sm:p-7" className="w-full rounded-2xl">
           {children}
-        </motion.div>
+        </Surface>
       </main>
     </div>
   );
@@ -49,18 +43,11 @@ export function AuthPageHeader({
   children?: ReactNode;
 }) {
   return (
-    <div className="mb-10">
+    <div className="mb-8">
       <Link href="/" aria-label="Pathway home" className="inline-flex items-center">
-        <Image
-          src="/brand/pathway-logo-black-transparent-600w.png"
-          alt="Pathway"
-          width={600}
-          height={148}
-          priority
-          className="brand-wordmark h-[36px] w-auto sm:h-[40px]"
-        />
+        <PathwayLogo priority className="h-7 w-auto" />
       </Link>
-      <h1 className="display-serif mt-5 text-[2.25rem] text-foreground">{title}</h1>
+      <h1 className="mt-5 text-xl font-semibold tracking-tight text-foreground">{title}</h1>
       {children}
     </div>
   );
@@ -81,7 +68,7 @@ export function AuthHelpText({
       className={cn(
         AUTH_HELP_TEXT_CLASS,
         tone === "error" && "text-destructive",
-        tone === "success" && "text-[color-mix(in_oklab,#2f7d5b_88%,var(--foreground))]",
+        tone === "success" && "text-primary",
         tone === "muted" && "text-muted-foreground",
       )}
     >

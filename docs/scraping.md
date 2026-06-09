@@ -1,12 +1,15 @@
 # Scraping and Discover catalog
 
-Pathway ingests internship postings from employer ATS boards into `scraped_postings`. **Live** and **Discover** read that store; they never scrape in the browser.
+Pathway ingests internship postings from employer ATS boards into `scraped_postings`. **Openings** and **Companies** read that store; they never scrape in the browser.
 
 ## Commands
 
 ```bash
 # All enabled companies (parallel, default concurrency 8)
 npm run scrape
+
+# Send instant alerts for newly scraped matching roles
+npm run alerts:instant
 
 # One company
 npm run scrape -- stripe
@@ -24,10 +27,32 @@ Environment:
 | --- | --- |
 | `SUPABASE_SERVICE_ROLE_KEY` | Required for writes |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `RESEND_API_KEY` | Required by `npm run alerts:instant` to send email |
+| `RESEND_FROM_EMAIL` | Verified sender for alert email |
+| `ALERT_UNSUBSCRIBE_SECRET` | Required to sign unsubscribe links |
 | `SCRAPER_VERBOSE=1` | Same as `--verbose` |
 | `SCRAPE_COMPANY_CONCURRENCY` | Parallel companies (default 8, max 16) |
 
-Cron (production): `GET` `/api/cron/scrape-postings` with `Authorization: Bearer $CRON_SECRET` — scheduled every 15 minutes via Upstash QStash (`npm run qstash:cron -- upsert`). Each scheduled run fans out across four deterministic source shards; `/api/cron/send-instant-alerts` runs a few minutes later. Local: `npm run scrape`.
+Cron (production): `.github/workflows/scrape-and-alerts.yml` runs every 6 hours (`7 */6 * * *`, UTC). It runs `npm run scrape`, then `npm run alerts:instant`, using GitHub repository secrets. The `/api/cron/*` routes remain available for authenticated manual calls but are not scheduled in production.
+
+## Location normalization
+
+Scrape writes canonical locations via `lib/geo/`:
+
+1. **Sanitize** messy ATS strings (Workday descriptors, office prefixes, country-first order).
+2. **Gazetteer** lookup (GeoNames `cities15000` subset in `lib/geo/data/cities.json`).
+3. **Structured adapter fields** when available (Workday `alpha2Code`, Ashby postal address, Oracle primary + country).
+4. Persist `location` (display), `location_places` (jsonb), `countries`, and `location_confidence` on `scraped_postings`.
+
+Commands:
+
+```bash
+npm run build:gazetteer      # dev: refresh cities.json from GeoNames
+npm run backfill:locations     # re-normalize open rows
+npm run scrape:audit-locations # quality summary + baseline
+```
+
+Geodata attribution: [GeoNames](https://www.geonames.org/) (CC-BY).
 
 ### Company logos (static)
 
@@ -60,22 +85,24 @@ Canonical list: `SOURCE_TYPES` / `SourceType` in `lib/scraping/types.ts`. Regist
 - `greenhouse`, `ashby`, `lever`, `workday`
 - `workable`, `hiringthing`, `surge`, `smartrecruiters`, `jobvite`, `breezy`, `pinpoint`
 
-**Custom adapters (employer-specific APIs or HTML):** include `google`, `microsoft`, `amazon`, `meta`, `apple`, `tesla`, `nvidia`, `jane_street`, `hudson_river_trading`, `uber`, `salesforce`, `linkedin`, `oracle`, `goldman_sachs`, `jpmorgan_chase`, and others in the registry — copy an existing file under `lib/scraping/adapters/` when adding a new employer.
+**Custom adapters (employer-specific APIs or HTML):** include `google`, `microsoft`, `amazon`, `meta`, `apple`, `tesla`, `jane_street`, `hudson_river_trading`, `uber`, `salesforce`, `linkedin`, `oracle`, `goldman_sachs`, `jpmorgan_chase`, and others in the registry — copy an existing file under `lib/scraping/adapters/` when adding a new employer.
+
+**Workday with shared-board filtering** (`splunk`, `juniper_networks`, `vmware`) scrape a parent company's Workday tenant with brand-scoped search. **Dedicated Workday boards** (including NVIDIA and RTX) use `source_type: workday` with the canonical `myworkdayjobs.com` URL; legacy marketing URLs are normalized via `lib/scraping/adapters/nvidia.ts` and `rtx.ts` during onboarding only.
 
 Adding a **new** `source_type` requires:
 
 1. Adapter file + `ADAPTER_FACTORIES` entry in `registry.ts`
 2. Extend `company_sources_source_type_check` in SQL (`apply_migration`)
-3. Unit tests in `tests/unit/scraping-adapters.test.ts` when practical; `tests/unit/scraping-registry.test.ts` checks registry/source-type coverage
+3. Unit coverage in `tests/unit/adapter-parse.test.ts`, `tests/unit/scrape-classify.test.ts`, etc.; adapter HTML regressions via `npm run scrape:audit-adapters`
 
 ## Role filters
 
 Shared logic:
 
 - `lib/scraping/classify-role.ts` — intern signals + engineering scope
-- `lib/feed/roles.ts` — engineering title patterns for Live/Discover
+- `lib/feed/roles.ts` — engineering title patterns for Openings/Companies
 - `lib/feed/location.ts` + `lib/feed/us-locations.ts` — country detection from location strings
-- `lib/feed/country-filter.ts` — Live and Applications country filters
+- `lib/feed/country-filter.ts` — Openings and Applications country filters
 
 Rules (biased toward keeping real interns):
 
@@ -88,7 +115,7 @@ Adapters may still use region-scoped ATS queries when that reduces noise, but no
 
 ## ByteDance and TikTok
 
-Two Discover companies share one supplier API (`jobs.bytedance.com`) via `lib/scraping/adapters/bytedance.ts`:
+Two catalog companies share one supplier API (`jobs.bytedance.com`) via `lib/scraping/adapters/bytedance.ts`:
 
 | Company slug | Careers surface | Posting URLs | Scope |
 | --- | --- | --- | --- |
@@ -105,7 +132,7 @@ When touching an adapter, wire every trustworthy ATS field:
 | --- | --- |
 | Intern filter | `classifyScrapeRole()` — pass `employmentType`, `commitment`, `departments`, `description`, all location segments |
 | Season | `inferSeason(title, description, hints)` — title, description, and GH metadata season/duration |
-| Posted date | `dates` via `lib/scraping/posted-date.ts` — prefer publish-class (`ats_publish`, `relative_parse`); never treat `updated_at` alone as Posted |
+| Posted date | `first_seen_at` from `lib/scraping/upsert.ts` — Pathway's first scrape time is the user-facing posted date |
 | Location | `formatClassifiedScrapeLocation()` after classification — US trim is applied in `classifyScrapeRole` |
 
 Shared modules:
@@ -115,7 +142,6 @@ Shared modules:
 - `lib/scraping/role-parse-result.ts` — `buildRoleParseResult()` + dedupe; attaches date-quality stats for audits
 - `lib/scraping/ats-postal-address.ts` — Ashby-style `postalAddress` → US location labels
 - `lib/scraping/adapter-parse.ts` — `appendClassifiedRole()` / `finishAdapterParse()` helpers
-- `lib/scraping/posted-date.ts` — `parseFlexiblePostedDate()`, `sitemapLastmodPublishDate()` for sitemap/HTML feeds
 - `lib/scraping/location.ts` — `extractLocationsFromPlainText()` for HTML-only boards (Valve, Surge)
 - `lib/scraping/season.ts` — season inference
 
@@ -189,7 +215,7 @@ Use `source_type` `tesla` and `tesla.com` careers APIs — not `tesla.wd1.mywork
 
 ## Posted dates
 
-Scrapers emit structured `dates` in `lib/scraping/posted-date.ts`; upsert merge in `lib/scraping/upsert.ts`. UI rules: [scraped-posted-dates.md](./scraped-posted-dates.md).
+Scrapers do not persist ATS publish-date fields. `lib/scraping/upsert.ts` preserves `first_seen_at` for existing posting URLs and initializes it for new URLs. UI rules: [scraped-posted-dates.md](./scraped-posted-dates.md).
 
 Known live-source limitations from the 2026-06-02 dry-run audit:
 

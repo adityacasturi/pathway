@@ -19,7 +19,6 @@ type Row = {
   usesBuildScrapedRole: boolean;
   usesBuildRoleParseResult: boolean;
   usesClassify: boolean;
-  unknownDates: boolean;
   handBuiltRoles: boolean;
 };
 
@@ -38,7 +37,6 @@ for (const file of files) {
     usesBuildScrapedRole: src.includes("buildScrapedRole"),
     usesBuildRoleParseResult: src.includes("buildRoleParseResult"),
     usesClassify: src.includes("classifyScrapeRole"),
-    unknownDates: src.includes("unknownScrapedDates"),
     handBuiltRoles: /roles\.push\(\{[\s\S]*?postingUrl/.test(src),
   });
 }
@@ -51,7 +49,7 @@ const needsMigrate = adapterRows.filter(
 );
 
 console.log(
-  "adapter\tkind\tbuildScrapedRole\tbuildRoleParseResult\tclassify\tunknownDates\thandBuilt",
+  "adapter\tkind\tbuildScrapedRole\tbuildRoleParseResult\tclassify\thandBuilt",
 );
 for (const r of rows) {
   console.log(
@@ -61,7 +59,6 @@ for (const r of rows) {
       r.usesBuildScrapedRole ? "yes" : "NO",
       r.usesBuildRoleParseResult ? "yes" : "NO",
       r.usesClassify ? "yes" : "NO",
-      r.unknownDates ? "yes" : "-",
       r.handBuiltRoles ? "yes" : "-",
     ].join("\t"),
   );

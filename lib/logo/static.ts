@@ -1,4 +1,4 @@
-import manifest from "./static-slug-manifest.json";
+import manifest from "./static-slug-manifest.json" with { type: "json" };
 
 const MANIFEST_LOGO_SLUGS = new Set(manifest as string[]);
 
@@ -11,12 +11,9 @@ export function companyHasStaticLogo(
   slug: string | null | undefined,
   logoAssetKey?: string | null,
 ): slug is string {
-  if (logoAssetKey?.trim()) return true;
-  if (!slug?.trim()) return false;
-  return MANIFEST_LOGO_SLUGS.has(slug.trim());
-}
+  const key = logoAssetKey?.trim() || slug?.trim();
+  if (!key) return false;
 
-/** @deprecated Use companyHasStaticLogo */
-export function hasStaticCompanyLogo(slug: string | null | undefined): slug is string {
-  return companyHasStaticLogo(slug);
+  if (logoAssetKey?.trim()) return true;
+  return MANIFEST_LOGO_SLUGS.has(key);
 }

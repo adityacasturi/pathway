@@ -26,6 +26,14 @@ test("validateExternalHttpUrl blocks private hosts and bad schemes", () => {
     url: null,
     error: "URLs with embedded credentials are not allowed.",
   });
+  assert.deepEqual(validateExternalHttpUrl("http://0x7f000001/job"), {
+    url: null,
+    error: "Local or private-network URLs are not allowed.",
+  });
+  assert.deepEqual(validateExternalHttpUrl("http://[::ffff:127.0.0.1]/job"), {
+    url: null,
+    error: "Local or private-network URLs are not allowed.",
+  });
 });
 
 test("validateExternalHttpUrl accepts public https URLs", () => {

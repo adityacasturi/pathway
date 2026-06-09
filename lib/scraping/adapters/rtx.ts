@@ -1,5 +1,4 @@
-import { createWorkdayAdapter } from "./workday.ts";
-import type { CompanySourceConfig, ScrapeAdapter } from "../types.ts";
+import type { CompanySourceConfig } from "../types.ts";
 
 /**
  * RTX (Raytheon) careers use Workday CXS at globalhr.wd5 (REC_RTX_Ext_Gateway).
@@ -47,8 +46,4 @@ export function isRtxWorkdayCareersUrl(sourceUrl: string): boolean {
   } catch {
     return false;
   }
-}
-
-export function createRtxAdapter(source: CompanySourceConfig): ScrapeAdapter {
-  return createWorkdayAdapter(resolveRtxWorkdaySource(source));
 }

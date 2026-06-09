@@ -2,7 +2,7 @@ import type { EventType, Status } from "@/types/application";
 
 /** Canonical status colors for badges, timeline, snapshot, and charts. */
 export const STATUS_COLORS = {
-  applied: "#94a3b8",
+  applied: "#64748b",
   oa: "#60a5fa",
   interview: "#f09542",
   offer: "#6dae86",

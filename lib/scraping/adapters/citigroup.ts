@@ -1,11 +1,10 @@
-import { atsPublishDate } from "../posted-date.ts";
 import { decodeHtmlEntities, stripHtml } from "../html-utils.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl, resolveBoardToken, safeToIsoDate } from "./shared.ts";
+import { fetchJsonWithTimeout, isHttpUrl, resolveBoardToken } from "./shared.ts";
 
 /**
  * Citigroup careers run on Radancy TalentBrew (jobs.citi.com, org 287).
@@ -43,7 +42,6 @@ export interface CitigroupListing {
   location: string | null;
   category: string | null;
   description?: string | null;
-  datePosted?: string | null;
 }
 
 export function createCitigroupAdapter(source: CompanySourceConfig): ScrapeAdapter {
@@ -126,7 +124,6 @@ export function parseCitigroupJobDetailFields(html: string): {
   category: string | null;
   location: string | null;
   description: string;
-  datePosted: string | null;
 } {
   const title = html.match(/<h1 class="job-title-heading">([^<]+)/i)?.[1]?.trim() ?? null;
 
@@ -140,11 +137,6 @@ export function parseCitigroupJobDetailFields(html: string): {
       /<div class="job-description__desc-job-info job-location">[\s\S]*?<p class="job-description__desc-detail">([^<]+)/i,
     )?.[1]?.trim() ?? null;
 
-  const datePosted =
-    html.match(
-      /<div class="job-description__desc-job-info job-date">[\s\S]*?<p class="job-description__desc-detail">([^<]+)/i,
-    )?.[1]?.trim() ?? null;
-
   const descriptionBlock =
     html.match(
       /<div class="ats-description">([\s\S]*?)<div class="job-description__buttons bottom"/i,
@@ -156,7 +148,6 @@ export function parseCitigroupJobDetailFields(html: string): {
     category,
     location,
     description,
-    datePosted,
   };
 }
 
@@ -193,7 +184,6 @@ export function parseCitigroupJobs(
       continue;
     }
 
-
     roles.push(
       buildScrapedRole({
         postingUrl,
@@ -202,7 +192,6 @@ export function parseCitigroupJobs(
         companySlug: source.companySlug,
         classification,
         description: buildCitigroupClassificationDescription(listing),
-        dates: atsPublishDate(safeToIsoDate(listing.datePosted)),
       }),
     );
   }
@@ -302,7 +291,6 @@ async function enrichCitigroupListings(
           category: null,
           location: null,
           description: "",
-          datePosted: null,
         });
       }
     }
@@ -323,7 +311,6 @@ async function enrichCitigroupListings(
       category: detail.category ?? listing.category,
       location: detail.location ?? listing.location,
       description: detail.description || listing.description,
-      datePosted: detail.datePosted ?? listing.datePosted,
     };
   });
 }

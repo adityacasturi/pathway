@@ -3,11 +3,7 @@
 ## Pre-deploy checklist
 
 - [ ] Node.js 22.x in CI and Vercel
-- [ ] `npm run verify` green
-- [ ] `npm run test:unit` green
-- [ ] `npm run test:e2e` (public)
-- [ ] Authenticated e2e with `E2E_USER_EMAIL` / `E2E_USER_PASSWORD`
-- [ ] Optional mutation e2e: `E2E_ALLOW_MUTATION=1` on a **dedicated QA account only**
+- [ ] `npm run test:preprod:full` green (lint, typecheck, audit, unit, build, public e2e)
 - [ ] New DB changes present in Supabase `list_migrations` (not ad-hoc SQL only)
 - [ ] `select * from app_private.production_integrity_check();` → every returned `violations` value is **0**
 - [ ] Supabase security/performance advisors reviewed
@@ -34,25 +30,42 @@ NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 NEXT_PUBLIC_SITE_URL=https://...
 SUPABASE_SERVICE_ROLE_KEY=...   # server/cron only — never NEXT_PUBLIC_
-CRON_SECRET=...                 # /api/cron/scrape-postings, /api/cron/send-instant-alerts, /api/cron/send-alert-digests
 RESEND_API_KEY=...              # Email alerts (Resend)
 RESEND_FROM_EMAIL=...           # Verified sender, e.g. Pathway Alerts <alerts@yourdomain.com>
 ALERT_UNSUBSCRIBE_SECRET=...    # Random secret for signed unsubscribe tokens
 ```
 
-**Alerts launch (preview vs live):**
+**Alerts email delivery:** requires `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and `ALERT_UNSUBSCRIBE_SECRET`. The instant-alert script skips outbound email when Resend is not configured.
 
-- Omit `ALERTS_LAUNCHED` (or set anything other than `true` / `1` / `yes`) on dev/staging so `/alerts` stays preview-only and crons skip outbound email.
-- Set `ALERTS_LAUNCHED=true` only when Resend is verified and you want real subscriptions + delivery.
+**GitHub Actions cron (scrape + instant alerts):**
 
-**QStash cron (production schedules):**
+Production scraping runs from `.github/workflows/scrape-and-alerts.yml` every 6 hours (`7 */6 * * *`, UTC) and can also be run manually with `workflow_dispatch`.
 
-Add these local-only values to `.env.local` for schedule management:
+Add these repository secrets in GitHub:
+
+| Secret | Purpose |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
+| `NEXT_PUBLIC_SITE_URL` | Canonical production URL for email links |
+| `SUPABASE_SERVICE_ROLE_KEY` | Scrape writes and alert reads/writes |
+| `RESEND_API_KEY` | Resend API key |
+| `RESEND_FROM_EMAIL` | Verified sender |
+| `ALERT_UNSUBSCRIBE_SECRET` | Signed unsubscribe tokens |
+
+The workflow runs:
+
+```bash
+npm run scrape
+npm run alerts:instant
+```
+
+**QStash cleanup:**
+
+QStash no longer owns production scrape or alert schedules. The `qstash:cron` command remains only to list/delete retired Pathway schedules during cleanup. Add these local-only values to `.env.local` if you need to clean QStash:
 
 | Variable | Example | Purpose |
 | --- | --- | --- |
-| `CRON_BASE_URL` | `https://www.trypathway.app` | Production deployment URL (no trailing slash) |
-| `CRON_SECRET` | same as Vercel | Forwarded as `Authorization: Bearer` to cron routes |
 | `QSTASH_TOKEN` | `qstash_...` | Upstash QStash API token |
 | `QSTASH_URL` | `https://qstash-us-east-1.upstash.io` | QStash regional API URL; use this when the default region returns 404 |
 
@@ -65,17 +78,7 @@ npm run qstash:cron -- delete
 ```
 
 For US-region QStash tokens, set `QSTASH_URL=https://qstash-us-east-1.upstash.io`. For EU-region tokens, omit `QSTASH_URL` or set `https://qstash-eu-central-1.upstash.io`.
-
-`upsert` is idempotent because each schedule uses a stable `Upstash-Schedule-Id`. It also removes retired Pathway schedule IDs after creating the current schedules so renamed jobs do not keep running in parallel. Scrape cadence is every 15 minutes. Each cycle fans out to four shards on staggered minute offsets:
-
-```text
-pathway-discover-scrape-shard-0  :07,:37  /api/cron/scrape-postings?shard=0&shards=4&alerts=0
-pathway-discover-scrape-shard-1  :08,:38  /api/cron/scrape-postings?shard=1&shards=4&alerts=0
-pathway-discover-scrape-shard-2  :09,:39  /api/cron/scrape-postings?shard=2&shards=4&alerts=0
-pathway-discover-scrape-shard-3  :10,:40  /api/cron/scrape-postings?shard=3&shards=4&alerts=0
-```
-
-QStash calls `pathway-alerts-instant-delivery` (`/api/cron/send-instant-alerts`) at `:15` and `:45` UTC. `pathway-alerts-daily-digest` (`/api/cron/send-alert-digests`) remains daily at 14:11 UTC. QStash retries delivery failures; missed or failed scrape cycles are acceptable because the next 30-minute cycle rechecks the same sources.
+`upsert` creates no active schedules and deletes retired Pathway schedule IDs.
 
 **Optional:**
 
@@ -84,11 +87,12 @@ LOGO_DEV_TOKEN=...              # /api/logo — publishable pk_ for img.logo.dev
 NEXT_PUBLIC_SITE_URL=https://www.trypathway.app   # Referer sent to logo.dev (required if key has domain restrictions)
 UPSTASH_REDIS_REST_URL=...      # Distributed rate limits (server actions, unsubscribe)
 UPSTASH_REDIS_REST_TOKEN=...    # Falls back to in-memory limits when unset
+OPENAI_API_KEY=...              # Scout only; currently locked by SCOUT_ENABLED=false
 ```
 
 **Static company logos:** `npm run company-logos` (all active slugs) or `npm run company-logos -- --slug <slug>` after Discover onboarding. Commits `public/company-logos/*.png` and `lib/logo/static-slug-manifest.json`. In-app surfaces use static files when the slug is in the manifest; otherwise `/api/logo` proxy. Static logo responses are served with long-lived browser cache headers, so navigation should not refetch the full logo grid.
 
-**Logos 403 in production:** Pathway does not rate-limit `/api/logo`. Intermittent **403** on logo requests is usually logo.dev rejecting the server-side fetch: publishable key + **Allowed domains only** without a matching `Referer`, or a wrong token. Ensure `NEXT_PUBLIC_SITE_URL` matches an allowed domain in the [logo.dev dashboard](https://www.logo.dev/dashboard) (include `www` if users hit that host), or disable domain restrictions for the key used in `LOGO_DEV_TOKEN`. After fixing env/dashboard, hard-refresh Discover (clears `pathway:logo-failed:v7` in session storage if logos were cached as missing).
+**Logos 403 in production:** Pathway does not rate-limit `/api/logo`. Intermittent **403** on logo requests is usually logo.dev rejecting the server-side fetch: publishable key + **Allowed domains only** without a matching `Referer`, or a wrong token. Ensure `NEXT_PUBLIC_SITE_URL` matches an allowed domain in the [logo.dev dashboard](https://www.logo.dev/dashboard) (include `www` if users hit that host), or disable domain restrictions for the key used in `LOGO_DEV_TOKEN`. After fixing env/dashboard, hard-refresh Companies (clears `pathway:logo-failed:v7` in session storage if logos were cached as missing).
 
 Never prefix secrets with `NEXT_PUBLIC_`.
 
@@ -99,17 +103,15 @@ Via MCP or dashboard:
 1. `get_advisors` **security** — fix any ERROR-level lints.
 2. `get_advisors` **performance** — address WARN on hot paths (e.g. RLS `auth.uid()` initplan).
 3. `select * from app_private.production_integrity_check();` — expect **0 violations** on every row.
-4. `list_migrations` — confirm latest migration (e.g. `harden_alert_rls`) is applied remotely.
+4. `list_migrations` — confirm latest migration is applied remotely.
 
 **Current dashboard item (Auth):** enable [leaked password protection](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection).
 
-### Known advisor findings (review before launch)
+### Known advisor findings
 
-Last verified against the hosted project during the v2 pre-launch sweep:
-
-- **Alert write RPC/direct table exposure** — **resolved** (migrations `revoke_public_execute_on_alert_rpcs`, `revoke_authenticated_alert_write_rpcs`, `drop_legacy_alert_write_rpcs`, `harden_alert_client_write_policies`, `harden_alert_table_grants`). Alert writes now flow through server actions that authenticate the user and perform scoped service-role writes for that `user.id`; the legacy public write RPCs were dropped and client alert table privileges are read-only where client reads are needed.
 - **`alert_unsubscribe_nonces` has RLS enabled with no policy** — intentional (service-role writes only; deny-all to clients). No action needed.
 - **Leaked-password protection disabled** — enable in the Auth dashboard (see above).
+- Alert write hardening (`drop_legacy_alert_write_rpcs_after_service_actions`, `harden_alert_validator_search_path`, `harden_chat_table_grants`, `drop_unused_billing_and_index`) was applied remotely on 2026-06-06. Re-run advisors after new schema changes.
 
 ## Supabase dashboard (manual)
 
@@ -134,21 +136,10 @@ Signup is open to any valid email address. App code (`lib/auth/validation.ts`, u
 ## E2E
 
 ```bash
-E2E_USER_EMAIL="pathway.qa.20260513@uw.edu" \
-E2E_USER_PASSWORD="..." \
 npm run test:e2e
 ```
 
-Mutation (single worker):
-
-```bash
-E2E_ALLOW_MUTATION=1 \
-E2E_USER_EMAIL="..." \
-E2E_USER_PASSWORD="..." \
-npm run test:e2e
-```
-
-Use a dedicated QA account — not a personal user.
+Public smoke only (landing, auth, redirects, security headers). No credentials required. CI runs this via `npm run test:preprod:full`.
 
 ## Incidents
 
@@ -157,21 +148,21 @@ Use a dedicated QA account — not a personal user.
 - Vercel function logs and build output
 - Structured log events: `server.boot`, `supabase.query_error`, `supabase.mutation_error`, `feed.*`
 
-### Empty or stale Live / Discover
+### Empty or stale Openings / Companies
 
-1. **Live/Discover read `scraped_postings`** — UI refresh does not scrape.
-2. Check QStash schedules with `npm run qstash:cron -- list` (30-minute sharded scrape) or run `curl` against `/api/cron/scrape-postings` with `CRON_SECRET`.
+1. **Openings and Companies read `scraped_postings`** — UI refresh does not scrape.
+2. Check the latest `Scrape and alerts` GitHub Actions run. If needed, run `npm run scrape` locally with `SUPABASE_SERVICE_ROLE_KEY`.
 3. Inspect `company_sources.last_success_at` / `last_failure_at` for failing companies.
 4. Run `npm run scrape -- --verbose <slug>` locally with service role to reproduce.
-5. After deploy, run `npm run scrape` once if data is needed before the next 30-minute cron tick.
+5. After deploy, run `npm run scrape` once if data is needed before the next cron tick.
 
-### Discover industry labels / grouping
+### Company industry labels / grouping
 
 Taxonomy lives in `discover_industries`; `companies.industry` must be a valid FK slug. To fix misclassified companies or add slugs, see [discover-industries.md](./discover-industries.md) (migration + optional `scripts/generate-discover-industry-migration.mjs`).
 
 ### Posted date confusion
 
-See [scraped-posted-dates.md](./scraped-posted-dates.md). **NEW** on Live = `first_seen_at`, not ATS `updated_at`.
+See [scraped-posted-dates.md](./scraped-posted-dates.md). **NEW** on Openings = `first_seen_at`, not ATS `updated_at`.
 
 ### Auth spikes
 

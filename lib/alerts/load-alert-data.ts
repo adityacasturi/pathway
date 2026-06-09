@@ -1,4 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { enrichAlertPostingCandidate } from "@/lib/alerts/enrich-posting";
+import { scrapedPostingRowMatchesProductScope } from "@/lib/feed/product-scope";
+import {
+  alertFiltersFromPreferenceRow,
+  parseFilterOverrideJson,
+  type AlertFilters,
+} from "@/lib/alerts/filters";
 import { buildSentKey } from "@/lib/alerts/match-postings";
 import type { AlertPostingCandidate, AlertSubscription } from "@/lib/alerts/types";
 import type { AlertCadence, AlertTargetType } from "@/lib/config/alerts";
@@ -9,6 +16,15 @@ interface SubscriptionRow {
   target_type: AlertTargetType;
   target_id: string;
   cadence: AlertCadence;
+  filter_override: Record<string, unknown> | null;
+  paused: boolean;
+}
+
+interface PreferenceFilterRow {
+  user_id: string;
+  alert_seasons: string[] | null;
+  alert_countries: string[] | null;
+  alert_include_remote: boolean | null;
 }
 
 interface PostingRow {
@@ -19,6 +35,8 @@ interface PostingRow {
   posting_url: string;
   season: string;
   location: string | null;
+  location_places: import("@/lib/geo/types.ts").LocationPlaceJson[] | null;
+  countries: string[] | null;
   first_seen_at: string;
   companies:
     | { industry: string | null; slug: string }
@@ -44,6 +62,10 @@ function mapSubscription(row: SubscriptionRow): AlertSubscription {
     targetType: row.target_type,
     targetId: row.target_id,
     cadence: row.cadence,
+    filterOverride: parseFilterOverrideJson(
+      row.filter_override as Parameters<typeof parseFilterOverrideJson>[0],
+    ),
+    paused: row.paused,
   };
 }
 
@@ -55,7 +77,7 @@ function mapPosting(row: PostingRow): AlertPostingCandidate | null {
     return null;
   }
 
-  return {
+  return enrichAlertPostingCandidate({
     postingId: row.id,
     companyId: row.company_id,
     companySlug,
@@ -65,8 +87,10 @@ function mapPosting(row: PostingRow): AlertPostingCandidate | null {
     postingUrl: row.posting_url,
     season: row.season,
     location: row.location,
+    locationPlaces: row.location_places,
+    countries: row.countries,
     firstSeenAt: row.first_seen_at,
-  };
+  });
 }
 
 export async function loadEnabledAlertUserIds(supabase: SupabaseClient): Promise<Set<string>> {
@@ -95,10 +119,35 @@ export async function loadDigestEnabledUserIds(supabase: SupabaseClient): Promis
   return new Set((data ?? []).map((row) => row.user_id as string));
 }
 
+export async function loadAlertFilterDefaults(
+  supabase: SupabaseClient,
+): Promise<Map<string, AlertFilters>> {
+  const { data, error } = await supabase
+    .from("alert_preferences")
+    .select("user_id, alert_seasons, alert_countries, alert_include_remote");
+
+  if (error) {
+    throw error;
+  }
+
+  const map = new Map<string, AlertFilters>();
+  for (const row of (data ?? []) as PreferenceFilterRow[]) {
+    map.set(
+      row.user_id,
+      alertFiltersFromPreferenceRow({
+        alert_seasons: row.alert_seasons,
+        alert_countries: row.alert_countries,
+        alert_include_remote: row.alert_include_remote,
+      }),
+    );
+  }
+  return map;
+}
+
 export async function loadAlertSubscriptions(supabase: SupabaseClient): Promise<AlertSubscription[]> {
   const { data, error } = await supabase
     .from("alert_subscriptions")
-    .select("id, user_id, target_type, target_id, cadence");
+    .select("id, user_id, target_type, target_id, cadence, filter_override, paused");
 
   if (error) {
     throw error;
@@ -122,6 +171,8 @@ export async function loadAlertPostingCandidates(
       posting_url,
       season,
       location,
+      location_places,
+      countries,
       first_seen_at,
       companies!inner ( industry, slug )
     `,
@@ -135,6 +186,9 @@ export async function loadAlertPostingCandidates(
 
   const postings: AlertPostingCandidate[] = [];
   for (const row of (data ?? []) as PostingRow[]) {
+    if (!scrapedPostingRowMatchesProductScope(row)) {
+      continue;
+    }
     const mapped = mapPosting(row);
     if (mapped) {
       postings.push(mapped);

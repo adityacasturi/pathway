@@ -1,0 +1,390 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { AlertCircle, Briefcase, Building2, Clock, ListFilter, X } from "lucide-react";
+import { CompanyLogo } from "@/components/company-logo";
+import { formatOpeningCount } from "@/components/companies/company-card";
+import { CountryFlag } from "@/components/country-flag";
+import { CountryFilterSection } from "@/components/country-filter-section";
+import { MetadataRow } from "@/components/inspector/metadata-row";
+import { MetadataStack } from "@/components/inspector/metadata-stack";
+import { SeasonBadge } from "@/components/season-badge";
+import { SeasonDot, SeasonFilterSection } from "@/components/season-filter-section";
+import { SearchInput } from "@/components/search-input";
+import { MotionStaggerItem, MotionStaggerList } from "@/components/design-system/motion-stagger";
+import { SectionStack } from "@/components/design-system/surface";
+import { DataToolbar, FilterPill } from "@/components/design-system/toolbar";
+import { formatCountryCode } from "@/lib/feed/country-filter";
+import type { CountryFilterOption } from "@/lib/feed/country-filter";
+import type { FeedSeason } from "@/lib/feed/types";
+import { InlineError } from "@/components/ui/inline-error";
+import { LoadingState } from "@/components/design-system/states";
+import { getCompanyHealth } from "@/lib/discover/company-health";
+import { formatPostingRelativeTime } from "@/lib/feed/posted-display";
+import { formatCompactLocationSegments } from "@/lib/feed/us-locations";
+import type { DiscoverCompanyCard, ScrapedPostingRow } from "@/lib/discover/types";
+import { safeExternalHref } from "@/lib/url";
+import { useMounted } from "@/lib/ui/use-mounted";
+import { UI_COUNT_BADGE } from "@/lib/ui/selection-styles";
+import { cn } from "@/lib/utils";
+
+function CompanyInspectorMetadata({ company }: { company: DiscoverCompanyCard }) {
+  const health = getCompanyHealth(company);
+  const roleLabel = formatOpeningCount(company.openCount);
+
+  return (
+    <MetadataStack className="mt-2">
+      <MetadataRow icon={Briefcase}>
+        <span className="text-muted-foreground">{roleLabel}</span>
+      </MetadataRow>
+      <MetadataRow icon={Building2}>
+        <span className="text-muted-foreground">{company.industryLabel}</span>
+      </MetadataRow>
+      {health.kind === "ok" ? (
+        <MetadataRow icon={Clock}>
+          <span className="text-muted-foreground">Updated {health.label}</span>
+        </MetadataRow>
+      ) : null}
+      {health.kind === "pending" ? (
+        <MetadataRow icon={Clock}>
+          <span className="text-muted-foreground">{health.label}</span>
+        </MetadataRow>
+      ) : null}
+      {health.kind === "failed" ? (
+        <MetadataRow icon={AlertCircle}>
+          <span className="text-muted-foreground">{health.label}</span>
+        </MetadataRow>
+      ) : null}
+    </MetadataStack>
+  );
+}
+
+function CompanyInspectorPostingRow({
+  posting,
+  onOpen,
+  index,
+}: {
+  posting: ScrapedPostingRow;
+  onOpen: () => void;
+  index: number;
+}) {
+  const locationLabel = posting.location
+    ? formatCompactLocationSegments([posting.location], 2)
+    : "";
+  const ageLabel = formatPostingRelativeTime(posting.postedDisplay);
+  const postingHref = safeExternalHref(posting.postingUrl);
+
+  return (
+    <MotionStaggerItem as="li" index={index}>
+      <button
+        type="button"
+        data-testid="posting-row"
+        data-posting-id={posting.feedId}
+        onClick={onOpen}
+        className="flex w-full cursor-pointer items-start gap-3 px-5 py-3.5 text-left transition-colors hover:bg-muted/30"
+      >
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-2">
+            {postingHref ? (
+              <a
+                href={postingHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(event) => event.stopPropagation()}
+                className="min-w-0 truncate text-sm font-medium text-[var(--link)] transition-colors hover:text-[var(--link-hover)] hover:underline"
+              >
+                {posting.roleName}
+              </a>
+            ) : (
+              <span className="min-w-0 truncate text-sm font-medium text-foreground">
+                {posting.roleName}
+              </span>
+            )}
+            {posting.season ? (
+              <SeasonBadge season={posting.season} variant="plain" className="shrink-0" />
+            ) : null}
+          </div>
+          {locationLabel ? (
+            <p className="mt-1 truncate text-xs text-muted-foreground">{locationLabel}</p>
+          ) : null}
+        </div>
+        {ageLabel ? (
+          <span className="shrink-0 pt-0.5 text-xs tabular-nums text-muted-foreground">
+            {ageLabel}
+          </span>
+        ) : null}
+      </button>
+    </MotionStaggerItem>
+  );
+}
+
+export function CompanyInspector({
+  company,
+  postings,
+  postingsRaw,
+  postingsAvailable,
+  loading,
+  loadError,
+  postingQuery,
+  onPostingQueryChange,
+  selectedPostingSeasons,
+  onTogglePostingSeason,
+  onClearPostingSeasons,
+  postingSeasonCounts,
+  countryFilterOptions,
+  selectedPostingCountries,
+  onTogglePostingCountry,
+  onClearPostingCountries,
+  onOpenPosting,
+  onClose,
+  variant = "panel",
+  className,
+}: {
+  company: DiscoverCompanyCard | null;
+  postings: ScrapedPostingRow[] | null;
+  postingsRaw: ScrapedPostingRow[] | null;
+  postingsAvailable: ScrapedPostingRow[] | null;
+  loading: boolean;
+  loadError: string | null;
+  postingQuery: string;
+  onPostingQueryChange: (value: string) => void;
+  selectedPostingSeasons: ReadonlySet<FeedSeason>;
+  onTogglePostingSeason: (season: FeedSeason) => void;
+  onClearPostingSeasons: () => void;
+  postingSeasonCounts?: Partial<Record<FeedSeason, number>>;
+  countryFilterOptions: CountryFilterOption[];
+  selectedPostingCountries: ReadonlySet<string>;
+  onTogglePostingCountry: (code: string) => void;
+  onClearPostingCountries: () => void;
+  onOpenPosting: (posting: ScrapedPostingRow) => void;
+  onClose: () => void;
+  variant?: "panel" | "overlay";
+  className?: string;
+}) {
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filtersRef = useRef<HTMLDivElement | null>(null);
+  const mounted = useMounted();
+  const postingActiveFilterCount =
+    selectedPostingSeasons.size + selectedPostingCountries.size;
+  const hasActivePostingChips =
+    postingActiveFilterCount > 0 || postingQuery.trim().length > 0;
+  const open = Boolean(company);
+
+  useEffect(() => {
+    function onPointerDown(event: PointerEvent) {
+      if (!filtersRef.current?.contains(event.target as Node)) {
+        setFiltersOpen(false);
+      }
+    }
+    if (!filtersOpen) return;
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [filtersOpen]);
+
+  useEffect(() => {
+    if (!open || variant === "panel") return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [open, variant]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!company || !open) return null;
+
+  const panel = (
+    <aside
+      className={cn("relative flex h-full w-full flex-col overflow-hidden bg-card", className)}
+      aria-label={`${company.name} openings`}
+    >
+      <header className="relative shrink-0 border-b border-border px-5 py-5 pr-12">
+        <button
+          type="button"
+          onClick={() => {
+            setFiltersOpen(false);
+            onClose();
+          }}
+          aria-label="Close"
+          className="absolute right-3 top-4 inline-flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground"
+        >
+          <X size={18} strokeWidth={1.75} />
+        </button>
+
+        <div className="flex items-start gap-4">
+          <CompanyLogo
+            company={company.name}
+            companySlug={company.slug}
+            logoAssetKey={company.logoAssetKey}
+            websiteUrl={company.websiteUrl}
+            size={56}
+            lazy
+          />
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg font-semibold leading-tight tracking-tight text-foreground">
+              {company.name}
+            </h2>
+            <CompanyInspectorMetadata company={company} />
+          </div>
+        </div>
+      </header>
+
+      {postingsAvailable && postingsAvailable.length > 0 ? (
+        <div className="shrink-0 border-b border-border">
+          <div className="px-5 py-3">
+            <DataToolbar
+              leading={
+                <div className="[&_input]:h-8 [&_input]:text-sm">
+                  <SearchInput
+                    value={postingQuery}
+                    onChange={onPostingQueryChange}
+                    placeholder="Search role or location…"
+                  />
+                </div>
+              }
+              trailing={
+                <div ref={filtersRef} className="relative">
+                  <FilterPill
+                    active={filtersOpen || postingActiveFilterCount > 0}
+                    onClick={() => setFiltersOpen((value) => !value)}
+                    aria-expanded={filtersOpen}
+                    className="rounded-md"
+                  >
+                    <ListFilter size={14} strokeWidth={1.75} />
+                    Filter
+                    {postingActiveFilterCount > 0 ? (
+                      <span className={UI_COUNT_BADGE}>
+                        {postingActiveFilterCount}
+                      </span>
+                    ) : null}
+                  </FilterPill>
+                  {filtersOpen ? (
+                    <SectionStack className="absolute right-0 top-[calc(100%+6px)] z-[90] w-[min(22rem,calc(100vw-2.5rem))] shadow-sm">
+                      <SeasonFilterSection
+                        compact
+                        selected={selectedPostingSeasons}
+                        onToggle={onTogglePostingSeason}
+                        onClear={onClearPostingSeasons}
+                        counts={postingSeasonCounts}
+                        chipClassName="h-7 px-2.5 text-[12px]"
+                      />
+                      <CountryFilterSection
+                        compact
+                        showFlags
+                        options={countryFilterOptions}
+                        selected={selectedPostingCountries}
+                        onToggle={onTogglePostingCountry}
+                        onClear={onClearPostingCountries}
+                        chipClassName="h-7 px-2.5 text-[12px]"
+                      />
+                    </SectionStack>
+                  ) : null}
+                </div>
+              }
+            />
+          </div>
+          {hasActivePostingChips ? (
+            <div className="flex flex-wrap items-center gap-1.5 border-t border-border px-5 py-2">
+              {postingQuery.trim() ? (
+                <FilterPill active onClick={() => onPostingQueryChange("")}>
+                  Search: {postingQuery.trim()}
+                  <span aria-hidden>×</span>
+                </FilterPill>
+              ) : null}
+              {[...selectedPostingSeasons].map((season) => (
+                <FilterPill key={season} active onClick={() => onTogglePostingSeason(season)}>
+                  <SeasonDot season={season} />
+                  {season}
+                  <span aria-hidden>×</span>
+                </FilterPill>
+              ))}
+              {[...selectedPostingCountries].map((code) => (
+                <FilterPill key={code} active onClick={() => onTogglePostingCountry(code)}>
+                  <CountryFlag code={code} size="sm" />
+                  {formatCountryCode(code)}
+                  <span aria-hidden>×</span>
+                </FilterPill>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  onPostingQueryChange("");
+                  onClearPostingSeasons();
+                  onClearPostingCountries();
+                }}
+                className="px-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+              >
+                Clear all
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {loadError ? (
+          <div className="px-5 py-6">
+            <InlineError message={loadError} />
+          </div>
+        ) : loading && postings === null ? (
+          <LoadingState label="Loading listings…" className="mx-5 my-4 border-0 bg-transparent" />
+        ) : (postings?.length ?? 0) === 0 ? (
+          <p className="px-5 py-10 text-center text-sm text-muted-foreground">
+            {postingsAvailable && postingsAvailable.length > 0
+              ? "No roles match your search or filters."
+              : postingsRaw && postingsRaw.length > 0
+                ? "All current openings are already in your pipeline."
+                : company.lastSuccessAt
+                  ? "No openings right now."
+                  : "Coming soon."}
+          </p>
+        ) : (
+          <MotionStaggerList
+            key={`${company.id}:${postings?.map((row) => row.id).join(",") ?? ""}`}
+            as="ul"
+            className="divide-y divide-border"
+          >
+            {postings?.map((posting, index) => (
+              <CompanyInspectorPostingRow
+                key={posting.id}
+                index={index}
+                posting={posting}
+                onOpen={() => onOpenPosting(posting)}
+              />
+            ))}
+          </MotionStaggerList>
+        )}
+      </div>
+
+    </aside>
+  );
+
+  if (variant === "panel") {
+    return panel;
+  }
+
+  if (!mounted) return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex justify-end bg-[color-mix(in_oklab,var(--ink)_25%,transparent)] xl:hidden"
+      role="dialog"
+      aria-modal="true"
+    >
+      <button type="button" aria-label="Close" className="absolute inset-0" onClick={onClose} />
+      <div className="relative z-10 h-full w-full max-w-[var(--app-company-inspector-width)] shadow-[-16px_0_48px_-20px_color-mix(in_oklab,var(--ink)_22%,transparent)]">
+        {panel}
+      </div>
+    </div>,
+    document.body,
+  );
+}

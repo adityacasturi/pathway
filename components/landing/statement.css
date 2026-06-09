@@ -1,0 +1,284 @@
+/* Single-viewport statement landing — no scroll */
+/* Entrance delays: lib/landing/entrance-timing.ts */
+
+@keyframes landing-fade-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes landing-logo-reveal {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  to {
+    opacity: 0.9;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Landing uses an explicit light palette. */
+.landing-statement {
+  color-scheme: light;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.18 0.02 265);
+  --card: oklch(1 0 0);
+  --muted-foreground: oklch(0.4 0.02 255);
+  --rule: oklch(0.91 0.006 255);
+  --rule-strong: oklch(0.86 0.008 255);
+  --primary: oklch(0.17 0.01 265);
+  --primary-foreground: oklch(0.99 0.004 265);
+  --landing-enter-delay: 350ms;
+  --landing-logo-duration: 500ms;
+  --landing-punch-delay: 1480ms;
+  --landing-punch-duration: 480ms;
+  --landing-cta-delay: 2010ms;
+  --landing-cta-duration: 500ms;
+  --landing-schools-label-delay: 2560ms;
+  --landing-schools-label-duration: 500ms;
+  --landing-school-logo-duration: 380ms;
+
+  position: relative;
+  isolation: isolate;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.landing-statement::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--foreground) 5.5%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--foreground) 5.5%, transparent) 1px, transparent 1px),
+    radial-gradient(
+      ellipse 90% 70% at 50% 38%,
+      color-mix(in oklab, oklch(0.88 0.06 165) 28%, transparent),
+      transparent 62%
+    );
+  background-size: 44px 44px, 44px 44px, auto;
+  mask-image: radial-gradient(ellipse 88% 78% at 50% 42%, black 18%, transparent 74%);
+  -webkit-mask-image: radial-gradient(ellipse 88% 78% at 50% 42%, black 18%, transparent 74%);
+  opacity: 0.72;
+}
+
+@keyframes landing-headline-punch-mark {
+  from {
+    clip-path: inset(0 100% 0 0 round 0.08em);
+  }
+  to {
+    clip-path: inset(0 0 0 0 round 0.08em);
+  }
+}
+
+.landing-statement__brand {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 0 clamp(1.35rem, 3.2vh, 2rem);
+  animation: landing-logo-reveal var(--landing-logo-duration) cubic-bezier(0.22, 1, 0.36, 1)
+    var(--landing-enter-delay) both;
+  transition: opacity 180ms ease;
+}
+
+.landing-statement__brand:hover {
+  opacity: 0.72;
+}
+
+.landing-statement__stage {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 clamp(1.25rem, 5vw, 2.5rem) clamp(1.5rem, 4vh, 2.5rem);
+  text-align: center;
+  min-height: 0;
+}
+
+.landing-statement__headline {
+  position: relative;
+  z-index: 2;
+  font-family: var(--font-sans);
+  font-size: clamp(2.15rem, 6.8vw, 4.75rem);
+  font-weight: 500;
+  line-height: 1.02;
+  letter-spacing: -0.045em;
+  max-width: 28ch;
+  text-wrap: balance;
+  color: var(--foreground);
+}
+
+.landing-statement__headline--animated {
+  animation: none;
+}
+
+.landing-statement__headline-chunk {
+  display: inline;
+}
+
+.landing-statement__headline-punch {
+  display: inline;
+  position: relative;
+  z-index: 0;
+  white-space: nowrap;
+  font-style: italic;
+  font-weight: 600;
+  color: oklch(0.3 0.05 165);
+}
+
+.landing-statement__headline-punch::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: -0.03em;
+  right: 0.06em;
+  bottom: 0.04em;
+  height: 0.42em;
+  border-radius: 0.08em;
+  background: oklch(0.88 0.06 165 / 0.45);
+  clip-path: inset(0 100% 0 0 round 0.08em);
+  animation: landing-headline-punch-mark var(--landing-punch-duration) cubic-bezier(0.22, 1, 0.36, 1)
+    var(--landing-punch-delay) both;
+  will-change: clip-path;
+}
+
+.landing-statement__cta {
+  margin-top: clamp(1.5rem, 3.5vh, 2.15rem);
+  animation: landing-fade-up var(--landing-cta-duration) cubic-bezier(0.22, 1, 0.36, 1) var(--landing-cta-delay) both;
+}
+
+.landing-statement__signin {
+  margin-top: 0.85rem;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+.landing-statement__signin a {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in oklab, var(--foreground) 28%, transparent);
+}
+
+.landing-statement__signin a:hover {
+  text-decoration-color: var(--foreground);
+}
+
+.landing-statement__schools {
+  margin-top: clamp(2rem, 5vh, 3.25rem);
+  width: min(100%, 56rem);
+}
+
+.landing-statement__schools-label {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  margin-bottom: 1rem;
+  animation: landing-fade-up var(--landing-schools-label-duration) cubic-bezier(0.22, 1, 0.36, 1)
+    var(--landing-schools-label-delay) both;
+}
+
+.landing-statement__school-grid {
+  --logo-base-height: clamp(1.5rem, 3.1vh, 2rem);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1.35rem 1.75rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.landing-statement__school-grid li {
+  opacity: 0;
+}
+
+.landing-statement__school-grid--revealing li {
+  animation: landing-logo-reveal var(--landing-school-logo-duration) cubic-bezier(0.22, 1, 0.36, 1)
+    var(--logo-reveal-delay, 0ms) both;
+}
+
+.landing-statement__school-grid img {
+  height: calc(var(--logo-base-height) * var(--logo-scale, 1));
+  width: auto;
+  max-width: min(14rem, 28vw);
+  object-fit: contain;
+  opacity: 0.9;
+  transform: scale(1);
+  transform-origin: center center;
+  transition:
+    transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 240ms ease;
+}
+
+.landing-statement__school-grid li:hover img {
+  opacity: 1;
+  transform: scale(1.06);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-statement__brand,
+  .landing-statement__cta,
+  .landing-statement__schools-label {
+    animation: none;
+  }
+
+  .landing-statement__headline-punch::after {
+    animation: none;
+    clip-path: inset(0 0 0 0 round 0.08em);
+    will-change: auto;
+  }
+
+  .landing-statement__school-grid li {
+    opacity: 0.9;
+    animation: none;
+  }
+
+  .landing-statement__school-grid img {
+    transition: opacity 180ms ease;
+  }
+
+  .landing-statement__school-grid li:hover img {
+    transform: none;
+  }
+}
+
+@media (max-height: 700px) {
+  .landing-statement__brand {
+    margin-bottom: 1rem;
+  }
+
+  .landing-statement__headline {
+    font-size: clamp(1.85rem, 5.5vw, 3.25rem);
+  }
+
+  .landing-statement__schools {
+    margin-top: 1.35rem;
+  }
+
+  .landing-statement__school-grid {
+    gap: 0.9rem 1.25rem;
+  }
+}

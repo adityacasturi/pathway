@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "flag-icons/css/flag-icons.min.css";
+@import "@heroui/styles";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
@@ -37,11 +39,53 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  --animate-shimmer-slide: shimmer-slide var(--speed) ease-in-out infinite alternate;
+  --animate-spin-around: spin-around calc(var(--speed) * 2) infinite linear;
+  --animate-spotlight: spotlight 2s ease 0.75s 1 forwards;
+  --animate-scroll: scroll var(--animation-duration, 40s) var(--animation-direction, forwards) linear infinite;
+  @keyframes shimmer-slide {
+  to {
+    transform: translate(calc(100cqw - 100%), 0);
+    }
+  }
+  @keyframes spin-around {
+  0% {
+    transform: translateZ(0) rotate(0);
+    }
+  15%, 35% {
+    transform: translateZ(0) rotate(90deg);
+    }
+  65%, 85% {
+    transform: translateZ(0) rotate(270deg);
+    }
+  100% {
+    transform: translateZ(0) rotate(360deg);
+    }
+  }
+  @keyframes spotlight {
+    0% {
+      opacity: 0;
+      transform: translate(-72%, -62%) scale(0.5);
+    }
+    100% {
+      opacity: 1;
+      transform: translate(-50%, -40%) scale(1);
+    }
+  }
+  @keyframes scroll {
+    to {
+      transform: translate(calc(-50% - 0.5rem));
+    }
+  }
 }
 
 :root {
-  /* Centered app column — ~65% of the viewport on every screen size. */
-  --page-content-width: 65vw;
+  /* Modern SaaS content rail. Wide enough for tables, constrained for scanning. */
+  --page-content-width: min(1180px, 100vw);
+  --app-sidebar-width: 18.5rem;
+  --app-topbar-height: 4rem;
+  --app-inspector-width: 32rem;
+  --app-company-inspector-width: 38rem;
 
   --motion-duration-fast: 140ms;
   --motion-duration-base: 240ms;
@@ -49,63 +93,97 @@
   --motion-ease-smooth: cubic-bezier(0.2, 0.8, 0.2, 1);
   --motion-ease-standard: cubic-bezier(0.3, 0.1, 0.3, 1);
 
-  /* Rich finance neutral base: quiet paper, graphite ink, soft sage action. */
-  --paper: oklch(0.988 0.002 250);
-  --paper-sunk: oklch(0.965 0.004 250);
-  --ink: oklch(0.18 0.018 255);
+  --paper: oklch(0.985 0.004 255);
+  --paper-sunk: oklch(0.965 0.005 255);
+  --ink: oklch(0.18 0.02 255);
 
+  /* App canvas: off-white; panels: white */
   --background: var(--paper);
   --foreground: var(--ink);
-  --card: oklch(0.997 0.002 250);
+  --card: oklch(1 0 0);
   --card-foreground: var(--ink);
-  --popover: oklch(0.997 0.002 250);
+  --popover: oklch(1 0 0);
   --popover-foreground: var(--ink);
 
-  --primary: oklch(0.52 0.055 150);
-  --primary-foreground: oklch(0.985 0.004 250);
-  --secondary: oklch(0.94 0.006 250);
+  /* Default midnight (black) accent — overridden per data-accent */
+  --primary: oklch(0.17 0.01 265);
+  --primary-foreground: oklch(0.99 0.004 265);
+  --secondary: oklch(0.96 0.008 255);
   --secondary-foreground: var(--ink);
-  --muted: oklch(0.948 0.006 250);
-  --muted-foreground: oklch(0.51 0.018 255);
-  --accent: oklch(0.93 0.018 150);
+  --muted: oklch(0.955 0.007 255);
+  --muted-foreground: oklch(0.4 0.02 255);
+  --accent: oklch(0.94 0.006 265);
   --accent-foreground: var(--ink);
   --destructive: oklch(0.55 0.2 25);
+  --success: oklch(0.48 0.1 152);
 
-  /* Hairlines. `rule` for dividers, `rule-strong` for stronger borders. */
-  --rule: oklch(0.88 0.006 250);
-  --rule-strong: oklch(0.76 0.01 250);
-  --border: var(--rule);
-  --input: var(--rule);
-  --ring: oklch(0.56 0.05 150);
+  --rule: oklch(0.91 0.006 255);
+  --rule-strong: oklch(0.86 0.008 255);
+  --border: oklch(0.91 0.006 255);
+  --input: oklch(0.91 0.006 255);
+  --ring: oklch(0.38 0.02 265);
   --radius: 0.5rem;
 
-  /* Dark-on-light glows and highlight tints. Reused across cards / buttons. */
-  --primary-wash: color-mix(in oklab, var(--primary) 8%, transparent);
-  --primary-glow: 0 0 0 1px color-mix(in oklab, var(--primary) 30%, transparent),
-                  0 18px 50px -24px color-mix(in oklab, var(--primary) 55%, transparent);
-  --market-gold: oklch(0.7 0.045 95);
+  --primary-wash: color-mix(in oklab, var(--primary) 10%, transparent);
+  --primary-glow: none;
+  --market-gold: oklch(0.78 0.12 95);
+
+  /* Selection / active filter states */
+  --selection-fg: var(--primary);
+  --selection-bg: color-mix(in oklab, var(--primary) 10%, var(--tint-base));
+  --selection-border: color-mix(in oklab, var(--primary) 35%, var(--border));
+  --selection-subtle-bg: color-mix(in oklab, var(--primary) 6%, var(--tint-base));
+  --selection-count-bg: color-mix(in oklab, var(--primary) 18%, var(--tint-base));
+  --selection-count-fg: var(--primary);
+  --count-badge-bg: var(--primary);
+  --count-badge-fg: var(--primary-foreground);
+  --link: var(--primary);
+  --link-hover: var(--primary);
+  --icon-accent-fg: var(--primary);
+
+  /* Season label colors (tables, badges) */
+  --season-summer-fg: oklch(0.44 0.13 155);
+  --season-fall-fg: oklch(0.46 0.14 52);
+  --season-spring-fg: oklch(0.5 0.16 340);
+  --season-winter-fg: oklch(0.46 0.12 245);
+
+  /* Application status colors */
+  --status-applied-fg: #64748b;
+  --status-oa-fg: #2563eb;
+  --status-interview-fg: #ea580c;
+  --status-offer-fg: #15803d;
+  --status-rejected-fg: #dc2626;
+  --status-note-fg: #94a3b8;
+
+  --switch-track-off: color-mix(in oklab, var(--foreground) 12%, var(--muted));
+  --switch-track-on: var(--primary);
+  --switch-thumb: var(--background);
+  --switch-thumb-border: color-mix(in oklab, var(--foreground) 10%, var(--border));
+
+  --panel-shadow: none;
+  --panel-shadow-hover: none;
+
+  --shell-bg: var(--background);
+  --shell-sidebar: oklch(1 0 0);
+  --shell-sidebar-fg: var(--foreground);
+  --shell-sidebar-muted: var(--muted-foreground);
+  --tint-base: white;
+
   color-scheme: light;
 }
 
 :root[data-accent="midnight"] {
-  --primary: oklch(0.3 0.045 270);
-  --accent: oklch(0.92 0.012 270);
-  --ring: oklch(0.46 0.045 270);
+  --primary: oklch(0.17 0.01 265);
+  --accent: oklch(0.94 0.006 265);
+  --ring: oklch(0.38 0.02 265);
   --market-gold: oklch(0.68 0.045 88);
 }
 
-:root[data-accent="sage"] {
-  --primary: oklch(0.52 0.055 150);
-  --accent: oklch(0.93 0.018 150);
-  --ring: oklch(0.56 0.05 150);
-  --market-gold: oklch(0.7 0.045 95);
-}
-
-:root[data-accent="sky"] {
-  --primary: oklch(0.54 0.06 245);
-  --accent: oklch(0.93 0.018 245);
-  --ring: oklch(0.58 0.055 245);
-  --market-gold: oklch(0.7 0.045 90);
+:root[data-accent="indigo"] {
+  --primary: oklch(0.43 0.09 262);
+  --accent: oklch(0.93 0.016 262);
+  --ring: oklch(0.5 0.075 262);
+  --market-gold: oklch(0.68 0.045 88);
 }
 
 :root[data-accent="rose"] {
@@ -114,6 +192,15 @@
   --ring: oklch(0.55 0.065 20);
   --market-gold: oklch(0.69 0.045 78);
 }
+
+.pathway-logo {
+  width: auto !important;
+  max-width: none;
+  height: auto;
+  object-fit: contain;
+  object-position: left center;
+}
+
 :root {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -145,11 +232,19 @@
     @apply border-border outline-ring/50;
   }
   html {
+    height: 100%;
+    background-color: var(--background);
+    color: var(--foreground);
+    overscroll-behavior: none;
     font-feature-settings: "ss01", "ss02", "cv11";
     scroll-behavior: smooth;
   }
   body {
-    @apply bg-background text-foreground font-sans;
+    min-height: 100%;
+    background-color: var(--background);
+    color: var(--foreground);
+    overscroll-behavior: none;
+    @apply font-sans;
     text-rendering: optimizeLegibility;
     font-feature-settings: "ss01", "cv11", "liga";
     font-weight: 400;
@@ -160,7 +255,7 @@
     font-family: var(--font-heading), system-ui, sans-serif;
     font-feature-settings: "ss01", "cv11", "liga";
     font-weight: 500;
-    letter-spacing: -0.03em;
+    letter-spacing: 0;
   }
   ::selection {
     background: color-mix(in oklab, var(--primary) 28%, transparent);
@@ -191,6 +286,13 @@
     font-variant-numeric: tabular-nums lining-nums;
     font-feature-settings: "tnum", "lnum", "ss01";
   }
+
+  .app-sidebar {
+    font-family: var(--font-inter), var(--font-sans), system-ui, sans-serif;
+    font-feature-settings: "ss01", "cv11", "liga";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 }
 
 @layer utilities {
@@ -209,17 +311,20 @@
     z-index: -1;
     pointer-events: none;
     background:
-      radial-gradient(circle at 12% 18%, color-mix(in oklab, var(--primary) 9%, transparent), transparent 28rem),
-      linear-gradient(180deg, color-mix(in oklab, white 48%, transparent), transparent 34%);
-    opacity: 0.55;
+      linear-gradient(color-mix(in oklab, var(--foreground) 3%, transparent) 1px, transparent 1px),
+      linear-gradient(90deg, color-mix(in oklab, var(--foreground) 3%, transparent) 1px, transparent 1px),
+      radial-gradient(circle at 14% 12%, color-mix(in oklab, var(--primary) 8%, transparent), transparent 28rem);
+    background-size: 48px 48px, 48px 48px, auto;
+    opacity: 0.58;
   }
+
   /* Display headlines — Inter with tight tracking (typography test). */
   .display-serif {
     font-family: var(--font-display), system-ui, sans-serif;
     font-feature-settings: "ss01", "cv11", "liga";
-    letter-spacing: -0.035em;
-    line-height: 0.95;
-    font-weight: 500;
+    letter-spacing: 0;
+    line-height: 1.02;
+    font-weight: 600;
   }
   /* Small caps style micro-label. Use sparingly — meta only. */
   .label-micro {
@@ -291,8 +396,9 @@
     color: var(--foreground);
   }
   .toolbar-pill--active {
-    color: var(--foreground);
-    background: color-mix(in oklab, var(--ink) 7%, transparent);
+    color: var(--selection-fg);
+    border-color: var(--selection-border);
+    background: var(--selection-bg);
   }
   .toolbar-pill__icon {
     display: inline-flex;
@@ -406,50 +512,50 @@
     color: color-mix(in oklab, var(--muted-foreground) 88%, var(--foreground));
   }
   .season-pill--summer .season-pill-label {
-    color: oklch(0.44 0.13 155);
+    color: var(--season-summer-fg);
   }
   .season-pill--fall .season-pill-label {
-    color: oklch(0.46 0.14 52);
+    color: var(--season-fall-fg);
   }
   .season-pill--spring .season-pill-label {
-    color: oklch(0.5 0.16 340);
+    color: var(--season-spring-fg);
   }
   .season-pill--winter .season-pill-label {
-    color: oklch(0.46 0.12 245);
+    color: var(--season-winter-fg);
   }
   .season-pill--summer .season-pill-dot {
-    background: oklch(0.44 0.13 155);
+    background: var(--season-summer-fg);
   }
   .season-pill--fall .season-pill-dot {
-    background: oklch(0.46 0.14 52);
+    background: var(--season-fall-fg);
   }
   .season-pill--spring .season-pill-dot {
-    background: oklch(0.5 0.16 340);
+    background: var(--season-spring-fg);
   }
   .season-pill--winter .season-pill-dot {
-    background: oklch(0.46 0.12 245);
+    background: var(--season-winter-fg);
   }
 
   /* Application row status — matches toolbar-pill shell, status-colored dot + label. */
   .status-pill {
     display: inline-flex;
-    height: 1.75rem;
+    height: 1.5rem;
     flex-shrink: 0;
     align-items: center;
-    gap: 0.375rem;
+    gap: 0.35rem;
     border-radius: 9999px;
     border: 1px solid var(--rule);
-    padding: 0 0.625rem;
-    font-size: 12px;
+    padding: 0 0.5rem;
+    font-size: 11px;
     font-weight: 500;
     line-height: 1;
     white-space: nowrap;
-    box-shadow: 0 1px 0 color-mix(in oklab, var(--ink) 3%, transparent);
+    box-shadow: none;
   }
   .status-pill--compact {
-    width: 6.25rem;
+    min-width: 5.5rem;
     justify-content: center;
-    padding-inline: 0.5rem;
+    padding-inline: 0.45rem;
   }
 
   /* Application detail — anchored add-event form at timeline foot. */
@@ -465,10 +571,12 @@
    * contrast.
    */
   .paper-card {
-    @apply relative rounded-lg border bg-card;
+    @apply relative rounded-xl border bg-card;
     border-color: var(--rule);
+    box-shadow:
+      0 1px 0 color-mix(in oklab, var(--tint-base) 35%, transparent) inset,
+      0 18px 48px -44px color-mix(in oklab, var(--ink) 38%, transparent);
   }
-
   /* Horizontal hairline. Single-purpose utility used everywhere as a
      structural divider — an editorial workhorse. */
   .rule {
@@ -490,6 +598,34 @@
     background: var(--primary);
     color: var(--primary-foreground);
     box-shadow: var(--primary-glow);
+  }
+  /* Inset block — border only, no elevation. Use inside section stacks. */
+  .growin-panel,
+  .ds-surface,
+  .saas-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--card);
+    box-shadow: none;
+  }
+
+  .growin-panel:hover,
+  .ds-surface:hover {
+    box-shadow: none;
+  }
+
+  /* Structural sections — part of the canvas, not sticky notes */
+  .section-stack {
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--card);
+  }
+  .section-stack > * + * {
+    border-top: 1px solid var(--border);
+  }
+  .section-pad {
+    padding: 1.25rem 1.5rem;
   }
   .landing-header-rule {
     background: var(--rule);
@@ -643,7 +779,7 @@
     font-style: normal;
     font-weight: 500;
   }
-  /* Status dot: fixed sage green (landing uses midnight accent for --primary). */
+  /* Status dot: fixed sage green (landing keeps a neutral primary independent of accent). */
   .landing-offer-badge {
     display: inline-flex;
     align-items: center;
@@ -671,6 +807,7 @@
   .landing-shell {
     min-height: 100vh;
     overflow-x: hidden;
+    overscroll-behavior: none;
     background-color: var(--background);
   }
   .landing-hero-title {
@@ -755,6 +892,7 @@
   .landing-shell {
     min-height: 100vh;
     overflow-x: hidden;
+    overscroll-behavior: none;
     background-color: var(--background);
   }
   .landing-hero-title {
@@ -1058,7 +1196,7 @@
     width: 6px;
     height: 6px;
     border-radius: 9999px;
-    background: oklch(0.62 0.14 145);
+    background: var(--success);
     animation: lp-live-pulse 1.9s var(--motion-ease-smooth) infinite;
   }
   .lp-feed-flash {
@@ -1253,6 +1391,9 @@
     gap: 12px;
     animation: offer-wall-marquee 42s linear infinite;
   }
+  .offer-wall-row:hover .offer-wall-track {
+    animation-play-state: paused;
+  }
   .offer-wall-track--reverse {
     animation-direction: reverse;
   }
@@ -1420,6 +1561,8 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .offer-wall-track,
+  .animate-scroll,
+  .animate-spotlight,
   .media-ph-sheen {
     animation: none !important;
   }
@@ -1430,23 +1573,11 @@
 }
 
 @keyframes lp-live-pulse {
-  0% { box-shadow: 0 0 0 0 color-mix(in oklab, oklch(0.62 0.14 145) 55%, transparent); }
-  70% { box-shadow: 0 0 0 6px color-mix(in oklab, oklch(0.62 0.14 145) 0%, transparent); }
-  100% { box-shadow: 0 0 0 0 color-mix(in oklab, oklch(0.62 0.14 145) 0%, transparent); }
+  0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--success) 55%, transparent); }
+  70% { box-shadow: 0 0 0 6px color-mix(in oklab, var(--success) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--success) 0%, transparent); }
 }
 @keyframes lp-feed-flash {
   0% { background-color: color-mix(in oklab, var(--primary) 18%, transparent); }
   100% { background-color: transparent; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 1ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 1ms !important;
-    scroll-behavior: auto !important;
-  }
-  .skeleton-sheen::after {
-    animation: none !important;
-  }
 }

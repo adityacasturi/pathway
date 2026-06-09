@@ -27,8 +27,8 @@ type CreateApplicationRpcResult = {
   appliedEvent?: unknown;
 };
 
-function isUuid(value: string): boolean {
-  return UUID_RE.test(value);
+function isUuid(value: unknown): value is string {
+  return typeof value === "string" && UUID_RE.test(value);
 }
 
 function cleanRequiredText(raw: FormDataEntryValue | null, label: string, max: number) {
@@ -147,7 +147,6 @@ function revalidateApplicationSurfaces() {
   revalidatePath("/applications");
   revalidatePath("/openings");
   revalidatePath("/companies");
-  revalidatePath("/insights");
 }
 
 async function limitApplicationWrite() {
@@ -215,13 +214,16 @@ export async function updateApplicationFields(
   const parsed = parseApplicationPatch(fields);
   if ("error" in parsed) return { error: parsed.error };
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("applications")
     .update(parsed.patch)
     .eq("id", id)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .select("id")
+    .maybeSingle();
 
   if (error) return { error: formatSupabaseMutationError(error, "Unable to update application.") };
+  if (!data) return { error: "Application not found." };
   revalidateApplicationSurfaces();
   return { ok: true };
 }
@@ -235,13 +237,16 @@ export async function updateApplicationArchive(id: string, archived: boolean) {
   if (!isUuid(id)) return { error: "Invalid application id." };
   if (typeof archived !== "boolean") return { error: "Invalid archive state." };
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("applications")
     .update({ archived_at: archived ? new Date().toISOString() : null })
     .eq("id", id)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .select("id")
+    .maybeSingle();
 
   if (error) return { error: formatSupabaseMutationError(error, "Unable to update archive state.") };
+  if (!data) return { error: "Application not found." };
   revalidateApplicationSurfaces();
   return { ok: true };
 }
@@ -254,13 +259,16 @@ export async function deleteApplication(id: string) {
   if (!user) return { error: "Not authenticated" };
   if (!isUuid(id)) return { error: "Invalid application id." };
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("applications")
     .delete()
     .eq("id", id)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .select("id")
+    .maybeSingle();
 
   if (error) return { error: formatSupabaseMutationError(error, "Unable to delete application.") };
+  if (!data) return { error: "Application not found." };
   revalidateApplicationSurfaces();
   return { ok: true };
 }

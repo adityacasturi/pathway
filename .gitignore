@@ -50,3 +50,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# GeoNames build inputs (runtime uses lib/geo/data/cities.json)
+lib/geo/data/cities15000.txt
+lib/geo/data/cities15000.zip

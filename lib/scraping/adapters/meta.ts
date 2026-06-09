@@ -1,9 +1,8 @@
-import { atsPublishDate } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchWithTimeout, isHttpUrl, safeToIsoDate } from "./shared.ts";
+import { fetchWithTimeout, isHttpUrl } from "./shared.ts";
 import { INTERNSHIP_LIST_TITLE_PATTERN } from "../list-filters.ts";
 
 /** Meta Careers Comet GraphQL (CareersJobSearchResultsV2DataQuery). */
@@ -262,7 +261,6 @@ export function parseMetaJobs(
         ]
           .filter(Boolean)
           .join("\n"),
-        dates: atsPublishDate(safeToIsoDate(detail?.datePosted)),
       }),
     );
   }

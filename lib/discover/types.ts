@@ -26,8 +26,11 @@ export interface DiscoverCompanyCard {
   industry: string;
   industryLabel: string;
   openCount: number;
+  /** `company_sources.source_type` for the enabled scrape source. */
+  sourceType: string;
   lastSuccessAt: string | null;
   lastFailureAt: string | null;
+  lastErrorCode: string | null;
   /** Set when a static PNG is available at /company-logos/{slug}.png */
   logoAssetKey: string | null;
 }

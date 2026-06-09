@@ -1,8 +1,13 @@
 export type Status = "applied" | "oa" | "interview" | "offer" | "rejected";
 export type EventType = "applied" | "oa" | "interview" | "offer" | "rejected" | "note";
-export type ApplicationSeason = "Summer" | "Fall";
+export type ApplicationSeason = "Summer" | "Fall" | "Spring" | "Winter";
 
-export const APPLICATION_SEASONS: readonly ApplicationSeason[] = ["Summer", "Fall"];
+export const APPLICATION_SEASONS: readonly ApplicationSeason[] = [
+  "Summer",
+  "Fall",
+  "Spring",
+  "Winter",
+];
 
 export interface ApplicationEvent {
   id: string;

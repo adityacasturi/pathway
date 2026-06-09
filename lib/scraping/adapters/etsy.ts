@@ -1,11 +1,10 @@
-import { atsPublishDate } from "../posted-date.ts";
 import { decodeHtmlEntities, stripHtml } from "../html-utils.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl, safeToIsoDate } from "./shared.ts";
+import { fetchJsonWithTimeout, isHttpUrl } from "./shared.ts";
 import { INTERNSHIP_LIST_TITLE_PATTERN } from "../list-filters.ts";
 
 /**
@@ -45,7 +44,6 @@ export interface EtsyListing {
   postingUrl: string;
   location: string | null;
   summary: string | null;
-  datePosted: string | null;
   description?: string | null;
 }
 
@@ -108,7 +106,6 @@ export function parseEtsySitemapJobs(xml: string, careersOrigin: string): EtsyLi
       postingUrl,
       location: parsed.location,
       summary: null,
-      datePosted: null,
     });
   }
 
@@ -138,7 +135,6 @@ export function parseEtsySearchJobsHtml(html: string): EtsyListing[] {
       postingUrl,
       location,
       summary,
-      datePosted: null,
     });
   }
 
@@ -149,7 +145,6 @@ export function parseEtsyJobDetailHtml(html: string): {
   title: string | null;
   location: string | null;
   description: string;
-  datePosted: string | null;
 } {
   const title =
     readEtsyMeta(html, "og:title")?.replace(/\s+at\s+Etsy.*$/i, "").trim() ??
@@ -166,16 +161,10 @@ export function parseEtsyJobDetailHtml(html: string): {
     html.match(/<div[^>]*class="[^"]*job-description[^"]*"[^>]*>([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/i)?.[1];
   const description = descriptionBlock ? htmlToPlainText(descriptionBlock) : "";
 
-  const datePosted =
-    readEtsyMeta(html, "article:published_time") ??
-    html.match(/<time[^>]+datetime="([^"]+)"/i)?.[1]?.trim() ??
-    null;
-
   return {
     title,
     location,
     description,
-    datePosted,
   };
 }
 
@@ -218,7 +207,6 @@ export function parseEtsyJobs(
         companySlug: source.companySlug,
         classification,
         description,
-        dates: atsPublishDate(safeToIsoDate(listing.datePosted)),
       }),
     );
   }
@@ -345,7 +333,6 @@ async function enrichEtsyListings(
       title: detail.title ?? listing.title,
       location: detail.location ?? listing.location,
       description: detail.description || listing.description,
-      datePosted: detail.datePosted ?? listing.datePosted,
     };
   });
 }

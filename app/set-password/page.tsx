@@ -73,7 +73,7 @@ export default function SetPasswordPage() {
     }
 
     setState("success");
-    router.replace("/home");
+    router.replace("/applications");
     router.refresh();
   }
 

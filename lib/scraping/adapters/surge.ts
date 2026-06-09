@@ -1,4 +1,3 @@
-import { unknownScrapedDates } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { extractLocationsFromPlainText } from "../location.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
@@ -159,7 +158,6 @@ export async function parseSurgeJobs(
         companySlug: source.companySlug,
         classification,
         description,
-        dates: unknownScrapedDates(),
       }),
     );
   }

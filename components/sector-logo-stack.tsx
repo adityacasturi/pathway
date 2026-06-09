@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { CompanyLogo } from "@/components/company-logo";
 import { cn } from "@/lib/utils";
 
@@ -7,75 +8,105 @@ export interface SectorLogoCompany {
   websiteUrl: string | null;
 }
 
+/** Fixed icon column width for alert follows and bundle rows. */
+export const ALERT_FOLLOW_LOGO_SLOT = 36;
+
+const GRID_GAP = 2;
+
+/** Logo size inside a bundle grid cell. */
+export const ALERT_FOLLOW_BUNDLE_CELL_SIZE = Math.floor((ALERT_FOLLOW_LOGO_SLOT - GRID_GAP) / 2);
+
+/** Single-company logos fill the same slot as a quad bundle preview. */
+export const ALERT_FOLLOW_SINGLE_LOGO_SIZE = ALERT_FOLLOW_LOGO_SLOT;
+
 interface Props {
   companies: SectorLogoCompany[];
-  logoSize?: number;
+  slotSize?: number;
   className?: string;
 }
 
-const FAN_ROTATIONS = [-5, -2, 2, 4, -1, 3, 0, 2] as const;
-const FAN_LIFT = [-2, 2, -1, 1, 0, -2, 1, 0] as const;
+function BundleLogo({
+  company,
+  size,
+}: {
+  company: SectorLogoCompany;
+  size: number;
+}) {
+  return (
+    <CompanyLogo
+      company={company.name}
+      companySlug={company.slug}
+      websiteUrl={company.websiteUrl}
+      size={size}
+    />
+  );
+}
 
-export function SectorLogoStack({ companies, logoSize = 34, className }: Props) {
-  if (companies.length === 0) {
-    return null;
-  }
-
-  const framePadding = 3;
-  const frameSize = logoSize + framePadding * 2;
-  const overlap = 6;
-  const step = companies.length > 1 ? frameSize - overlap : 0;
-  const trackWidth = frameSize + step * Math.max(0, companies.length - 1);
-  const trackHeight = frameSize + 6;
-
+export function AlertFollowLogoSlot({
+  children,
+  slotSize = ALERT_FOLLOW_LOGO_SLOT,
+  className,
+}: {
+  children: ReactNode;
+  slotSize?: number;
+  className?: string;
+}) {
   return (
     <div
-      className={cn("relative shrink-0", className)}
-      style={{ width: trackWidth, height: trackHeight }}
-      aria-hidden
+      className={cn("flex shrink-0 items-center justify-center", className)}
+      style={{ width: slotSize, height: slotSize }}
     >
-      {companies.map((company, index) => {
-        const rotation = FAN_ROTATIONS[index % FAN_ROTATIONS.length];
-        const lift = FAN_LIFT[index % FAN_LIFT.length];
-
-        return (
-          <div
-            key={company.slug}
-            className={cn(
-              "absolute top-1/2 origin-center transition-[transform,left] duration-300 ease-out",
-            )}
-            style={{
-              left: index * step,
-              zIndex: companies.length - index,
-              transform: `translateY(calc(-50% + ${lift}px)) rotate(${rotation}deg)`,
-            }}
-          >
-            <div
-              className={cn(
-                "flex items-center justify-center rounded-md bg-card",
-                "shadow-[0_4px_10px_-6px_color-mix(in_oklab,var(--ink)_40%,transparent),0_0_0_1px_color-mix(in_oklab,var(--ink)_8%,transparent)]",
-                "ring-2 ring-card",
-                "transition-transform duration-300 ease-out",
-                "[&_img]:block [&_>div]:leading-none",
-                index === 0 && "group-hover/card:rotate-[-7deg] group-hover/card:-translate-x-0.5",
-                index === 1 && "group-hover/card:rotate-[-3deg]",
-                index === 2 && "group-hover/card:rotate-[3deg]",
-                index >= 3 && "group-hover/card:translate-x-0.5",
-              )}
-              style={{ width: frameSize, height: frameSize }}
-            >
-              <CompanyLogo
-                company={company.name}
-                companySlug={company.slug}
-                websiteUrl={company.websiteUrl}
-                size={logoSize}
-              />
-            </div>
-          </div>
-        );
-      })}
+      {children}
     </div>
   );
 }
 
-export const SECTOR_LOGO_STACK_HEIGHT = 46;
+/** Compact bundle logo preview in a fixed square slot — grid for 3+, pair for 2, single for 1. */
+export function SectorLogoStack({
+  companies,
+  slotSize = ALERT_FOLLOW_LOGO_SLOT,
+  className,
+}: Props) {
+  if (companies.length === 0) {
+    return null;
+  }
+
+  const displayed = companies.slice(0, 4);
+  const count = displayed.length;
+  const cellSize = Math.floor((slotSize - GRID_GAP) / 2);
+
+  const slot = (content: ReactNode) => (
+    <div
+      className={cn("flex shrink-0 items-center justify-center", className)}
+      style={{ width: slotSize, height: slotSize }}
+      aria-hidden
+    >
+      {content}
+    </div>
+  );
+
+  if (count === 1) {
+    return slot(<BundleLogo company={displayed[0]} size={slotSize} />);
+  }
+
+  if (count === 2) {
+    return slot(
+      <div className="flex items-center justify-center gap-0.5">
+        {displayed.map((company) => (
+          <BundleLogo key={company.slug} company={company} size={cellSize} />
+        ))}
+      </div>,
+    );
+  }
+
+  return slot(
+    <div
+      className="grid grid-cols-2"
+      style={{ width: slotSize, height: slotSize, gap: GRID_GAP }}
+    >
+      {displayed.map((company) => (
+        <BundleLogo key={company.slug} company={company} size={cellSize} />
+      ))}
+    </div>,
+  );
+}

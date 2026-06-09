@@ -25,12 +25,18 @@ export function buildLogoDevImageUrl(
   token: string,
   size: number,
 ): string | null {
-  const params = `token=${encodeURIComponent(token)}&size=${size}&format=png`;
+  const params = new URLSearchParams({
+    token,
+    size: String(size),
+    format: "png",
+    theme: "light",
+  });
+  const query = params.toString();
   if (target.domain) {
-    return `https://img.logo.dev/${encodeURIComponent(target.domain)}?${params}`;
+    return `https://img.logo.dev/${encodeURIComponent(target.domain)}?${query}`;
   }
   if (target.company) {
-    return `https://img.logo.dev/name/${encodeURIComponent(target.company)}?${params}`;
+    return `https://img.logo.dev/name/${encodeURIComponent(target.company)}?${query}`;
   }
   return null;
 }

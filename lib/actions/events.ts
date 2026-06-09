@@ -21,7 +21,6 @@ type CreateEventRpcResult = {
 function revalidateApplicationSurfaces() {
   revalidatePath("/");
   revalidatePath("/applications");
-  revalidatePath("/insights");
 }
 
 function isEventType(value: string): value is EventType {
@@ -36,11 +35,12 @@ async function limitEventWrite() {
   );
 }
 
-function isUuid(value: string): boolean {
-  return UUID_RE.test(value);
+function isUuid(value: unknown): value is string {
+  return typeof value === "string" && UUID_RE.test(value);
 }
 
-function getLocalAppliedApplicationId(eventId: string): string | null {
+function getLocalAppliedApplicationId(eventId: unknown): string | null {
+  if (typeof eventId !== "string") return null;
   return eventId.match(LOCAL_APPLIED_EVENT_RE)?.[1] ?? null;
 }
 

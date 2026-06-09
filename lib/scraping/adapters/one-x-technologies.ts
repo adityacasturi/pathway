@@ -1,11 +1,10 @@
-import { atsPublishWithModified } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import { formatScrapedLocation } from "../location.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl, safeToIsoDate } from "./shared.ts";
+import { fetchJsonWithTimeout, isHttpUrl } from "./shared.ts";
 
 export const ONE_X_TECHNOLOGIES_CAREERS_URL = "https://www.1x.tech/careers";
 export const ONE_X_RECRUITEE_OFFERS_API = "https://1x.recruitee.com/api/offers/";
@@ -26,8 +25,6 @@ export interface OneXRecruiteeOffer {
   requirements?: string;
   careers_url?: string;
   careers_apply_url?: string;
-  published_at?: string;
-  updated_at?: string;
   status?: string;
   employment_type_code?: string;
   remote?: boolean;
@@ -135,9 +132,6 @@ export function parseOneXRecruiteeJobs(
       continue;
     }
 
-    const publishedAt = safeToIsoDate(offer.published_at);
-    const updatedAt = safeToIsoDate(offer.updated_at);
-
     roles.push(
       buildScrapedRole({
         postingUrl,
@@ -146,7 +140,6 @@ export function parseOneXRecruiteeJobs(
         companySlug: source.companySlug,
         classification,
         description,
-        dates: atsPublishWithModified(publishedAt, updatedAt),
       }),
     );
   }

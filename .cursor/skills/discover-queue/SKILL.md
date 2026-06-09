@@ -137,7 +137,7 @@ Dry-run must not write `scraped_postings`. It validates the pipeline, not intern
 
 ---
 
-## Step 6 — Live scrape
+## Step 6 — Write scrape
 
 ```bash
 npm run scrape -- --verbose <slug>

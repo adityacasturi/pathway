@@ -62,7 +62,7 @@ export function buildDigestAlertHtml(
   const openingsUrl = `${getSiteUrl()}/openings`;
   const bodyHtml = `
     <p style="margin:0 0 18px;font-size:14px;line-height:1.55;color:#4b5563;">
-      New roles from companies and sectors you follow.
+      New roles from companies and bundles you follow.
     </p>
     ${sections}
     ${overflow}

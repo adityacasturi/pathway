@@ -1,12 +1,10 @@
-import { atsPublishDate } from "../posted-date.ts";
-import { extractAvatureDetailDatePosted } from "../avature-dates.ts";
 import { decodeHtmlEntities, stripHtml } from "../html-utils.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl, resolveBoardToken, safeToIsoDate } from "./shared.ts";
+import { fetchJsonWithTimeout, isHttpUrl, resolveBoardToken } from "./shared.ts";
 
 /**
  * Electronic Arts careers run on Avature (jobs.ea.com, portal 4), not Greenhouse/Lever.
@@ -27,8 +25,6 @@ const EA_DETAIL_PREFETCH_PATTERN =
 const RSS_ITEM_PATTERN = /<item>([\s\S]*?)<\/item>/gi;
 const RSS_TITLE_PATTERN = /<title>(?:<!\[CDATA\[([\s\S]*?)\]\]>|([^<]*))<\/title>/i;
 const RSS_LINK_PATTERN = /<link>([^<]+)<\/link>/i;
-const RSS_PUBDATE_PATTERN = /<pubDate>([^<]+)<\/pubDate>/i;
-
 const ARTICLE_BLOCK_PATTERN =
   /<article\s+class="article article--result[^"]*"[^>]*>([\s\S]*?)<\/article>/gi;
 
@@ -52,7 +48,6 @@ export interface ElectronicArtsListing {
   location: string | null;
   studioDepartment: string | null;
   description?: string | null;
-  datePosted?: string | null;
 }
 
 export function createElectronicArtsAdapter(source: CompanySourceConfig): ScrapeAdapter {
@@ -101,14 +96,11 @@ export function parseElectronicArtsRssFeed(xml: string): ElectronicArtsListing[]
       continue;
     }
 
-    const pubDate = block.match(RSS_PUBDATE_PATTERN)?.[1]?.trim() || null;
-
     listings.push({
       title,
       postingUrl,
       location: null,
       studioDepartment: null,
-      datePosted: pubDate,
     });
   }
 
@@ -148,7 +140,6 @@ export function parseElectronicArtsJobDetailFields(html: string): {
   location: string | null;
   studioDepartment: string | null;
   description: string;
-  datePosted: string | null;
 } {
   const fields = new Map<string, string>();
 
@@ -188,7 +179,6 @@ export function parseElectronicArtsJobDetailFields(html: string): {
     location: null,
     studioDepartment,
     description: descriptionParts.join("\n"),
-    datePosted: extractAvatureDetailDatePosted(html),
   };
 }
 
@@ -226,7 +216,6 @@ export function parseElectronicArtsJobs(
       continue;
     }
 
-
     roles.push(
       buildScrapedRole({
         postingUrl,
@@ -235,7 +224,6 @@ export function parseElectronicArtsJobs(
         companySlug: source.companySlug,
         classification,
         description: buildElectronicArtsClassificationDescription(listing),
-        dates: atsPublishDate(safeToIsoDate(listing.datePosted)),
       }),
     );
   }
@@ -278,15 +266,7 @@ async function fetchAllElectronicArtsListings(
   }
 
   if (all.length > 0) {
-    try {
-      const xml = await fetchElectronicArtsText(
-        `${board.rssFeedUrl}?jobRecordsPerPage=500`,
-        "application/rss+xml, application/xml, text/xml",
-      );
-      return mergeElectronicArtsRssDates(all, parseElectronicArtsRssFeed(xml));
-    } catch {
-      return all;
-    }
+    return all;
   }
 
   const xml = await fetchElectronicArtsText(
@@ -294,30 +274,6 @@ async function fetchAllElectronicArtsListings(
     "application/rss+xml, application/xml, text/xml",
   );
   return parseElectronicArtsRssFeed(xml);
-}
-
-export function mergeElectronicArtsRssDates(
-  listings: ElectronicArtsListing[],
-  rssListings: ElectronicArtsListing[],
-): ElectronicArtsListing[] {
-  const dateByUrl = new Map<string, string>();
-  for (const rssListing of rssListings) {
-    if (rssListing.datePosted) {
-      dateByUrl.set(normalizeElectronicArtsPostingUrl(rssListing.postingUrl), rssListing.datePosted);
-    }
-  }
-
-  if (dateByUrl.size === 0) {
-    return listings;
-  }
-
-  return listings.map((listing) => {
-    if (listing.datePosted) {
-      return listing;
-    }
-    const datePosted = dateByUrl.get(normalizeElectronicArtsPostingUrl(listing.postingUrl));
-    return datePosted ? { ...listing, datePosted } : listing;
-  });
 }
 
 async function enrichElectronicArtsListings(
@@ -346,7 +302,6 @@ async function enrichElectronicArtsListings(
           location: null,
           studioDepartment: null,
           description: "",
-          datePosted: null,
         });
       }
     }
@@ -366,7 +321,6 @@ async function enrichElectronicArtsListings(
       location: detail.location ?? listing.location,
       studioDepartment: detail.studioDepartment ?? listing.studioDepartment,
       description: detail.description || listing.description,
-      datePosted: detail.datePosted ?? listing.datePosted,
     };
   });
 }

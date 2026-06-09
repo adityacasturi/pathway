@@ -1,11 +1,10 @@
-import { atsPublishDate } from "../posted-date.ts";
 import { decodeHtmlEntities } from "../html-utils.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl, safeToIsoDate } from "./shared.ts";
+import { fetchJsonWithTimeout, isHttpUrl } from "./shared.ts";
 import { INTERNSHIP_LIST_TITLE_PATTERN } from "../list-filters.ts";
 
 export const SEAGATE_CAREERS_ORIGIN = "https://seagatecareers.com";
@@ -163,7 +162,6 @@ export function parseSeagateJobDetailHtml(html: string): {
   title: string;
   description: string;
   location: string | null;
-  postedOn: string | null;
 } {
   const title =
     readSeagateMeta(html, "og:title")?.replace(/\s+at\s+.+$/i, "").trim() ??
@@ -176,13 +174,10 @@ export function parseSeagateJobDetailHtml(html: string): {
 
   const location = extractSeagateDetailLocation(html) ?? readSeagateMeta(html, "og:locality");
 
-  const postedOn = readSeagateMeta(html, "article:published_time");
-
   return {
     title: title.trim(),
     description: description.trim(),
     location: location?.trim() || null,
-    postedOn: postedOn?.trim() || null,
   };
 }
 
@@ -199,7 +194,6 @@ export async function parseSeagateJobs(
     let roleName = listing.title;
     let description = "";
     let location: string | null = listing.location;
-    let datePosted: string | null = null;
 
     try {
       const detailHtml = await fetchSeagateHtml(listing.listUrl);
@@ -209,7 +203,6 @@ export async function parseSeagateJobs(
       }
       description = detail.description;
       location = detail.location ?? location;
-      datePosted = safeToIsoDate(detail.postedOn);
     } catch {
       // List metadata is enough for classification when detail fetch fails.
     }
@@ -241,7 +234,6 @@ export async function parseSeagateJobs(
         companySlug: source.companySlug,
         classification,
         description: "",
-        dates: atsPublishDate(datePosted),
       }),
     );
   }

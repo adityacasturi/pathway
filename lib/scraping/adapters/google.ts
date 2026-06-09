@@ -1,4 +1,3 @@
-import { atsPublishDate } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
@@ -161,7 +160,6 @@ export function parseGoogleJobs(jobs: GoogleJobRow[], source: CompanySourceConfi
         companySlug: source.companySlug,
         classification,
         description: googleJobDescription(job),
-        dates: atsPublishDate(googleJobDatePosted(job)),
       }),
     );
   }

@@ -1,34 +1,44 @@
 "use client"
 
 import * as React from "react"
-import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
+import { useOverlayState } from "@heroui/react"
+import { XIcon } from "lucide-react"
+import {
+  Dialog as AriaDialog,
+  Heading,
+  Modal,
+  ModalOverlay,
+} from "react-aria-components/Modal"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { XIcon } from "lucide-react"
 
-function Dialog({ ...props }: DialogPrimitive.Root.Props) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />
+type DialogContextValue = ReturnType<typeof useOverlayState>
+
+const DialogContext = React.createContext<DialogContextValue | null>(null)
+
+function useDialogState() {
+  const state = React.useContext(DialogContext)
+  if (!state) {
+    throw new Error("DialogContent must be rendered inside Dialog")
+  }
+  return state
 }
 
-function DialogPortal({ ...props }: DialogPrimitive.Portal.Props) {
-  return <DialogPrimitive.Portal data-slot="dialog-portal" {...props} />
-}
+function Dialog({
+  open,
+  defaultOpen,
+  onOpenChange,
+  children,
+}: {
+  open?: boolean
+  defaultOpen?: boolean
+  onOpenChange?: (open: boolean) => void
+  children: React.ReactNode
+}) {
+  const state = useOverlayState({ isOpen: open, defaultOpen, onOpenChange })
 
-function DialogOverlay({
-  className,
-  ...props
-}: DialogPrimitive.Backdrop.Props) {
-  return (
-    <DialogPrimitive.Backdrop
-      data-slot="dialog-overlay"
-      className={cn(
-        "fixed inset-0 isolate z-50 bg-foreground/12 duration-300 ease-[var(--motion-ease-smooth)] supports-backdrop-filter:backdrop-blur-[3px] data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
-        className
-      )}
-      {...props}
-    />
-  )
+  return <DialogContext.Provider value={state}>{children}</DialogContext.Provider>
 }
 
 function DialogContent({
@@ -36,39 +46,43 @@ function DialogContent({
   children,
   showCloseButton = true,
   ...props
-}: DialogPrimitive.Popup.Props & {
+}: React.ComponentProps<typeof AriaDialog> & {
   showCloseButton?: boolean
 }) {
+  const state = useDialogState()
+
   return (
-    <DialogPortal>
-      <DialogOverlay />
-      <DialogPrimitive.Popup
-        data-slot="dialog-content"
-        className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 shadow-[0_30px_90px_-55px_color-mix(in_oklab,var(--ink)_70%,transparent)] duration-300 ease-[var(--motion-ease-smooth)] outline-none will-change-transform sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-open:slide-in-from-bottom-2 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-98 data-closed:slide-out-to-bottom-1",
-          className
-        )}
-        {...props}
-      >
-        {children}
-        {showCloseButton && (
-          <DialogPrimitive.Close
-            data-slot="dialog-close"
-            render={
-              <Button
-                variant="ghost"
-                className="absolute top-2 right-2"
-                size="icon-sm"
-              />
-            }
-          >
-            <XIcon
-            />
-            <span className="sr-only">Close</span>
-          </DialogPrimitive.Close>
-        )}
-      </DialogPrimitive.Popup>
-    </DialogPortal>
+    <ModalOverlay
+      isDismissable
+      isOpen={state.isOpen}
+      onOpenChange={state.setOpen}
+      className="fixed inset-0 z-50 flex min-h-dvh items-center justify-center bg-foreground/14 p-4 duration-200 supports-backdrop-filter:backdrop-blur-[4px]"
+    >
+      <Modal className="flex max-h-[calc(100dvh-2rem)] w-full justify-center overflow-y-auto outline-none">
+        <AriaDialog
+          data-slot="dialog-content"
+          className={cn(
+            "relative grid w-full max-w-[calc(100%-2rem)] gap-4 rounded-2xl border border-rule-strong bg-popover p-5 text-sm text-popover-foreground shadow-[0_34px_110px_-64px_color-mix(in_oklab,var(--ink)_85%,transparent)] outline-none sm:max-w-sm",
+            className
+          )}
+          {...props}
+        >
+          {children as React.ReactNode}
+          {showCloseButton && (
+            <Button
+              type="button"
+              variant="ghost"
+              className="absolute right-3 top-3"
+              size="icon-sm"
+              onClick={() => state.close()}
+              aria-label="Close"
+            >
+              <XIcon />
+            </Button>
+          )}
+        </AriaDialog>
+      </Modal>
+    </ModalOverlay>
   )
 }
 
@@ -82,14 +96,12 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-function DialogTitle({ className, ...props }: DialogPrimitive.Title.Props) {
+function DialogTitle({ className, ...props }: React.ComponentProps<typeof Heading>) {
   return (
-    <DialogPrimitive.Title
+    <Heading
       data-slot="dialog-title"
-      className={cn(
-        "font-heading text-base leading-none font-medium",
-        className
-      )}
+      slot="title"
+      className={cn("text-base font-semibold leading-none tracking-normal", className)}
       {...props}
     />
   )

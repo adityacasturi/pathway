@@ -7,7 +7,9 @@ import {
   isNonTargetRoleTitle,
   matchesInternshipTitle,
 } from "../feed/roles.ts";
-import { formatScrapedLocation, normalizeScrapedLocations } from "./location.ts";
+import { formatCanonicalPlace, resolveScrapedLocations, type LocationInput } from "../geo/server.ts";
+import type { StructuredPlaceInput } from "../geo/types.ts";
+import { formatScrapedLocation } from "./location.ts";
 import { htmlToPlainText } from "./plain-text.ts";
 
 export interface ScrapeRoleCandidate {
@@ -18,6 +20,7 @@ export interface ScrapeRoleCandidate {
   team?: string | null;
   departments?: string[];
   locations?: string[];
+  structuredLocations?: StructuredPlaceInput[];
   companyName?: string | null;
   companySlug?: string | null;
 }
@@ -28,6 +31,9 @@ export interface RoleClassification {
   signals: string[];
   /** Normalized location segments when {@link include} is true. */
   locations?: string[];
+  structuredLocations?: StructuredPlaceInput[];
+  /** Minimum confidence across resolved places when {@link include} is true. */
+  locationConfidence?: number;
 }
 
 export type RoleClassificationReason =
@@ -89,14 +95,30 @@ export function classifyScrapeRole(candidate: ScrapeRoleCandidate): RoleClassifi
     companyName: candidate.companyName,
     companySlug: candidate.companySlug,
   };
-  const locations = normalizeScrapedLocations(candidate.locations ?? [], locationContext);
-  if (locations.length === 0) {
+  const inputs: LocationInput[] = [
+    ...(candidate.structuredLocations ?? []),
+    ...(candidate.locations ?? []),
+  ];
+  const resolved = resolveScrapedLocations(inputs, locationContext);
+  if (resolved.places.length === 0) {
     signals.push("missing_location");
     return { include: false, reason: "missing_location", signals };
   }
 
+  if (resolved.minConfidence < 50) {
+    signals.push("low_confidence_location");
+    return { include: false, reason: "missing_location", signals };
+  }
+
+  const locations = resolved.places.map((place) => formatCanonicalPlace(place));
   signals.push("has_location");
-  return { include: true, reason: "included", signals, locations };
+  return {
+    include: true,
+    reason: "included",
+    signals,
+    locations,
+    locationConfidence: resolved.minConfidence,
+  };
 }
 
 /** Storage-ready location string from a successful classification. */

@@ -1,6 +1,5 @@
 import {
   logResendFailure,
-  sendResendEmail,
   shouldStopResendBatch,
   type ResendSendResult,
 } from "@/lib/email/resend-client";

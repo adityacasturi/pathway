@@ -1,6 +1,5 @@
 import { gzipSync } from "node:zlib";
 
-import { atsPublishDate } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
@@ -10,7 +9,6 @@ import {
   fetchJsonWithTimeout,
   isHttpUrl,
   resolveBoardToken,
-  safeToIsoDate,
   scraperDelay,
 } from "./shared.ts";
 
@@ -73,7 +71,6 @@ export interface GeneralDynamicsListing {
   location: string | null;
   category: string | null;
   companyUnit: string | null;
-  datePosted: string | null;
   description?: string | null;
 }
 
@@ -163,7 +160,6 @@ export function parseGeneralDynamicsSearchResponse(
       location,
       category: result.Category?.trim() || null,
       companyUnit: result.Company?.trim() || null,
-      datePosted: safeToIsoDate(result.Date ?? result.FormattedDate),
     });
   }
 
@@ -176,7 +172,6 @@ export function parseGeneralDynamicsJobDetailFields(html: string): {
   category: string | null;
   companyUnit: string | null;
   description: string;
-  datePosted: string | null;
   unavailable: boolean;
 } {
   if (/Job No Longer Available/i.test(html)) {
@@ -186,7 +181,6 @@ export function parseGeneralDynamicsJobDetailFields(html: string): {
       category: null,
       companyUnit: null,
       description: "",
-      datePosted: null,
       unavailable: true,
     };
   }
@@ -206,16 +200,12 @@ export function parseGeneralDynamicsJobDetailFields(html: string): {
   const companyUnit =
     html.match(/<dt>\s*Business Unit\s*<\/dt>\s*<dd[^>]*>([^<]+)/i)?.[1]?.trim() ?? null;
 
-  const datePosted =
-    html.match(/<dt>\s*Date Posted\s*<\/dt>\s*<dd[^>]*>([^<]+)/i)?.[1]?.trim() ?? null;
-
   return {
     title,
     location,
     category,
     companyUnit,
     description,
-    datePosted: safeToIsoDate(datePosted),
     unavailable: false,
   };
 }
@@ -256,7 +246,6 @@ export function parseGeneralDynamicsJobs(
       continue;
     }
 
-
     roles.push(
       buildScrapedRole({
         postingUrl,
@@ -265,7 +254,6 @@ export function parseGeneralDynamicsJobs(
         companySlug: source.companySlug,
         classification,
         description: buildGeneralDynamicsClassificationDescription(listing),
-        dates: atsPublishDate(safeToIsoDate(listing.datePosted)),
       }),
     );
   }
@@ -408,7 +396,6 @@ async function enrichGeneralDynamicsListings(
           category: null,
           companyUnit: null,
           description: "",
-          datePosted: null,
           unavailable: true,
         });
       }
@@ -435,7 +422,6 @@ async function enrichGeneralDynamicsListings(
       category: detail.category ?? listing.category,
       companyUnit: detail.companyUnit ?? listing.companyUnit,
       description: detail.description || listing.description,
-      datePosted: detail.datePosted ?? listing.datePosted,
     });
   }
   return enriched;

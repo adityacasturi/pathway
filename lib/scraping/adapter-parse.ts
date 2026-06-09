@@ -2,7 +2,7 @@ import { classifyScrapeRole, type RoleClassification, type ScrapeRoleCandidate }
 import { buildScrapedRole } from "./scraped-role-build.ts";
 import { buildRoleParseResult } from "./role-parse-result.ts";
 import type { InferSeasonHints } from "./season.ts";
-import type { RoleParseResult, RoleRejection, ScrapedRole, ScrapedRoleDates } from "./types.ts";
+import type { RoleParseResult, RoleRejection, ScrapedRole } from "./types.ts";
 import { isHttpUrl } from "./adapters/shared.ts";
 
 export interface AdapterParseContext {
@@ -13,7 +13,6 @@ export interface AdapterParseContext {
 export interface AppendClassifiedRoleInput extends ScrapeRoleCandidate {
   postingUrl: string;
   roleName: string;
-  dates: ScrapedRoleDates;
   description?: string | null;
   seasonHints?: InferSeasonHints;
 }
@@ -63,7 +62,6 @@ export function appendClassifiedRole(
       companySlug: context.companySlug,
       classification,
       description: input.description,
-      dates: input.dates,
       seasonHints: input.seasonHints,
     }),
   };

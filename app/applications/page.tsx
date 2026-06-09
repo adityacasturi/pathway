@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
+import { pageMetadata } from "@/lib/metadata/page";
+
+export const metadata = pageMetadata("Applications", "Track internship applications and pipeline status.");
 import { createClient } from "@/lib/supabase/server";
-import { Dashboard } from "@/components/dashboard";
+import { ApplicationsPage as Dashboard } from "@/components/applications/applications-page";
 import { Application } from "@/types/application";
 import { normalizeApplicationState } from "@/lib/config/application-state";
 import {
@@ -15,21 +18,20 @@ import { assertSupabaseOk } from "@/lib/supabase/errors";
 export default async function ApplicationsPage() {
   const supabase = await createClient();
 
-  // Kick off auth verification and the applications fetch in parallel. RLS
-  // scopes the query to the authenticated user automatically, so we don't
-  // need user.id before issuing it. Saves one Supabase round-trip (~100ms)
-  // on every page load.
-  const [userResult, appsResult, websiteLookups, viewPrefs] = await Promise.all([
-    supabase.auth.getUser(),
+  const userResult = await supabase.auth.getUser();
+
+  if (!userResult.data.user) redirect("/login?next=/applications");
+  const userId = userResult.data.user.id;
+
+  const [appsResult, websiteLookups, viewPrefs] = await Promise.all([
     supabase
       .from("applications")
       .select("*, application_events(*)")
+      .eq("user_id", userId)
       .order("created_at", { ascending: false }),
     loadCompanyWebsiteLookups(supabase),
-    loadUserViewPreferences(supabase),
+    loadUserViewPreferences(supabase, userId),
   ]);
-
-  if (!userResult.data.user) redirect("/login?next=/applications");
 
   assertSupabaseOk(appsResult.error, "Load applications");
 

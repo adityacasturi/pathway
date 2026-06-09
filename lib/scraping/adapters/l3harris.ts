@@ -1,12 +1,10 @@
-import { extractJsonLdDatePosted } from "../avature-dates.ts";
 import { decodeHtmlEntities, stripHtml } from "../html-utils.ts";
-import { atsPublishDate } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl, resolveBoardToken, safeToIsoDate } from "./shared.ts";
+import { fetchJsonWithTimeout, isHttpUrl, resolveBoardToken } from "./shared.ts";
 
 /**
  * L3Harris careers run on Radancy TalentBrew (careers.l3harris.com, org 4832).
@@ -41,7 +39,6 @@ export interface L3HarrisListing {
   location: string | null;
   category: string | null;
   description?: string | null;
-  datePosted?: string | null;
 }
 
 export function createL3HarrisAdapter(source: CompanySourceConfig): ScrapeAdapter {
@@ -108,16 +105,10 @@ export function parseL3HarrisJobDetailFields(html: string): {
   category: string | null;
   location: string | null;
   description: string;
-  datePosted: string | null;
 } {
   const title = html.match(/<h2 class="job-title-heading">([^<]+)/i)?.[1]?.trim() ?? null;
 
   const location = html.match(/<p class="ajd_header__location">([^<]+)/i)?.[1]?.trim() ?? null;
-
-  const datePosted =
-    extractJsonLdDatePosted(html) ??
-    html.match(/<meta[^>]+property="og:updated_time"[^>]+content="([^"]+)"/i)?.[1]?.trim() ??
-    null;
 
   const descriptionBlock =
     html.match(/<div class="ats-description">([\s\S]*?)<div class="qualifications"/i)?.[1] ??
@@ -129,7 +120,6 @@ export function parseL3HarrisJobDetailFields(html: string): {
     category: null,
     location,
     description,
-    datePosted,
   };
 }
 
@@ -166,7 +156,6 @@ export function parseL3HarrisJobs(
       continue;
     }
 
-
     roles.push(
       buildScrapedRole({
         postingUrl,
@@ -175,7 +164,6 @@ export function parseL3HarrisJobs(
         companySlug: source.companySlug,
         classification,
         description: buildL3HarrisClassificationDescription(listing),
-        dates: atsPublishDate(safeToIsoDate(listing.datePosted)),
       }),
     );
   }
@@ -273,7 +261,6 @@ async function enrichL3HarrisListings(
           category: null,
           location: null,
           description: "",
-          datePosted: null,
         });
       }
     }
@@ -294,7 +281,6 @@ async function enrichL3HarrisListings(
       category: detail.category ?? listing.category,
       location: detail.location ?? listing.location,
       description: detail.description || listing.description,
-      datePosted: detail.datePosted ?? listing.datePosted,
     };
   });
 }

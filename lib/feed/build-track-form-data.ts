@@ -6,7 +6,7 @@ export function feedSeasonToApplicationSeason(
   season: FeedSeason,
 ): ApplicationSeason | undefined {
   return (APPLICATION_SEASONS as readonly string[]).includes(season)
-    ? (season as ApplicationSeason)
+    ? season
     : undefined;
 }
 

@@ -11,7 +11,7 @@ export type { FeedPosting, FeedSeason } from "@/lib/feed/types";
 export { FEED_SEASONS } from "@/lib/feed/types";
 
 /**
- * Loads open scraped internships for Live and Home. Uses the request-scoped
+ * Loads open scraped internships for Openings. Uses the request-scoped
  * Supabase client so RLS applies; scraped_postings are readable by authenticated users.
  */
 export async function fetchFeed() {

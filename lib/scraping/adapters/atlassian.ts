@@ -3,7 +3,6 @@ import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { atsPublishWithModified, pagePublishDate, parseFlexiblePostedDate } from "../posted-date.ts";
 import { fetchJsonWithTimeout, isHttpUrl } from "./shared.ts";
 import { INTERNSHIP_LIST_TITLE_PATTERN } from "../list-filters.ts";
 
@@ -22,7 +21,6 @@ export interface AtlassianPortalJobPost {
   portalId?: number;
   portalUrl?: string;
   id?: number;
-  updatedDate?: string;
 }
 
 export interface AtlassianListing {
@@ -89,15 +87,6 @@ export function formatAtlassianDescription(listing: AtlassianListing): string {
   return parts.join("\n\n");
 }
 
-export function atlassianListingDates(listing: AtlassianListing) {
-  const raw = listing.portalJobPost?.updatedDate ?? null;
-  const published = parseFlexiblePostedDate(raw);
-  if (published) {
-    return pagePublishDate(published, "medium");
-  }
-  return atsPublishWithModified(null, null);
-}
-
 export function formatAtlassianLocations(listing: AtlassianListing): string[] {
   const locations = (listing.locations ?? []).map((location) => location.trim()).filter(Boolean);
   return Array.from(new Set(locations));
@@ -146,7 +135,6 @@ export function parseAtlassianJobs(
         companySlug: source.companySlug,
         classification,
         description: formatAtlassianDescription(listing),
-        dates: atlassianListingDates(listing),
       }),
     );
   }

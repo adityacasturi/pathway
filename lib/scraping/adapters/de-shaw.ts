@@ -1,11 +1,10 @@
-import { atsPublishDate, unknownScrapedDates } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import { inferSeason } from "../season.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl, safeToIsoDate } from "./shared.ts";
+import { fetchJsonWithTimeout, isHttpUrl } from "./shared.ts";
 
 /**
  * D. E. Shaw careers run on a Next.js site (deshaw.com/careers). Open roles are
@@ -55,8 +54,6 @@ export interface DeShawListing {
   workStatus: string | null;
   departments: string[];
   description: string | null;
-  datePosted: string | null;
-  dates?: import("../posted-date.ts").ScrapedRoleDates;
 }
 
 export function createDeShawAdapter(source: CompanySourceConfig): ScrapeAdapter {
@@ -239,8 +236,6 @@ export function collectDeShawListings(
       workStatus: job.data?.jobMetadata?.workStatus?.trim() || null,
       departments: deShawDepartments(job),
       description: deShawWebsiteDescription(job),
-      datePosted: null,
-      dates: atsPublishDate(safeToIsoDate(job.data?.validFromDate)),
     });
   }
 
@@ -281,7 +276,6 @@ export function parseDeShawJobs(
         companySlug: source.companySlug,
         classification,
         description: listing.description,
-        dates: listing.dates ?? unknownScrapedDates(),
         season: inferDeShawSeason(listing.title, listing.workStatus),
       }),
     );

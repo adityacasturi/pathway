@@ -37,8 +37,8 @@ function cleanPostingIds(postingIds: unknown): string[] {
 /**
  * Persisted feed interactions, keyed by posting id (URL hash or legacy upstream id).
  *
- * Intentionally no revalidatePath here. The client tracks dismissed/saved state
- * optimistically, so revalidating Live on every toggle would re-query all open
+ * Intentionally no revalidatePath here. The client tracks saved state
+ * optimistically, so revalidating Openings on every toggle would re-query all open
  * scraped postings with no user-visible benefit. Fresh state is picked up on
  * navigation or Refresh.
  */
@@ -125,8 +125,8 @@ export async function unsavePosting(postingIds: string | string[]) {
 }
 
 /**
- * Re-read scraped postings from Supabase for Live and Home. Does not run scrape
- * jobs — ingestion stays on the 30-minute cron (`/api/cron/scrape-postings`).
+ * Re-read scraped postings from Supabase for Openings. Does not run scrape
+ * jobs — scheduled ingestion runs from GitHub Actions.
  * Pair with `router.refresh()` on the client.
  */
 export async function refreshFeed() {

@@ -1,10 +1,9 @@
-import { atsPublishDate } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl, resolveBoardToken, safeToIsoDate } from "./shared.ts";
+import { fetchJsonWithTimeout, isHttpUrl, resolveBoardToken } from "./shared.ts";
 
 /**
  * PEAK6 careers use Ongig (careers.peak6.com / peak6-prod.ongig.com).
@@ -168,7 +167,6 @@ export function parsePeak6Jobs(
         companySlug: source.companySlug,
         classification,
         description: "",
-        dates: atsPublishDate(safeToIsoDate(readOngigField(job.created_at))),
       }),
     );
   }

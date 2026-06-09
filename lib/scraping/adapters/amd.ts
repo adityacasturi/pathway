@@ -1,4 +1,3 @@
-import { atsPublishDate } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
@@ -209,7 +208,6 @@ export function parseAmdJobs(
         companySlug: source.companySlug,
         classification,
         description: htmlToPlainText(descriptionHtml),
-        dates: atsPublishDate(parseAmdPostedDate(job.posted_date)),
       }),
     );
   }

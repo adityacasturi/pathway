@@ -1,4 +1,3 @@
-import type { PostedDateConfidence, PostedDateSource } from "../scraping/posted-date.ts";
 import {
   resolveEffectivePostedUnix,
   resolvePathwayNewUnix,
@@ -6,11 +5,14 @@ import {
   toUnixSeconds,
 } from "./posted-display.ts";
 import { stablePostingId } from "./ids.ts";
+import { formatPlacesFromJson, placesFromJson } from "../geo/format.ts";
+import type { LocationPlaceJson } from "../geo/types.ts";
 import {
   detectCountriesAcross,
   hasRemoteLocation,
 } from "./location.ts";
 import { expandLocationSegments } from "./us-locations.ts";
+import { feedPostingMatchesProductScope } from "./product-scope.ts";
 import type { FeedPosting, FeedSeason } from "./types.ts";
 import { FEED_SEASONS } from "./types.ts";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -22,9 +24,8 @@ export interface ScrapedPostingFeedRow {
   posting_url: string;
   season: string;
   location: string | null;
-  date_posted: string | null;
-  date_posted_source: PostedDateSource;
-  date_posted_confidence: PostedDateConfidence;
+  location_places: LocationPlaceJson[] | null;
+  countries: string[] | null;
   first_seen_at: string;
   last_seen_at: string;
   updated_at: string;
@@ -47,22 +48,33 @@ export function mapScrapedRowToFeedPosting(row: ScrapedPostingFeedRow): FeedPost
   const season = row.season.trim();
   if (!isFeedSeason(season)) return null;
 
+  const canonicalPlaces = placesFromJson(row.location_places);
+  const fromPlaces = formatPlacesFromJson(row.location_places);
   const rawLocation = row.location?.trim() ?? "";
-  if (!rawLocation) {
+  if (fromPlaces.length === 0 && !rawLocation) {
     return null;
   }
-  const segments = expandLocationSegments(rawLocation);
-  const locations = [rawLocation];
+  const locations =
+    fromPlaces.length > 0
+      ? fromPlaces
+      : (() => {
+          const segments = expandLocationSegments(rawLocation);
+          return segments.length > 0 ? segments : [rawLocation];
+        })();
+
+  const storedCountries = (row.countries ?? []).map((code) => code.toUpperCase()).filter(Boolean);
+  const countries =
+    storedCountries.length > 0
+      ? [...new Set(storedCountries)].sort()
+      : detectCountriesAcross(locations);
+
+  const hasRemote =
+    row.location_places?.some((place) => place.remote) ??
+    hasRemoteLocation(locations);
   const id = stablePostingId(url);
-  const dateFields = {
-    date_posted: row.date_posted,
-    date_posted_source: row.date_posted_source,
-    date_posted_confidence: row.date_posted_confidence,
-    first_seen_at: row.first_seen_at,
-  };
-  const datePosted = resolveEffectivePostedUnix(dateFields);
+  const datePosted = resolveEffectivePostedUnix(row);
   const pathwayNewUnix = resolvePathwayNewUnix(row);
-  const postedDisplay = resolvePostedDisplay(dateFields);
+  const postedDisplay = resolvePostedDisplay(row);
   const dateUpdated = Math.max(
     toUnixSeconds(row.last_seen_at),
     toUnixSeconds(row.updated_at),
@@ -79,8 +91,9 @@ export function mapScrapedRowToFeedPosting(row: ScrapedPostingFeedRow): FeedPost
     title,
     url,
     locations,
-    countries: detectCountriesAcross(segments.length > 0 ? segments : locations),
-    hasRemote: hasRemoteLocation(segments.length > 0 ? segments : locations),
+    canonicalPlaces,
+    countries,
+    hasRemote,
     season,
     datePosted,
     pathwayNewUnix,
@@ -114,9 +127,8 @@ export async function loadScrapedFeedPostings(supabase: SupabaseClient): Promise
       posting_url,
       season,
       location,
-      date_posted,
-      date_posted_source,
-      date_posted_confidence,
+      location_places,
+      countries,
       first_seen_at,
       last_seen_at,
       updated_at,
@@ -144,9 +156,8 @@ export async function loadScrapedFeedPostings(supabase: SupabaseClient): Promise
       posting_url: raw.posting_url,
       season: raw.season,
       location: raw.location,
-      date_posted: raw.date_posted,
-      date_posted_source: raw.date_posted_source ?? "unknown",
-      date_posted_confidence: raw.date_posted_confidence ?? "unknown",
+      location_places: raw.location_places ?? null,
+      countries: raw.countries ?? null,
       first_seen_at: raw.first_seen_at,
       last_seen_at: raw.last_seen_at,
       updated_at: raw.updated_at,
@@ -158,9 +169,90 @@ export async function loadScrapedFeedPostings(supabase: SupabaseClient): Promise
     };
     const posting = mapScrapedRowToFeedPosting(row);
     if (!posting) continue;
+    if (!feedPostingMatchesProductScope(posting)) continue;
     postings.push(posting);
   }
 
   postings.sort((a, b) => b.datePosted - a.datePosted);
   return postings;
+}
+
+const FEED_POSTING_SELECT = `
+  id,
+  company_name,
+  role_name,
+  posting_url,
+  season,
+  location,
+  location_places,
+  countries,
+  first_seen_at,
+  last_seen_at,
+  updated_at,
+  companies!inner (
+    slug,
+    website_url,
+    logo_asset_key
+  )
+`;
+
+function mapRawScrapedFeedRow(raw: Record<string, unknown>): ScrapedPostingFeedRow | null {
+  const company = Array.isArray(raw.companies) ? raw.companies[0] : raw.companies;
+  if (!company || typeof company !== "object" || !("slug" in company)) {
+    return null;
+  }
+
+  const companyRecord = company as {
+    slug: string;
+    website_url: string | null;
+    logo_asset_key: string | null;
+  };
+
+  return {
+    id: String(raw.id),
+    company_name: String(raw.company_name),
+    role_name: String(raw.role_name),
+    posting_url: String(raw.posting_url),
+    season: String(raw.season),
+    location: (raw.location as string | null) ?? null,
+    location_places: (raw.location_places as LocationPlaceJson[] | null) ?? null,
+    countries: (raw.countries as string[] | null) ?? null,
+    first_seen_at: String(raw.first_seen_at),
+    last_seen_at: String(raw.last_seen_at),
+    updated_at: String(raw.updated_at),
+    companies: {
+      slug: companyRecord.slug,
+      website_url: companyRecord.website_url ?? null,
+      logo_asset_key: companyRecord.logo_asset_key ?? null,
+    },
+  };
+}
+
+export async function loadFeedPostingsByPostingIds(
+  supabase: SupabaseClient,
+  postingIds: readonly string[],
+): Promise<{ postings: FeedPosting[] }> {
+  if (postingIds.length === 0) {
+    return { postings: [] };
+  }
+
+  const { data, error } = await supabase
+    .from("scraped_postings")
+    .select(FEED_POSTING_SELECT)
+    .in("id", [...postingIds])
+    .eq("status", "open");
+
+  if (error) throw error;
+
+  const postings: FeedPosting[] = [];
+  for (const raw of data ?? []) {
+    const row = mapRawScrapedFeedRow(raw as Record<string, unknown>);
+    if (!row) continue;
+    const posting = mapScrapedRowToFeedPosting(row);
+    if (!posting) continue;
+    if (!feedPostingMatchesProductScope(posting)) continue;
+    postings.push(posting);
+  }
+
+  return { postings };
 }

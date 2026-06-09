@@ -3,7 +3,6 @@ import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import { extractLocationsFromPlainText } from "../location.ts";
 import { htmlToPlainText } from "../plain-text.ts";
-import { unknownScrapedDates } from "../posted-date.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
 import { fetchJsonWithTimeout, isHttpUrl } from "./shared.ts";
 
@@ -142,7 +141,6 @@ export function parseSakanaAiJobs(
         companySlug: source.companySlug,
         classification,
         description: listing.description,
-        dates: unknownScrapedDates(),
       }),
     );
   }

@@ -1,9 +1,8 @@
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
-import { atsPublishDate, unknownScrapedDates } from "../posted-date.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl, safeToIsoDate } from "./shared.ts";
+import { fetchJsonWithTimeout, isHttpUrl } from "./shared.ts";
 
 export const LUMA_AI_CAREERS_URL = "https://lumalabs.ai/careers";
 export const LUMA_AI_GEM_BOARD_TOKEN = "lumalabs-ai";
@@ -130,7 +129,6 @@ export function parseLumaAiJobs(
       continue;
     }
 
-    const publishedAt = safeToIsoDate(job.first_published_at);
     roles.push(
       buildScrapedRole({
         postingUrl,
@@ -139,7 +137,6 @@ export function parseLumaAiJobs(
         companySlug: source.companySlug,
         classification,
         description: job.content_plain?.trim() || "",
-        dates: publishedAt ? atsPublishDate(publishedAt) : unknownScrapedDates(),
       }),
     );
   }

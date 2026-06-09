@@ -13,7 +13,7 @@ interface MemberRow {
   company_slug: string;
 }
 
-/** Curated sectors with company membership from Postgres. */
+/** Alert bundles with company membership from Postgres. */
 export async function loadCuratedAlertSectors(
   supabase: SupabaseClient,
 ): Promise<CuratedAlertSector[]> {

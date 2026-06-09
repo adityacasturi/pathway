@@ -1,11 +1,11 @@
 import type { DiscoverIndustryCatalogItem } from "@/lib/discover/catalog";
+import { loadDiscoverCompanyOpenCounts } from "@/lib/discover/open-counts";
 import type { DiscoverCompanyCard, ScrapedPostingRow } from "@/lib/discover/types";
+import { scrapedPostingRowMatchesProductScope } from "@/lib/feed/product-scope";
 import { stablePostingId } from "@/lib/feed/ids";
 import { resolvePostedDisplay } from "@/lib/feed/posted-display";
 import type { FeedSeason } from "@/lib/feed/types";
 import { FEED_SEASONS } from "@/lib/feed/types";
-import { normalizeScrapedLocationField } from "@/lib/scraping/location";
-import type { PostedDateConfidence, PostedDateSource } from "@/lib/scraping/posted-date";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 interface CompanyRow {
@@ -16,14 +16,11 @@ interface CompanyRow {
   logo_asset_key: string | null;
   industry: string | null;
   company_sources: Array<{
+    source_type: string;
     last_success_at: string | null;
     last_failure_at: string | null;
+    last_error_code: string | null;
   }>;
-}
-
-interface PostingCountRow {
-  company_id: string;
-  open_count: number | string | null;
 }
 
 interface PostingRow {
@@ -32,17 +29,18 @@ interface PostingRow {
   posting_url: string;
   season: string;
   location: string | null;
-  date_posted: string | null;
-  date_posted_source: PostedDateSource | null;
-  date_posted_confidence: PostedDateConfidence | null;
+  location_places: import("@/lib/geo/types").LocationPlaceJson[] | null;
+  countries: string[] | null;
   first_seen_at: string;
 }
 
 function mapPostingRow(row: PostingRow): ScrapedPostingRow | null {
-  const normalizedLocation = row.location?.trim()
-    ? normalizeScrapedLocationField(row.location.trim())
-    : null;
-  if (row.location?.trim() && !normalizedLocation) {
+  if (!scrapedPostingRowMatchesProductScope(row)) {
+    return null;
+  }
+
+  const normalizedLocation = row.location?.trim() || null;
+  if (!normalizedLocation) {
     return null;
   }
 
@@ -51,19 +49,8 @@ function mapPostingRow(row: PostingRow): ScrapedPostingRow | null {
     return null;
   }
   const season = seasonValue as FeedSeason;
-  const dateFields = {
-    date_posted: row.date_posted,
-    date_posted_source: row.date_posted_source ?? "unknown",
-    date_posted_confidence: row.date_posted_confidence ?? "unknown",
-    first_seen_at: row.first_seen_at,
-  };
-  const postedDisplay = resolvePostedDisplay(dateFields);
-  const displayIso =
-    postedDisplay.kind === "posted"
-      ? row.date_posted
-      : postedDisplay.kind === "added"
-        ? row.first_seen_at
-        : null;
+  const postedDisplay = resolvePostedDisplay(row);
+  const displayIso = postedDisplay.kind === "added" ? row.first_seen_at : null;
 
   const url = row.posting_url.trim();
   const feedId = stablePostingId(url);
@@ -81,19 +68,11 @@ function mapPostingRow(row: PostingRow): ScrapedPostingRow | null {
   };
 }
 
-function buildOpenCountMap(rows: PostingCountRow[]) {
-  const counts = new Map<string, number>();
-  for (const row of rows) {
-    counts.set(row.company_id, Number(row.open_count ?? 0));
-  }
-  return counts;
-}
-
 export async function loadDiscoverCompanies(
   supabase: SupabaseClient,
   industryCatalog: DiscoverIndustryCatalogItem[],
 ): Promise<DiscoverCompanyCard[]> {
-  const [companiesRes, countsRes] = await Promise.all([
+  const [companiesRes, openCounts] = await Promise.all([
     supabase
       .from("companies")
       .select(
@@ -105,26 +84,24 @@ export async function loadDiscoverCompanies(
         logo_asset_key,
         industry,
         company_sources!inner (
+          source_type,
           last_success_at,
-          last_failure_at
+          last_failure_at,
+          last_error_code
         )
       `,
       )
       .eq("is_active", true)
       .eq("company_sources.enabled", true)
       .order("name", { ascending: true }),
-    supabase.rpc("discover_company_open_counts"),
+    loadDiscoverCompanyOpenCounts(supabase),
   ]);
 
   if (companiesRes.error) {
     throw companiesRes.error;
   }
-  if (countsRes.error) {
-    throw countsRes.error;
-  }
 
   const labelByIndustry = new Map(industryCatalog.map((item) => [item.slug, item.label]));
-  const openCounts = buildOpenCountMap((countsRes.data ?? []) as PostingCountRow[]);
 
   return ((companiesRes.data ?? []) as CompanyRow[]).map((company) => {
     const source = company.company_sources[0];
@@ -144,8 +121,10 @@ export async function loadDiscoverCompanies(
       industry,
       industryLabel,
       openCount: openCounts.get(company.id) ?? 0,
+      sourceType: source?.source_type ?? "",
       lastSuccessAt: source?.last_success_at ?? null,
       lastFailureAt: source?.last_failure_at ?? null,
+      lastErrorCode: source?.last_error_code ?? null,
       logoAssetKey: company.logo_asset_key?.trim() || null,
     };
   });
@@ -157,12 +136,10 @@ export async function loadDiscoverCompanyPostings(
 ): Promise<ScrapedPostingRow[]> {
   const { data, error } = await supabase
     .from("scraped_postings")
-    .select(
-      "id, role_name, posting_url, season, location, date_posted, date_posted_source, date_posted_confidence, first_seen_at",
-    )
+    .select("id, role_name, posting_url, season, location, location_places, countries, first_seen_at")
     .eq("company_id", companyId)
     .eq("status", "open")
-    .order("date_posted", { ascending: false, nullsFirst: false })
+    .order("first_seen_at", { ascending: false })
     .order("role_name", { ascending: true });
 
   if (error) {

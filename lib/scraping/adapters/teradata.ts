@@ -1,10 +1,9 @@
-import { atsPublishDate } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl, safeToIsoDate, scraperDelay } from "./shared.ts";
+import { fetchJsonWithTimeout, isHttpUrl, scraperDelay } from "./shared.ts";
 import { INTERNSHIP_LIST_TITLE_PATTERN } from "../list-filters.ts";
 
 /** Teradata careers on GR8 People (GraphQL at careers.teradata.com/graphql). */
@@ -203,7 +202,6 @@ export function parseTeradataJobs(
         companySlug: source.companySlug,
         classification,
         description: htmlToPlainText(node.descriptionHTML ?? ""),
-        dates: atsPublishDate(safeToIsoDate(node.postedOn)),
       }),
     );
   }

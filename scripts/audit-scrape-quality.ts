@@ -1,5 +1,5 @@
 /**
- * Dry-run all enabled company scrapers and summarize date/keep quality by source_type.
+ * Dry-run all enabled company scrapers and summarize keep quality by source_type.
  *
  *   npm run scrape:audit
  *   npm run scrape:audit -- amazon neuralink
@@ -42,9 +42,6 @@ const byType = new Map<
     errors: number;
     fetched: number;
     kept: number;
-    publishDates: number;
-    modifiedOnly: number;
-    unknownDates: number;
   }
 >();
 
@@ -55,9 +52,6 @@ for (const result of results) {
     errors: 0,
     fetched: 0,
     kept: 0,
-    publishDates: 0,
-    modifiedOnly: 0,
-    unknownDates: 0,
   };
 
   bucket.companies += 1;
@@ -69,9 +63,6 @@ for (const result of results) {
 
   bucket.fetched += result.stats?.fetched ?? 0;
   bucket.kept += result.stats?.kept ?? 0;
-  bucket.publishDates += result.stats?.datesPublishCount ?? 0;
-  bucket.modifiedOnly += result.stats?.datesModifiedOnlyCount ?? 0;
-  bucket.unknownDates += result.stats?.datesUnknownCount ?? 0;
   byType.set(sourceType, bucket);
 }
 
@@ -89,11 +80,8 @@ console.log(
   "err".padStart(5),
   "fetch".padStart(7),
   "kept".padStart(7),
-  "pubDt".padStart(7),
-  "modOnly".padStart(8),
-  "unkDt".padStart(7),
 );
-console.log("-".repeat(72));
+console.log("-".repeat(48));
 
 for (const [sourceType, stats] of rows) {
   console.log(
@@ -102,9 +90,6 @@ for (const [sourceType, stats] of rows) {
     String(stats.errors).padStart(5),
     String(stats.fetched).padStart(7),
     String(stats.kept).padStart(7),
-    String(stats.publishDates).padStart(7),
-    String(stats.modifiedOnly).padStart(8),
-    String(stats.unknownDates).padStart(7),
   );
 }
 
@@ -116,38 +101,17 @@ if (failed.length > 0) {
   }
 }
 
-const lowPublish = results.filter((r) => {
-  if (r.status !== "ok" || (r.stats?.kept ?? 0) === 0) {
-    return false;
-  }
-  const publish = r.stats?.datesPublishCount ?? 0;
-  return publish / (r.stats?.kept ?? 1) < 0.5;
-});
-
-if (lowPublish.length > 0) {
-  console.log("\nCompanies with <50% publish-class dates on kept roles:");
-  for (const result of lowPublish) {
-    const kept = result.stats?.kept ?? 0;
-    const publish = result.stats?.datesPublishCount ?? 0;
-    console.log(`  ${result.slug}: ${publish}/${kept} publish dates`);
-  }
-}
-
 process.exit(failed.length > 0 ? 1 : 0);
 
 function loadDotEnvLocal() {
   try {
     const envPath = resolve(process.cwd(), ".env.local");
-    const raw = readFileSync(envPath, "utf8");
-    for (const line of raw.split("\n")) {
+    const content = readFileSync(envPath, "utf8");
+    for (const line of content.split("\n")) {
       const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("#")) {
-        continue;
-      }
+      if (!trimmed || trimmed.startsWith("#")) continue;
       const eq = trimmed.indexOf("=");
-      if (eq <= 0) {
-        continue;
-      }
+      if (eq <= 0) continue;
       const key = trimmed.slice(0, eq).trim();
       let value = trimmed.slice(eq + 1).trim();
       if (
@@ -156,11 +120,11 @@ function loadDotEnvLocal() {
       ) {
         value = value.slice(1, -1);
       }
-      if (!(key in process.env)) {
+      if (process.env[key] === undefined) {
         process.env[key] = value;
       }
     }
   } catch {
-    // optional
+    // optional local env
   }
 }

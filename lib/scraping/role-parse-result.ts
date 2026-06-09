@@ -1,4 +1,3 @@
-import { coerceScrapedRoleDates, countRoleDateStats } from "./posted-date.ts";
 import type { RoleParseResult, RoleRejection, ScrapedRole } from "./types.ts";
 
 /** Deduplicate kept roles by posting URL (last wins). */
@@ -10,7 +9,7 @@ export function dedupeScrapeRoles(roles: ScrapedRole[]): ScrapedRole[] {
   return Array.from(byUrl.values());
 }
 
-/** Build adapter parse output with date-quality stats for audits. */
+/** Build adapter parse output. */
 export function buildRoleParseResult(
   fetched: number,
   roles: ScrapedRole[],
@@ -23,11 +22,6 @@ export function buildRoleParseResult(
       fetched,
       kept: deduped.length,
       rejected,
-      ...countRoleDateStats(
-        deduped.map((role) => ({
-          dates: coerceScrapedRoleDates(role.dates, role.datePosted),
-        })),
-      ),
     },
   };
 }

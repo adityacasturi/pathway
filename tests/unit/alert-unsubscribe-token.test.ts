@@ -31,3 +31,7 @@ test("verify rejects invalid user id in payload", () => {
   const token = createUnsubscribeToken("not-a-uuid", SECRET);
   assert.equal(verifyUnsubscribeToken(token, SECRET), null);
 });
+
+test("verify rejects oversized tokens before decoding", () => {
+  assert.equal(verifyUnsubscribeToken("a".repeat(5000), SECRET), null);
+});

@@ -31,35 +31,44 @@ export function AddEventPanel({
   onClearError: () => void;
 }) {
   return (
-    <form onSubmit={onSubmitEvent} className="add-event-panel">
-      <EventTypePicker value={eventType} onChange={onEventTypeChange} layout="row" />
+    <form onSubmit={onSubmitEvent} className="space-y-3">
+      <EventTypePicker value={eventType} onChange={onEventTypeChange} layout="grid" />
+
       <EventDateField value={eventDate} onChange={onEventDateChange} />
+
       <label className="block space-y-1.5">
-        <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
-          Notes <span className="normal-case tracking-normal text-muted-foreground/45">(optional)</span>
+        <span className="text-xs font-medium text-foreground/65">
+          Notes <span className="font-normal text-muted-foreground/60">(optional)</span>
         </span>
         <textarea
           value={notes}
           onChange={(e) => onNotesChange(e.target.value)}
-          placeholder="Add notes or next steps..."
+          placeholder="Context, prep notes, next steps…"
           rows={2}
-          className="min-h-16 w-full resize-y rounded-md border border-border/70 bg-background/80 px-3 py-2 text-sm text-foreground outline-none transition-colors duration-150 placeholder:text-muted-foreground/45 focus:border-foreground/30 focus:bg-background"
+          className="min-h-[4.5rem] w-full resize-y rounded-md border border-border bg-background px-2.5 py-2 text-sm text-foreground outline-none transition-colors duration-150 placeholder:text-muted-foreground/50 focus:border-[color-mix(in_oklab,var(--foreground)_22%,var(--border))] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--ring)_12%,transparent)]"
         />
       </label>
+
       <AnimatePresence>
-        {error && (
-          <motion.div variants={motionVariants.fadeIn} initial="hidden" animate="visible" exit="hidden">
+        {error ? (
+          <motion.div
+            variants={motionVariants.fadeIn}
+            initial="hidden"
+            animate="visible"
+            exit="hidden"
+          >
             <InlineError message={error} onRetry={onClearError} />
           </motion.div>
-        )}
+        ) : null}
       </AnimatePresence>
+
       <AsyncButton
         type="submit"
         state={addingEvent ? "pending" : "idle"}
         disabled={!eventDate}
         idleLabel="Add event"
-        pendingLabel="Saving event"
-        className="h-9 w-full rounded-md text-xs font-medium uppercase tracking-wider"
+        pendingLabel="Adding…"
+        className="h-8 w-full text-sm font-medium"
       />
     </form>
   );

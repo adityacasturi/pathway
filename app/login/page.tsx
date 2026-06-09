@@ -22,6 +22,8 @@ import {
 } from "@/components/auth/auth-page";
 import { PasswordField } from "@/components/auth/password-field";
 import { OtpConfirmationForm } from "@/components/auth/otp-confirmation-form";
+import { DEFAULT_AUTH_HREF } from "@/lib/config/nav";
+import { getSafeInternalPath } from "@/lib/auth/redirect";
 import { motionVariants } from "@/lib/ui/motion";
 
 export default function LoginPage() {
@@ -43,7 +45,9 @@ function LoginFallback() {
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const nextPath = getSafeNextPath(searchParams.get("next"));
+  const nextPath = getSafeInternalPath(searchParams.get("next"), DEFAULT_AUTH_HREF, {
+    blockedPrefixes: ["/login", "/register"],
+  });
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -121,7 +125,7 @@ function LoginContent() {
             <span className="font-medium text-foreground">{otpEmail}</span>.
           </p>
         )}
-        {!otpEmail && nextPath !== "/home" ? (
+        {!otpEmail && nextPath !== DEFAULT_AUTH_HREF ? (
           <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
             Sign in to continue to your requested page.
           </p>
@@ -245,10 +249,4 @@ function LoginContent() {
       )}
     </AuthPageShell>
   );
-}
-
-function getSafeNextPath(value: string | null): string {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/home";
-  if (value.startsWith("/login") || value.startsWith("/register")) return "/home";
-  return value;
 }

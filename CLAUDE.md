@@ -6,12 +6,14 @@ Guidance for Claude Code and agents on Pathway.
 
 | File | Contents |
 | --- | --- |
-| [docs/README.md](docs/README.md) | Doc index |
+| [docs/README.md](docs/README.md) | Doc index + terminology |
 | [docs/architecture.md](docs/architecture.md) | System design |
-| [docs/scraping.md](docs/scraping.md) | Scrape + Discover catalog |
+| [docs/scraping.md](docs/scraping.md) | Scrape + company catalog |
 | [docs/discover-industries.md](docs/discover-industries.md) | Industry taxonomy (`discover_industries`) |
+| [docs/alerts-filters.md](docs/alerts-filters.md) | Alert filter semantics |
 | [docs/production-runbook.md](docs/production-runbook.md) | Launch / incidents |
 | [supabase/README.md](supabase/README.md) | DB workflow |
+| [tests/README.md](tests/README.md) | Test layout |
 | [AGENTS.md](AGENTS.md) | Agent rules (start here) |
 
 ## Commands
@@ -24,16 +26,19 @@ npm run lint
 npm run typecheck
 npm run test:unit        # unit tests (tests/unit/**/*.test.ts)
 npm run test:unit:coverage
-npm run test:e2e         # Playwright
+npm run test:e2e         # Playwright public smoke (no credentials)
 npm run test:preprod     # typecheck + audit + unit + build
 npm run test:preprod:full # lint + test:preprod + e2e
 npm run scrape           # scrape → scraped_postings (service role)
+npm run alerts:instant   # send instant alert email for new matching postings
 npm run company-logos    # static PNGs in public/company-logos + manifest
-npm run discover-queue   # onboarding queue CLI
+npm run discover-company # one-off company onboarding CLI
+npm run discover-queue   # bulk onboarding queue CLI
+npm run qstash:cron      # cleanup/list retired QStash schedules
 npm run verify           # lint + test:preprod
 ```
 
-E2e: `E2E_USER_EMAIL`, `E2E_USER_PASSWORD`. Mutations: `E2E_ALLOW_MUTATION=1` (one worker). Scrape/cron: `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`.
+Scrape/alerts cron: GitHub Actions runs `npm run scrape` + `npm run alerts:instant` every 6 hours. Required GitHub secrets: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `ALERT_UNSUBSCRIBE_SECRET`. Scout is locked (`SCOUT_ENABLED = false`); `OPENAI_API_KEY` is only needed when re-enabled.
 
 ## Next.js 16
 
@@ -41,44 +46,47 @@ Read `node_modules/next/dist/docs/` before changing routing, Server Components, 
 
 ## Product snapshot
 
-Public signup (any valid email) · application tracker with event-derived status · **Home** briefing snapshot · **Openings** flat feed · **Companies** catalog · **Insights** (metrics + market) · **Alerts** (email digests) · **Settings** (accent, quick track).
+Public signup (any valid email) · **Home** briefing · application tracker with event-derived status · **Openings** feed (US internships only; toggle `US_ONLY_INTERNSHIPS`) · **Companies** catalog · **Alerts** (email) · **Scout** chat · **Settings** (account, appearance).
 
 | Route | Purpose |
 | --- | --- |
-| `/` | Landing |
-| `/login`, `/register` | Auth (`/register` → signup mode) |
+| `/` | Landing (signed-in users → `/home`) |
+| `/login`, `/register` | Auth |
 | `/set-password` | Set/reset password |
-| `/auth/confirm` | OTP / email-link verification handler (public) |
-| `/home` | Overview briefing (snapshot, since-yesterday, starred) |
-| `/applications` | Tracker |
+| `/auth/confirm` | OTP / email-link verification (public) |
+| `/home` | Dashboard briefing (default after sign-in) |
+| `/applications` | Application tracker |
 | `/openings` | Scraped roles feed |
 | `/companies` | Companies + postings on demand |
-| `/insights` | Application metrics + market analytics |
-| `/alerts` | Email alert subscriptions (company + curated sectors) |
-| `/alerts/unsubscribe` | One-click unsubscribe (HMAC token, public) |
-| `/settings` | Preferences |
+| `/alerts` | Email alert subscriptions + filter prefs |
+| `/chat` | Scout placeholder (redirects to `/home` while locked) |
+| `/settings` | Redirects to `/settings/account` |
+| `/settings/account`, `/settings/appearance` | Account and theme |
+| `/alerts/unsubscribe` | One-click unsubscribe (signed token, public) |
 | `/api/logo` | Authenticated logo proxy (logo.dev) |
-| `/api/cron/scrape-postings` | 30-minute sharded scrape (cron secret) |
-| `/api/cron/send-alert-digests` | Daily digest send (cron secret) |
+| `/api/chat` | Streaming Scout API (503 while locked) |
+| `/api/cron/scrape-postings` | Unscheduled scrape handler (cron secret) |
+| `/api/cron/send-instant-alerts` | Unscheduled instant alert handler (cron secret) |
+| `/api/cron/send-alert-digests` | Unscheduled digest handler (cron secret) |
 
-`proxy.ts`: unauthenticated → `/` (except public routes); authenticated cannot stay on `/login`.
+`proxy.ts`: unauthenticated users on protected routes → `/login?next=<path>`; authenticated users on `/`, `/login`, `/register` → `/home`. Public assets include `/company-logos/*` and cron routes.
 
 ## Data (Supabase)
 
 - User: `applications`, `application_events`, `feed_interactions`, `discover_company_favorites`, `user_preferences`
 - Alerts: `alert_preferences`, `alert_subscriptions`, `alert_sent_postings`, `alert_digest_state`, `alert_curated_sectors`, `alert_unsubscribe_nonces`
-- Scrape: `companies` (`industry` → `discover_industries`), `company_sources`, `scraped_postings`
+- Scout: `chat_threads`, `chat_messages`, `chat_tool_calls`
+- Scrape catalog: `companies` (`industry` → `discover_industries`), `company_sources`, `scraped_postings`
 - Status from events: `lib/config/events.ts`
-- Alert writes go through `SECURITY DEFINER` RPCs (direct table writes revoked); see `lib/actions/alerts.ts`.
+- Alert writes: scoped server actions in `lib/actions/alerts.ts` (direct client table writes revoked).
 
 Clients: `lib/supabase/server.ts` (user, RLS), `lib/supabase/admin.ts` (service role, bypasses RLS — server/cron/scripts only).
 
 ## Feeds
 
-- **Home:** `lib/home/briefing.ts` → `components/home/*` — snapshot pipeline counts, "since yesterday", starred, "for later".
-- **Live:** `lib/feed/scraped-postings.ts` — `feed_interactions`, hide applied URLs, refresh does not scrape.
-- **Discover:** `lib/discover/companies.ts` + `lib/discover/catalog.ts` — same scrape store; industries from `discover_industries`; QStash 30-minute cron `/api/cron/scrape-postings`; local `npm run scrape`.
-- **Alerts:** `lib/alerts/*` — match new postings to subscriptions, instant emails after scrape cron + daily digest, Resend delivery, launch-gated by `lib/config/alerts-launch.ts`.
+- **Openings:** `lib/feed/scraped-postings.ts` — `feed_interactions`, hide applied URLs, refresh does not scrape.
+- **Companies:** `lib/discover/companies.ts` + `lib/discover/catalog.ts` — same scrape store; industries from `discover_industries`.
+- **Alerts:** `lib/alerts/*` — match new postings to subscriptions, instant emails after GitHub Actions scrape, Resend delivery.
 
 ## Database
 
@@ -86,4 +94,4 @@ Remote migration history is truth. `apply_migration` → `list_migrations` → `
 
 ## UI
 
-Midnight default accent · `components/ui/` · `components/sidebar.tsx` · simple dashboard/Discover rows.
+Midnight default accent · `components/ui/` primitives · `components/app-shell/` layout · simple Openings/Companies/Application rows (no row animation flourishes).

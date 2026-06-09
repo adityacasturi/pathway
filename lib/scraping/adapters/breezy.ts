@@ -1,9 +1,8 @@
-import { atsPublishDate } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl, safeToIsoDate } from "./shared.ts";
+import { fetchJsonWithTimeout, isHttpUrl } from "./shared.ts";
 
 /** Public Breezy HR career portal JSON feed (no auth). */
 export const BREEZY_PORTAL_ORIGIN = "https://breezy.hr";
@@ -147,7 +146,6 @@ export function parseBreezyJobs(jobs: BreezyPortalJob[], source: CompanySourceCo
         companySlug: source.companySlug,
         classification,
         description: descriptionParts.join("\n"),
-        dates: atsPublishDate(safeToIsoDate(job.published_date)),
       }),
     );
   }

@@ -1,10 +1,9 @@
-import { atsPublishDate } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl, safeToIsoDate, scraperDelay } from "./shared.ts";
+import { fetchJsonWithTimeout, isHttpUrl, scraperDelay } from "./shared.ts";
 import { INTERNSHIP_LIST_TITLE_PATTERN } from "../list-filters.ts";
 
 /** Chewy careers on Phenom Career Connect (refNum CHINUS). */
@@ -40,8 +39,6 @@ export interface ChewyJobSummary {
   category?: string;
   type?: string;
   employmentType?: string;
-  postedDate?: string;
-  dateCreated?: string;
 }
 
 export interface ChewyJobDetail {
@@ -51,7 +48,6 @@ export interface ChewyJobDetail {
   applyUrl?: string;
   location?: string;
   cityStateCountry?: string;
-  postedDate?: string;
 }
 
 interface ChewyRefineSearchResponse {
@@ -214,9 +210,6 @@ export function parseChewyJobs(
         companySlug: source.companySlug,
         classification,
         description: detail?.description ?? summary.descriptionTeaser ?? "",
-        dates: atsPublishDate(
-        safeToIsoDate(detail?.postedDate ?? summary.postedDate ?? summary.dateCreated),
-      ),
       }),
     );
   }

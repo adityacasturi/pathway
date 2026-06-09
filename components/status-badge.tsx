@@ -2,65 +2,84 @@
 
 import { EventType, Status } from "@/types/application";
 import { STATUS_LABELS } from "@/lib/config/events";
-import { EVENT_TYPE_COLORS, STATUS_COLORS } from "@/lib/config/status-colors";
+import { cn } from "@/lib/utils";
 
-/*
- * Status is expressed as a flat, editorial stamp — a restrained tint plus a
- * dot. This replaces the previous glossy gradient pills. Tones are pulled
- * from the single oxblood accent plus neutral greys, keeping the palette
- * disciplined and the signal clear.
- */
-
-type Tone = {
-  /** oklch hue/chroma for the dot + text */
-  color: string;
-  /** subtle background tint, expressed as color-mix chance */
-  tintPercent: number;
+const STATUS_COLOR_VAR: Record<Status, string> = {
+  applied: "--status-applied-fg",
+  oa: "--status-oa-fg",
+  interview: "--status-interview-fg",
+  offer: "--status-offer-fg",
+  rejected: "--status-rejected-fg",
 };
 
-const STATUS_TONES: Record<Status, Tone> = {
-  applied:   { color: STATUS_COLORS.applied,   tintPercent: 6  },
-  oa:        { color: STATUS_COLORS.oa,        tintPercent: 8  },
-  interview: { color: STATUS_COLORS.interview, tintPercent: 8  },
-  offer:     { color: STATUS_COLORS.offer,     tintPercent: 12 },
-  rejected:  { color: STATUS_COLORS.rejected,  tintPercent: 8  },
+const EVENT_COLOR_VAR: Record<EventType, string> = {
+  ...STATUS_COLOR_VAR,
+  note: "--status-note-fg",
 };
 
-const EVENT_TONES: Record<EventType, Tone> = {
-  applied:   { color: EVENT_TYPE_COLORS.applied,   tintPercent: 6 },
-  oa:        { color: EVENT_TYPE_COLORS.oa,        tintPercent: 8 },
-  interview: { color: EVENT_TYPE_COLORS.interview, tintPercent: 8 },
-  offer:     { color: EVENT_TYPE_COLORS.offer,     tintPercent: 12 },
-  rejected:  { color: EVENT_TYPE_COLORS.rejected,  tintPercent: 8 },
-  note:      { color: EVENT_TYPE_COLORS.note,      tintPercent: 6 },
+const STATUS_TINT: Record<Status, number> = {
+  applied: 10,
+  oa: 14,
+  interview: 14,
+  offer: 18,
+  rejected: 14,
 };
 
-function toneStyle(tone: Tone): React.CSSProperties {
+function colorVar(name: string): string {
+  return `var(${name})`;
+}
+
+function toneStyle(colorVarName: string, tintPercent: number): React.CSSProperties {
+  const color = colorVar(colorVarName);
   return {
-    color: tone.color,
-    backgroundColor: `color-mix(in oklab, ${tone.color} ${tone.tintPercent}%, transparent)`,
-    borderColor: `color-mix(in oklab, ${tone.color} 22%, transparent)`,
+    color,
+    backgroundColor: `color-mix(in oklab, ${color} ${tintPercent}%, transparent)`,
+    borderColor: `color-mix(in oklab, ${color} 28%, var(--border))`,
   };
 }
 
 /** Card / panel highlight for the active pipeline stage filter. */
 export function statusSurfaceStyle(status: Status): React.CSSProperties {
-  const tone = STATUS_TONES[status];
+  const name = STATUS_COLOR_VAR[status];
+  const color = colorVar(name);
   return {
-    backgroundColor: `color-mix(in oklab, ${tone.color} 14%, var(--card))`,
-    borderColor: `color-mix(in oklab, ${tone.color} 32%, var(--rule))`,
-    boxShadow: `inset 0 1px 0 color-mix(in oklab, ${tone.color} 10%, transparent)`,
+    backgroundColor: `color-mix(in oklab, ${color} 16%, var(--card))`,
+    borderColor: `color-mix(in oklab, ${color} 36%, var(--border))`,
+    boxShadow: `inset 0 1px 0 color-mix(in oklab, ${color} 12%, transparent)`,
   };
 }
 
-export function StatusBadge({ status, variant = "default" }: { status: Status; variant?: "default" | "compact" }) {
-  const tone = STATUS_TONES[status];
+export function StatusBadge({
+  status,
+  variant = "default",
+  className,
+}: {
+  status: Status;
+  variant?: "default" | "compact" | "plain";
+  className?: string;
+}) {
+  const colorVarName = STATUS_COLOR_VAR[status];
   const label = STATUS_LABELS[status];
-  const baseStyle = toneStyle(tone);
+  const baseStyle = toneStyle(colorVarName, STATUS_TINT[status]);
+
+  if (variant === "plain") {
+    return (
+      <span
+        className={cn(
+          "inline-flex items-center justify-center gap-1 text-sm font-medium",
+          className,
+        )}
+        style={{ color: colorVar(colorVarName) }}
+      >
+        <StatusDot status={status} size={6} />
+        <span>{label}</span>
+      </span>
+    );
+  }
 
   if (variant === "compact") {
     return (
-      <span className="status-pill status-pill--compact" style={baseStyle}>
+      <span className={cn("status-pill status-pill--compact", className)} style={baseStyle}>
         <StatusDot status={status} size={6} />
         <span>{label}</span>
       </span>
@@ -68,30 +87,30 @@ export function StatusBadge({ status, variant = "default" }: { status: Status; v
   }
 
   return (
-    <span className="status-pill h-8 gap-1.5 px-3 text-[13px]" style={{ ...baseStyle, minWidth: 84 }}>
+    <span className={cn("status-pill", className)} style={{ ...baseStyle, minWidth: 84 }}>
       <StatusDot status={status} size={7} />
       <span>{label}</span>
     </span>
   );
 }
 
-function dotStyle(size: number, color: string): React.CSSProperties {
+function dotStyle(size: number, colorVarName: string): React.CSSProperties {
   return {
     display: "inline-block",
     width: size,
     height: size,
     borderRadius: 9999,
-    background: color,
+    background: colorVar(colorVarName),
     flexShrink: 0,
   };
 }
 
 export function StatusDot({ status, size = 7 }: { status: Status; size?: number }) {
-  return <span style={dotStyle(size, STATUS_TONES[status].color)} />;
+  return <span style={dotStyle(size, STATUS_COLOR_VAR[status])} />;
 }
 
 export function EventDot({ type, size = 7 }: { type: EventType; size?: number }) {
-  return <span style={dotStyle(size, EVENT_TONES[type].color)} />;
+  return <span style={dotStyle(size, EVENT_COLOR_VAR[type])} />;
 }
 
 /** Retained export for compatibility with the event timeline's "offer" treatment. */

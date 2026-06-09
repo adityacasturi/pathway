@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { atsPublishDate, unknownScrapedDates } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
-import { formatPrimaryWithCountryCode } from "../location.ts";
+import { structuredPlaceFromPrimaryAndCountry } from "../structured-place.ts";
+import type { StructuredPlaceInput } from "../../geo/types.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl, safeToIsoDate, scraperDelay } from "./shared.ts";
+import { fetchJsonWithTimeout, isHttpUrl, scraperDelay } from "./shared.ts";
 import { mapWithConcurrency } from "../scrape-concurrency.ts";
 
 /**
@@ -222,15 +222,24 @@ export function formatGoldmanDescription(
   return parts.join("\n\n");
 }
 
+export function formatGoldmanStructuredLocations(
+  summary: GoldmanRequisitionSummary,
+  detail: GoldmanRequisitionDetail | null | undefined,
+): StructuredPlaceInput[] {
+  const primary = detail?.PrimaryLocation?.trim() || summary.PrimaryLocation?.trim() || "";
+  const country =
+    detail?.PrimaryLocationCountry?.trim() || summary.PrimaryLocationCountry?.trim() || "";
+  const place = structuredPlaceFromPrimaryAndCountry(primary, country);
+  return place.rawLabel || place.countryCode ? [place] : [];
+}
+
 export function formatGoldmanLocations(
   summary: GoldmanRequisitionSummary,
   detail: GoldmanRequisitionDetail | null | undefined,
 ): string[] {
-  const primary = detail?.PrimaryLocation?.trim() || summary.PrimaryLocation?.trim() || "";
-  const country =
-    detail?.PrimaryLocationCountry?.trim() || summary.PrimaryLocationCountry?.trim() || "";
-
-  return formatPrimaryWithCountryCode(primary, country);
+  return formatGoldmanStructuredLocations(summary, detail)
+    .map((place) => place.rawLabel ?? place.city ?? "")
+    .filter(Boolean);
 }
 
 export function isGoldmanListCandidate(summary: GoldmanRequisitionSummary): boolean {
@@ -257,7 +266,7 @@ export function parseGoldmanPostings(
     const roleName = (detail?.Title ?? summary.Title)?.trim() || "";
     const requisitionId = (detail?.Id ?? summary.Id)?.trim() || "";
     const description = formatGoldmanDescription(summary, detail);
-    const locations = formatGoldmanLocations(summary, detail);
+    const structuredLocations = formatGoldmanStructuredLocations(summary, detail);
     const postingUrl = requisitionId ? buildGoldmanPostingUrl(requisitionId) : "";
 
     const classification = classifyForSource(source, {
@@ -267,7 +276,7 @@ export function parseGoldmanPostings(
       departments: [detail?.Category, detail?.JobFunction, summary.JobFamily].filter(
         (value): value is string => Boolean(value?.trim()),
       ),
-      locations,
+      structuredLocations,
     });
 
     if (!classification.include) {
@@ -282,9 +291,6 @@ export function parseGoldmanPostings(
       continue;
     }
 
-    const posted =
-      detail?.ExternalPostedStartDate?.trim() || summary.PostedDate?.trim() || null;
-
     roles.push(
       buildScrapedRole({
         postingUrl,
@@ -293,7 +299,6 @@ export function parseGoldmanPostings(
         companySlug: source.companySlug,
         classification,
         description: formatGoldmanDescription(summary, detail),
-        dates: posted ? atsPublishDate(safeToIsoDate(posted)) : unknownScrapedDates(),
       }),
     );
   }

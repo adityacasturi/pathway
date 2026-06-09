@@ -1,22 +1,18 @@
-import { SEASON_FILTER_OPTIONS, type SeasonFilter } from "@/lib/config/season-filter";
 import type {
   ApplicationsViewPreferences,
   FeedViewPreferences,
 } from "@/lib/user-preferences/view-preferences";
+import { parseSelectedSeasons } from "@/lib/user-preferences/view-preferences";
 
 export interface BrowserStorage {
   getItem(key: string): string | null;
   removeItem(key: string): void;
 }
 
-const VALID_SEASONS = new Set<SeasonFilter>(SEASON_FILTER_OPTIONS.map((option) => option.value));
-
 const FEED_STORAGE_KEYS = [
   "pathway:feed-last-seen-at",
-  "pathway:live-show-dismissed",
   "pathway:live-hide-applied",
   "pathway:live-season",
-  "pathway:discover-show-dismissed",
   "pathway:discover-hide-applied",
   "pathway:discover-season",
 ] as const;
@@ -72,15 +68,6 @@ export function readStoredFeedViewPreferences(
       ? parsedLastSeen
       : initialFeedPrefs.lastSeenUnix;
 
-  const dismissPref = firstStoredValue(storage, [
-    "pathway:live-show-dismissed",
-    "pathway:discover-show-dismissed",
-  ]);
-  const showDismissed =
-    dismissPref === "1" && !initialFeedPrefs.showDismissed
-      ? true
-      : initialFeedPrefs.showDismissed;
-
   const hideAppliedPref = firstStoredValue(storage, [
     "pathway:live-hide-applied",
     "pathway:discover-hide-applied",
@@ -96,18 +83,12 @@ export function readStoredFeedViewPreferences(
     "pathway:live-season",
     "pathway:discover-season",
   ]);
-  let seasonFilter = initialFeedPrefs.seasonFilter;
-  if (seasonPref && VALID_SEASONS.has(seasonPref as SeasonFilter)) {
-    seasonFilter = seasonPref as SeasonFilter;
-  } else if (seasonPref?.includes(",")) {
-    const first = seasonPref.split(",")[0]?.trim();
-    if (first && VALID_SEASONS.has(first as SeasonFilter)) {
-      seasonFilter = first as SeasonFilter;
-    }
-  }
+  const selectedSeasons = seasonPref
+    ? parseSelectedSeasons(seasonPref)
+    : initialFeedPrefs.selectedSeasons;
 
   return {
-    preferences: { lastSeenUnix, showDismissed, hideApplied, seasonFilter },
+    preferences: { lastSeenUnix, hideApplied, selectedSeasons },
     hasStoredPreferences: hasStoredValue(storage, FEED_STORAGE_KEYS),
   };
 }

@@ -1,19 +1,20 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { fetchFeed } from "@/lib/feed/source";
-import { normalizeUrl } from "@/lib/url";
-import { Home } from "@/components/home";
+import { pageMetadata } from "@/lib/metadata/page";
+
+export const metadata = pageMetadata("Home", "Your internship search dashboard.");
+import { HomePage } from "@/components/home/home-page";
 import { normalizeApplicationState } from "@/lib/config/application-state";
-import { isMissingPreferenceColumnError } from "@/lib/config/user-preferences";
-import { loadDiscoverCompanyFavoriteSlugs } from "@/lib/discover/favorites";
-import { loadMarketPostingSummary } from "@/lib/feed/market-summary";
+import { fetchFeed } from "@/lib/feed/source";
+import { loadHomeAlertActivity } from "@/lib/home/alert-activity";
 import {
-  buildHomeBriefing,
-  HOME_NEW_WINDOW_SECONDS,
+  buildHotCompanies,
+  HOME_HOT_COMPANIES_POOL,
 } from "@/lib/home/briefing";
+import { buildSeasonSnapshot } from "@/lib/home/season-snapshot";
 import { assertSupabaseOk } from "@/lib/supabase/errors";
+import { createClient } from "@/lib/supabase/server";
+import { currentUnixSeconds } from "@/lib/time";
 import type { FeedPosting } from "@/lib/feed/source";
-import type { Application } from "@/types/application";
 
 export const dynamic = "force-dynamic";
 
@@ -30,38 +31,33 @@ function interactionDate(savedAtById: Map<string, string>, posting: FeedPosting)
   return latest;
 }
 
-export default async function HomePage() {
+export default async function HomeRoute() {
   const supabase = await createClient();
-  // eslint-disable-next-line react-hooks/purity
-  const nowUnix = Math.floor(Date.now() / 1000);
+  const nowUnix = currentUnixSeconds();
 
-  const [userResult, postings, marketSummary, appsRes, interactionsRes, preferencesRes] =
-    await Promise.all([
-      supabase.auth.getUser(),
-      fetchFeed(),
-      loadMarketPostingSummary(supabase, nowUnix),
-      supabase
-        .from("applications")
-        .select("*, application_events(*)"),
-      supabase.from("feed_interactions").select("posting_id, kind, created_at"),
-      supabase.from("user_preferences").select("quick_track_enabled").maybeSingle(),
-    ]);
+  const userResult = await supabase.auth.getUser();
 
   if (!userResult.data.user) redirect("/login?next=/home");
+  const userId = userResult.data.user.id;
 
-  const favoriteSlugs = await loadDiscoverCompanyFavoriteSlugs(
-    supabase,
-    userResult.data.user.id,
-  );
+  const [postings, alertActivity, appsRes, interactionsRes] = await Promise.all([
+    fetchFeed(),
+    loadHomeAlertActivity(supabase, userId, nowUnix),
+    supabase
+      .from("applications")
+      .select("*, application_events(*)")
+      .eq("user_id", userId),
+    supabase
+      .from("feed_interactions")
+      .select("posting_id, kind, created_at")
+      .eq("user_id", userId),
+  ]);
 
   assertSupabaseOk(appsRes.error, "Load applications");
   assertSupabaseOk(interactionsRes.error, "Load feed interactions");
-  if (!isMissingPreferenceColumnError(preferencesRes.error, "quick_track_enabled")) {
-    assertSupabaseOk(preferencesRes.error, "Load preferences");
-  }
 
-  const activeApplications: Application[] = (appsRes.data ?? [])
-    .filter((app) => !app.archived_at)
+  const activeApplications = (appsRes.data ?? [])
+    .filter((row) => !row.archived_at)
     .map((row) =>
       normalizeApplicationState({
         ...row,
@@ -70,55 +66,46 @@ export default async function HomePage() {
       }),
     );
 
-  const dismissedIds: string[] = [];
-  const savedRows: { posting_id: string; created_at: string }[] = [];
+  const dismissedIds = new Set<string>();
+  const savedAtById = new Map<string, string>();
   for (const row of interactionsRes.data ?? []) {
-    if (row.kind === "dismissed") dismissedIds.push(row.posting_id);
-    if (row.kind === "saved") savedRows.push(row);
+    if (row.kind === "dismissed") dismissedIds.add(row.posting_id);
+    if (row.kind === "saved") {
+      const existing = savedAtById.get(row.posting_id);
+      if (!existing || row.created_at > existing) {
+        savedAtById.set(row.posting_id, row.created_at);
+      }
+    }
   }
-  const dismissedSet = new Set(dismissedIds);
-  const savedAtById = new Map(savedRows.map((row) => [row.posting_id, row.created_at]));
   const savedIdSet = new Set(savedAtById.keys());
 
-  const trackedUrls = new Set<string>();
-  for (const row of activeApplications) {
-    const normalized = normalizeUrl(row.posting_url);
-    if (normalized) trackedUrls.add(normalized);
-  }
-
-  const cutoff = nowUnix - HOME_NEW_WINDOW_SECONDS;
-  const newPostings = postings
-    .filter((p) => p.datePosted >= cutoff && !hasInteraction(dismissedSet, p))
+  const recentPool = postings
+    .filter((posting) => !hasInteraction(dismissedIds, posting))
     .sort((a, b) => b.datePosted - a.datePosted);
-  const savedPostings = postings
-    .filter((p) => hasInteraction(savedIdSet, p) && !hasInteraction(dismissedSet, p))
-    .sort((a, b) => {
-      const aSavedAt = interactionDate(savedAtById, a);
-      const bSavedAt = interactionDate(savedAtById, b);
-      return bSavedAt.localeCompare(aSavedAt);
-    });
+  const recentTotal = recentPool.length;
 
-  const briefing = buildHomeBriefing({
-    postings,
+  const savedPool = postings
+    .filter((posting) => hasInteraction(savedIdSet, posting) && !hasInteraction(dismissedIds, posting))
+    .sort((a, b) => interactionDate(savedAtById, b).localeCompare(interactionDate(savedAtById, a)));
+  const savedTotal = savedPool.length;
+
+  const hotCompanies = buildHotCompanies(postings, {
     nowUnix,
-    favoriteSlugs: new Set(favoriteSlugs),
-    dismissedIds: dismissedSet,
-    trackedUrls,
-    marketPulse: marketSummary.pulse,
-    marketWeek: marketSummary.week,
+    limit: HOME_HOT_COMPANIES_POOL,
   });
 
+  const seasonSnapshot = buildSeasonSnapshot(activeApplications);
+
   return (
-    <Home
-      applications={activeApplications}
-      briefing={briefing}
-      starredCompanyCount={favoriteSlugs.length}
-      newPostings={newPostings}
-      dismissedIds={dismissedIds}
-      savedIds={Array.from(savedAtById.keys())}
-      savedPostings={savedPostings}
-      trackedUrls={Array.from(trackedUrls)}
-      quickTrackEnabled={preferencesRes.data?.quick_track_enabled ?? false}
+    <HomePage
+      seasonSnapshot={seasonSnapshot}
+      hotCompanies={hotCompanies}
+      alertActivity={alertActivity}
+      savedPostings={savedPool}
+      savedTotal={savedTotal}
+      recentPostings={recentPool}
+      recentTotal={recentTotal}
+      showFirstRunBanner={activeApplications.length === 0}
     />
   );
 }

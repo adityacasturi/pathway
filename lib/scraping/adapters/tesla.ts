@@ -1,4 +1,3 @@
-import { unknownScrapedDates } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
@@ -168,7 +167,6 @@ export function parseTeslaJobs(
         companySlug: source.companySlug,
         classification,
         description: "",
-        dates: unknownScrapedDates(),
       }),
     );
   }

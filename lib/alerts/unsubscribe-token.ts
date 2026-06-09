@@ -5,6 +5,7 @@ const UUID_RE =
 
 /** Default: 30 days. */
 export const ALERT_UNSUBSCRIBE_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const MAX_UNSUBSCRIBE_TOKEN_LENGTH = 4096;
 
 interface UnsubscribePayload {
   userId: string;
@@ -58,6 +59,8 @@ export function verifyUnsubscribeToken(
   secret: string,
   now = Date.now(),
 ): { userId: string; nonce: string } | null {
+  if (token.length > MAX_UNSUBSCRIBE_TOKEN_LENGTH) return null;
+
   const [encodedPayload, sig] = token.split(".");
   if (!encodedPayload || !sig) return null;
 

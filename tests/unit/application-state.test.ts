@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   addEvent,
   applyEventPatch,
+  compareEventsNewestFirst,
   getNextInterviewRound,
   normalizeApplicationState,
   removeEvent,
@@ -57,6 +58,27 @@ test("normalizeApplicationState sorts events and derives status", () => {
   assert.equal(normalized.events[1]?.event_type, "oa");
   assert.equal(normalized.status, "oa");
   assert.equal(normalized.last_activity_date, "2026-02-01");
+});
+
+test("normalizeApplicationState orders applied before oa on the same day", () => {
+  const normalized = normalizeApplicationState(
+    baseApplication([
+      event("oa", "oa", "2026-02-01", { created_at: "2026-02-01T12:00:00.000Z" }),
+      event("applied", "applied", "2026-02-01", { created_at: "2026-02-01T18:00:00.000Z" }),
+    ]),
+  );
+
+  assert.equal(normalized.events[0]?.event_type, "applied");
+  assert.equal(normalized.events[1]?.event_type, "oa");
+});
+
+test("compareEventsNewestFirst shows oa above applied on the same day", () => {
+  const applied = event("applied", "applied", "2026-02-01");
+  const oa = event("oa", "oa", "2026-02-01");
+  const newestFirst = [applied, oa].sort(compareEventsNewestFirst);
+
+  assert.equal(newestFirst[0]?.event_type, "oa");
+  assert.equal(newestFirst[1]?.event_type, "applied");
 });
 
 test("normalizeApplicationState orders interview rounds on the same day", () => {

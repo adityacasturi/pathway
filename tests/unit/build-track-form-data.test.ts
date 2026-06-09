@@ -10,7 +10,8 @@ import type { FeedPosting } from "../../lib/feed/types.ts";
 test("feedSeasonToApplicationSeason maps valid application seasons", () => {
   assert.equal(feedSeasonToApplicationSeason("Summer"), "Summer");
   assert.equal(feedSeasonToApplicationSeason("Fall"), "Fall");
-  assert.equal(feedSeasonToApplicationSeason("Winter"), undefined);
+  assert.equal(feedSeasonToApplicationSeason("Spring"), "Spring");
+  assert.equal(feedSeasonToApplicationSeason("Winter"), "Winter");
 });
 
 test("buildTrackApplicationFormDataFromScraped sets core fields", () => {
@@ -43,15 +44,15 @@ test("buildTrackApplicationFormData joins feed posting locations", () => {
     title: "SWE Intern",
     url: "https://example.com/job",
     locations: ["NYC", "Remote"],
+    canonicalPlaces: [],
     countries: ["US"],
     hasRemote: true,
     season: "Fall",
     datePosted: 1_700_000_000,
     pathwayNewUnix: 1_700_000_000,
     postedDisplay: {
-      kind: "posted",
+      kind: "added",
       unixSeconds: 1_700_000_000,
-      confidence: "high",
     },
     dateUpdated: 1_700_000_000,
   };

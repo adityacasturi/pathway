@@ -42,8 +42,29 @@ select * from app_private.production_integrity_check();
 
 Any row with `violations > 0` is a blocker until fixed forward or reverted via a new migration.
 
+## Applied audit migrations (2026-06-06)
+
+These security-hardening migrations were applied remotely on 2026-06-06 after an
+initial MCP usage-limit block:
+
+- `drop_legacy_alert_write_rpcs_after_service_actions` — drops legacy public alert write RPCs.
+- `harden_chat_table_grants` — removes client `TRUNCATE` on chat tables; keeps authenticated CRUD under RLS.
+- `drop_unused_billing_and_index` — removed unused `billing_*` tables; trimmed Scout tool-call indexes.
+- `harden_alert_validator_search_path` — explicit `search_path` on alert validator functions.
+
+Git review copies live under `supabase/migrations/202606062037*.sql` (timestamps
+differ from hosted `schema_migrations.version` — remote history is truth).
+
+If Supabase MCP `apply_migration` hits the managed usage limit again, apply the
+same SQL via the [Supabase SQL editor](https://supabase.com/dashboard/project/vfcithtpstkipchvqlnd/sql/new)
+or install the CLI (`brew install supabase/tap/supabase`) and run
+`supabase db push` against the linked project.
+
 ## Recent hosted migrations
 
+- `remove_scout_hybrid_rag` — drops Scout hybrid search tables/RPC and `scraped_postings.description_text`; restores pre-RAG integrity checks.
+- `harden_scout_chat` — chat persistence hardening and `chat_tool_calls` audit table.
+- `global_open_role_counts` — `discover_company_open_counts()` and `market_posting_summary(_now)` count all open roles for eligible companies (removed US-only `countries` filter from aggregates).
 - `add_market_summary_rpcs_and_favorite_index` — adds `discover_company_open_counts()`, `market_posting_summary(_now)`, the missing `discover_company_favorites(company_id)` FK index, and a partial open-US postings index for the aggregate path.
 - `triage_failing_discover_sources` — disables Tesla and TransMarket Group sources after repeated hosted scrape failures; re-enable only after a replacement source/adapter passes dry-run verification.
 - `allow_fifteen_minute_scrape_interval` — lowers `company_sources.scrape_interval_minutes` default/check constraint to 15 minutes so production can run sub-hourly schedules.

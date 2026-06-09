@@ -19,8 +19,4 @@ jobs:
           cache: npm
 
       - run: npm ci
-      - run: npm run verify
-      - run: npm run test:e2e
-        env:
-          E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
-          E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+      - run: npm run test:preprod:full

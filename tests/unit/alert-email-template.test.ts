@@ -20,6 +20,8 @@ const posting: AlertPostingCandidate = {
   postingUrl: "https://example.com/openai-intern",
   season: "Summer 2027",
   location: "San Francisco, CA",
+  countries: ["US"],
+  hasRemote: false,
   firstSeenAt: "2026-06-01T12:00:00.000Z",
 };
 
@@ -53,7 +55,7 @@ test("digest emails use compact logo sections with full-line clickable roles", (
   ]);
 
   assert.match(digestHtml, /Pathway Alerts/);
-  assert.match(digestHtml, /New roles from companies and sectors you follow/);
+  assert.match(digestHtml, /New roles from companies and bundles you follow/);
   assert.match(digestHtml, /company-logos\/openai\.png/);
   assert.match(digestHtml, /company-logos\/stripe\.png/);
   assert.doesNotMatch(digestHtml, /<ul|<li/);

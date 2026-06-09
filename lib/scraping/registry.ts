@@ -39,7 +39,6 @@ import { createReplicateAdapter } from "./adapters/replicate.ts";
 import { createSakanaAiAdapter } from "./adapters/sakana-ai.ts";
 import { createSurgeAdapter } from "./adapters/surge.ts";
 import { createWorkableAdapter } from "./adapters/workable.ts";
-import { createRtxAdapter } from "./adapters/rtx.ts";
 import { createGoldmanSachsAdapter } from "./adapters/goldman-sachs.ts";
 import { createIbmAdapter } from "./adapters/ibm.ts";
 import { createNetflixAdapter } from "./adapters/netflix.ts";
@@ -65,13 +64,13 @@ import { createTowerResearchAdapter } from "./adapters/tower-research.ts";
 import { createTeslaAdapter } from "./adapters/tesla.ts";
 import { createMicrosoftAdapter } from "./adapters/microsoft.ts";
 import { createQualcommAdapter } from "./adapters/qualcomm.ts";
-import { createNvidiaAdapter } from "./adapters/nvidia.ts";
 import { createTwoSigmaAdapter } from "./adapters/two-sigma.ts";
 import { createUberAdapter } from "./adapters/uber.ts";
 import { createWeightsBiasesAdapter } from "./adapters/weights-biases.ts";
 import { createWayfairAdapter } from "./adapters/wayfair.ts";
 import { createWorkdayAdapter } from "./adapters/workday.ts";
 import { createPinpointAdapter } from "./adapters/pinpoint.ts";
+import { createRipplingAdapter } from "./adapters/rippling.ts";
 import type { CompanySourceConfig, ScrapeAdapter, SourceType } from "./types.ts";
 
 type AdapterFactory = (source: CompanySourceConfig) => ScrapeAdapter;
@@ -81,7 +80,6 @@ const ADAPTER_FACTORIES = {
   ashby: createAshbyAdapter,
   lever: createLeverAdapter,
   workday: createWorkdayAdapter,
-  nvidia: createNvidiaAdapter,
   microsoft: createMicrosoftAdapter,
   google: createGoogleAdapter,
   jane_street: createJaneStreetAdapter,
@@ -115,7 +113,6 @@ const ADAPTER_FACTORIES = {
   ibm: createIbmAdapter,
   coinbase: createCoinbaseAdapter,
   citigroup: createCitigroupAdapter,
-  rtx: createRtxAdapter,
   millennium: createMillenniumAdapter,
   lockheed_martin: createLockheedMartinAdapter,
   workable: createWorkableAdapter,
@@ -151,6 +148,7 @@ const ADAPTER_FACTORIES = {
   synopsys: createSynopsysAdapter,
   x_corp: createXCorpAdapter,
   pinpoint: createPinpointAdapter,
+  rippling: createRipplingAdapter,
 } satisfies Record<SourceType, AdapterFactory>;
 
 export const REGISTERED_SOURCE_TYPES = Object.keys(ADAPTER_FACTORIES) as SourceType[];

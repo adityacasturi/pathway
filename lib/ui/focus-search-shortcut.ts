@@ -21,7 +21,7 @@ export function focusSearchFromContainer(container: HTMLElement | null | undefin
 export interface UseFocusSearchShortcutOptions {
   /** When false, `/` and ⌘K do nothing. Use a function for ref-backed modal guards. */
   enabled?: boolean | (() => boolean);
-  /** Also focus on Meta/Ctrl+K. Default true. */
+  /** Also focus on Meta/Ctrl+K. Default false — ⌘K opens the command palette. */
   metaK?: boolean;
 }
 
@@ -29,7 +29,7 @@ export function useFocusSearchShortcut(
   containerRef: RefObject<HTMLElement | null>,
   options: UseFocusSearchShortcutOptions = {},
 ) {
-  const { metaK = true } = options;
+  const { metaK = false } = options;
   const optionsRef = useRef(options);
   useLayoutEffect(() => {
     optionsRef.current = options;
@@ -61,7 +61,15 @@ export function useFocusSearchShortcut(
       }
     }
 
+    function onFocusSearchEvent() {
+      focus();
+    }
+
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("pathway:focus-search", onFocusSearchEvent);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("pathway:focus-search", onFocusSearchEvent);
+    };
   }, [containerRef, metaK]);
 }

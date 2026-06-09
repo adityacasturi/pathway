@@ -1,10 +1,9 @@
-import { atsPublishWithModified } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { atsJsonHeaders, fetchJsonWithTimeout, isHttpUrl, safeToIsoDate } from "./shared.ts";
+import { atsJsonHeaders, fetchJsonWithTimeout, isHttpUrl } from "./shared.ts";
 import { INTERNSHIP_LIST_TITLE_PATTERN } from "../list-filters.ts";
 
 /**
@@ -38,8 +37,6 @@ export interface WayfairJobSummary {
   applyLink?: string;
   structuredDataApplyLink?: string;
   location?: WayfairJobLocation | null;
-  createdDate?: string;
-  lastUpdatedDate?: string;
   teamName?: string;
   category?: { name?: string } | null;
   jobTypeDisplayName?: string;
@@ -169,7 +166,6 @@ export function parseWayfairJobs(
       continue;
     }
 
-
     roles.push(
       buildScrapedRole({
         postingUrl,
@@ -178,10 +174,6 @@ export function parseWayfairJobs(
         companySlug: source.companySlug,
         classification,
         description: job.description ?? job.briefDescription ?? "",
-        dates: atsPublishWithModified(
-        safeToIsoDate(job.createdDate ?? null),
-        safeToIsoDate(job.lastUpdatedDate ?? null),
-      ),
       }),
     );
   }

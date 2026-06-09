@@ -2,18 +2,22 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import { AppChrome } from "@/components/app-chrome";
+import { Providers } from "@/app/providers";
 import {
   DEFAULT_ACCENT_COLOR,
-  resolveAccentColor,
   type AccentColor,
 } from "@/lib/config/accent";
+import { loadAppearancePreferences } from "@/lib/settings/load-appearance-preferences";
 import { createClient } from "@/lib/supabase/server";
 import "./globals.css";
+
+/** Hex approximation of `--paper` for mobile browser chrome and overscroll. */
+const BROWSER_THEME_COLOR = "#f9fafb";
 
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
+  weight: ["400", "500", "600"],
   display: "swap",
 });
 
@@ -35,7 +39,10 @@ function getMetadataBase() {
 export const metadata: Metadata = {
   metadataBase: getMetadataBase(),
   applicationName: "Pathway",
-  title: "Pathway",
+  title: {
+    default: "Pathway",
+    template: "%s · Pathway",
+  },
   description: "Internship application tracker.",
   icons: {
     icon: [
@@ -66,45 +73,69 @@ export const metadata: Metadata = {
   },
 };
 
-async function getInitialAccentColor(): Promise<AccentColor> {
+async function getSessionUserEmail(): Promise<string | null> {
   try {
-    // Fast path: skip the cross-region Supabase round-trip for anonymous
-    // requests. No auth cookie -> definitely no user -> midnight.
     const cookieStore = await cookies();
     const hasAuthCookie = cookieStore
       .getAll()
       .some((c) => c.name.startsWith("sb-") && c.name.includes("auth-token"));
-    if (!hasAuthCookie) return DEFAULT_ACCENT_COLOR;
+    if (!hasAuthCookie) return null;
 
     const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return DEFAULT_ACCENT_COLOR;
+    return user?.email ?? null;
+  } catch {
+    return null;
+  }
+}
 
-    const { data, error } = await supabase
-      .from("user_preferences")
-      .select("accent_color")
-      .maybeSingle<{ accent_color?: string | null }>();
-    if (error || !data) return DEFAULT_ACCENT_COLOR;
-    return resolveAccentColor(data.accent_color);
+async function getInitialAccentColor(): Promise<AccentColor> {
+  try {
+    const cookieStore = await cookies();
+    const hasAuthCookie = cookieStore
+      .getAll()
+      .some((c) => c.name.startsWith("sb-") && c.name.includes("auth-token"));
+    if (!hasAuthCookie) {
+      return DEFAULT_ACCENT_COLOR;
+    }
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return DEFAULT_ACCENT_COLOR;
+    }
+
+    const appearance = await loadAppearancePreferences(supabase, user.id);
+    return appearance.accentColor;
   } catch {
     return DEFAULT_ACCENT_COLOR;
   }
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const accent = await getInitialAccentColor();
+  const [accentColor, userEmail] = await Promise.all([
+    getInitialAccentColor(),
+    getSessionUserEmail(),
+  ]);
+
   return (
     <html
       lang="en"
-      data-accent={accent}
+      data-accent={accentColor}
       data-scroll-behavior="smooth"
       className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
-        <AppChrome />
-        {children}
+      <head>
+        <meta name="theme-color" content={BROWSER_THEME_COLOR} />
+      </head>
+      <body className="flex min-h-full flex-col overscroll-none">
+        <Providers>
+          <AppChrome userEmail={userEmail}>{children}</AppChrome>
+        </Providers>
       </body>
     </html>
   );

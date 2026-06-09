@@ -22,14 +22,13 @@ export function logoDomainFromWebsite(websiteUrl: string | null | undefined): st
 
 export function logoCacheKey(company: string, domain?: string | null): string {
   const host = domain?.trim().toLowerCase();
-  if (host) return `domain:${host}`;
-  return `name:${normalizeLogoCompany(company)}`;
+  return host ? `domain:${host}` : `name:${normalizeLogoCompany(company)}`;
 }
 
 export function logoUrl(company: string, domain?: string | null): string {
   const params = new URLSearchParams({
     company: company.trim(),
-    v: "7",
+    v: "8",
   });
   const host = domain?.trim().toLowerCase().replace(/^www\./, "");
   if (host && host.includes(".")) {

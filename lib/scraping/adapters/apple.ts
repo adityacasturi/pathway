@@ -1,10 +1,9 @@
-import { atsPublishDate } from "../posted-date.ts";
 import { slugifyPostingTitle } from "../html-utils.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchWithTimeout, isHttpUrl, safeToIsoDate } from "./shared.ts";
+import { fetchWithTimeout, isHttpUrl } from "./shared.ts";
 
 const APPLE_PAGE_SIZE = 20;
 const APPLE_MAX_PAGES = 40;
@@ -237,7 +236,6 @@ export function parseAppleJobs(
         companySlug: source.companySlug,
         classification,
         description: job.jobSummary?.trim() || "",
-        dates: atsPublishDate(safeToIsoDate(job.postDateInGMT ?? job.postingDate)),
       }),
     );
   }

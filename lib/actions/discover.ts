@@ -15,6 +15,10 @@ const FAVORITE_RATE_LIMIT_WINDOW_MS = 60_000;
 const POSTINGS_RATE_LIMIT_REQUESTS = 240;
 const POSTINGS_RATE_LIMIT_WINDOW_MS = 60_000;
 
+function isUuid(value: unknown): value is string {
+  return typeof value === "string" && UUID_RE.test(value);
+}
+
 async function limitDiscoverFavoriteWrite() {
   return limitServerActionByIp(
     "discover-company-favorites:write",
@@ -26,7 +30,7 @@ async function limitDiscoverFavoriteWrite() {
 export async function fetchDiscoverCompanyPostings(
   companyId: string,
 ): Promise<{ postings: ScrapedPostingRow[] } | { error: string }> {
-  if (!UUID_RE.test(companyId)) {
+  if (!isUuid(companyId)) {
     return { error: "Invalid company." };
   }
 
@@ -65,7 +69,7 @@ export async function starDiscoverCompany(
     };
   }
 
-  if (!UUID_RE.test(companyId)) {
+  if (!isUuid(companyId)) {
     return { error: "Invalid company." };
   }
 
@@ -101,7 +105,7 @@ export async function unstarDiscoverCompany(
     };
   }
 
-  if (!UUID_RE.test(companyId)) {
+  if (!isUuid(companyId)) {
     return { error: "Invalid company." };
   }
 

@@ -1,14 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { countriesFromLocations } from "../feed/us-locations.ts";
-import { normalizeScrapedLocationField } from "./location.ts";
 import {
-  coerceScrapedRoleDates,
-  countRoleDateStats,
-  mergeScrapedPostingDates,
-  type PostedDateConfidence,
-  type PostedDateSource,
-  type StoredPostingDateState,
-} from "./posted-date.ts";
+  canonicalPlacesToField,
+  canonicalPlacesToJson,
+  countriesFromPlaces,
+  resolveScrapedLocations,
+} from "../geo/server.ts";
+import type { LocationInput, ResolvedLocations } from "../geo/server.ts";
+import {
+  PRODUCT_SCOPE_COUNTRY_CODES,
+  US_ONLY_INTERNSHIPS,
+} from "../config/product-scope.ts";
+import { splitScrapedLocationInput } from "./location.ts";
 import {
   isSourceType,
   type CompanySourceConfig,
@@ -22,6 +24,7 @@ import {
 const KEPT_PREVIEW_LIMIT = 10;
 /** PostgREST upsert / `in` filter chunk size for large boards. */
 const UPSERT_CHUNK_SIZE = 200;
+const PRODUCT_SCOPE_COUNTRIES = new Set<string>(PRODUCT_SCOPE_COUNTRY_CODES);
 
 interface RunScrapeAdapterOptions {
   dryRun?: boolean;
@@ -48,18 +51,20 @@ export async function runScrapeAdapter(
   const slug = adapter.source.companySlug;
   try {
     const parsed = await adapter.fetchRoles();
-    const dateStats = countRoleDateStats(
-      parsed.roles.map((role) => ({
-        dates: coerceScrapedRoleDates(role.dates, role.datePosted),
-      })),
+    const stats = parsed.stats;
+    const previewRows = buildScrapedPostingUpsertRows(
+      parsed.roles,
+      adapter.source.companyId,
+      adapter.source.companySlug,
+      new Date().toISOString(),
+      new Map(),
     );
-    const stats = { ...parsed.stats, ...dateStats };
-    const keptPreview = buildKeptPreview(parsed.roles);
+    const keptPreview = buildKeptPreview(previewRows);
     if (options.dryRun) {
       return {
         slug,
         status: "ok",
-        openCount: parsed.stats.kept,
+        openCount: previewRows.length,
         stats,
         keptPreview,
       };
@@ -101,19 +106,27 @@ function isMissingCountriesColumnError(error: unknown): boolean {
   );
 }
 
-function isMissingDateProvenanceColumnError(error: unknown): boolean {
+function isMissingLocationConfidenceColumnError(error: unknown): boolean {
   if (!error || typeof error !== "object") {
     return false;
   }
   const record = error as { code?: unknown; message?: unknown };
-  if (record.code !== "PGRST204" || typeof record.message !== "string") {
+  return (
+    record.code === "PGRST204" &&
+    typeof record.message === "string" &&
+    record.message.includes("'location_confidence'")
+  );
+}
+
+function isMissingLocationPlacesColumnError(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
     return false;
   }
+  const record = error as { code?: unknown; message?: unknown };
   return (
-    record.message.includes("'date_posted_source'") ||
-    record.message.includes("'date_modified'") ||
-    record.message.includes("'date_posted_confidence'") ||
-    record.message.includes("'date_posted_raw'")
+    record.code === "PGRST204" &&
+    typeof record.message === "string" &&
+    record.message.includes("'location_places'")
   );
 }
 
@@ -124,12 +137,9 @@ interface ScrapedPostingUpsertRow {
   posting_url: string;
   season: ScrapedSeason;
   location: string | null;
+  location_places: ReturnType<typeof canonicalPlacesToJson>;
+  location_confidence: number | null;
   countries: string[];
-  date_posted: string | null;
-  date_modified: string | null;
-  date_posted_source: PostedDateSource;
-  date_posted_confidence: PostedDateConfidence;
-  date_posted_raw: string | null;
   status: "open";
   first_seen_at: string;
   last_seen_at: string;
@@ -137,7 +147,6 @@ interface ScrapedPostingUpsertRow {
 
 interface ExistingPostingState {
   first_seen_at: string;
-  dates: StoredPostingDateState;
 }
 
 async function upsertScrapedRoles(
@@ -147,10 +156,12 @@ async function upsertScrapedRoles(
 ): Promise<number> {
   const now = new Date().toISOString();
   const companyId = adapter.source.companyId;
-  const seenUrls = new Set(roles.map((role) => role.postingUrl));
 
   if (roles.length > 0) {
-    const existingByUrl = await loadExistingPostingState(supabase, [...seenUrls]);
+    const existingByUrl = await loadExistingPostingState(
+      supabase,
+      roles.map((role) => role.postingUrl),
+    );
     const rows = buildScrapedPostingUpsertRows(
       roles,
       companyId,
@@ -158,6 +169,7 @@ async function upsertScrapedRoles(
       now,
       existingByUrl,
     );
+    const seenUrls = new Set(rows.map((row) => row.posting_url));
 
     for (const chunk of chunkArray(rows, UPSERT_CHUNK_SIZE)) {
       const { error } = await supabase.from("scraped_postings").upsert(chunk, {
@@ -166,23 +178,16 @@ async function upsertScrapedRoles(
       if (!error) {
         continue;
       }
-      if (isMissingCountriesColumnError(error)) {
-        const legacyRows = chunk.map(({ countries: _countries, ...row }) => row);
-        const retry = await supabase.from("scraped_postings").upsert(legacyRows, {
-          onConflict: "posting_url",
-        });
-        if (retry.error) {
-          throw retry.error;
-        }
-        continue;
-      }
-      if (isMissingDateProvenanceColumnError(error)) {
+      if (
+        isMissingCountriesColumnError(error) ||
+        isMissingLocationPlacesColumnError(error) ||
+        isMissingLocationConfidenceColumnError(error)
+      ) {
         const legacyRows = chunk.map(
           ({
-            date_modified: _dm,
-            date_posted_source: _dps,
-            date_posted_confidence: _dpc,
-            date_posted_raw: _dpr,
+            countries: _countries,
+            location_places: _places,
+            location_confidence: _confidence,
             ...row
           }) => row,
         );
@@ -196,11 +201,13 @@ async function upsertScrapedRoles(
       }
       throw error;
     }
+
+    await closeStaleScrapedPostings(supabase, companyId, seenUrls, now);
+    return seenUrls.size;
   }
 
-  await closeStaleScrapedPostings(supabase, companyId, seenUrls, now);
-
-  return seenUrls.size;
+  await closeStaleScrapedPostings(supabase, companyId, new Set(), now);
+  return 0;
 }
 
 export function buildScrapedPostingUpsertRows(
@@ -210,38 +217,74 @@ export function buildScrapedPostingUpsertRows(
   now: string,
   existingByUrl: ReadonlyMap<string, ExistingPostingState>,
 ): ScrapedPostingUpsertRow[] {
-  const nowDate = new Date(now);
+  const rows: ScrapedPostingUpsertRow[] = [];
 
-  return roles.map((role) => {
-    const location = normalizeScrapedLocationField(role.location, {
+  for (const role of roles) {
+    const context = {
       companyName: role.companyName,
       companySlug,
-    });
-    const countries = countriesFromLocations(location ? [location] : []);
+    };
+    const inputs: LocationInput[] = [
+      ...(role.structuredLocations ?? []),
+      ...(role.location ? splitScrapedLocationInput(role.location) : []),
+    ];
+    const resolved =
+      inputs.length > 0
+        ? resolveScrapedLocations(inputs, context)
+        : { places: [], minConfidence: 0, display: null, countries: [] as string[] };
+    const scoped = filterResolvedLocationsToProductScope(resolved);
+    if (!scoped) {
+      continue;
+    }
+
+    const location = scoped.display;
+    const location_places = canonicalPlacesToJson(scoped.places);
+    const countries = scoped.countries;
+    const location_confidence =
+      scoped.places.length > 0 ? scoped.minConfidence : role.locationConfidence ?? null;
 
     const existing = existingByUrl.get(role.postingUrl);
     const firstSeenAt = existing?.first_seen_at ?? now;
-    const incomingDates = coerceScrapedRoleDates(role.dates, role.datePosted);
-    const merged = mergeScrapedPostingDates(existing?.dates ?? null, incomingDates, firstSeenAt, nowDate);
 
-    return {
+    rows.push({
       company_id: companyId,
       company_name: role.companyName,
       role_name: role.roleName,
       posting_url: role.postingUrl,
       season: role.season,
       location,
+      location_places,
+      location_confidence,
       countries,
-      date_posted: merged.date_posted,
-      date_modified: merged.date_modified,
-      date_posted_source: merged.date_posted_source,
-      date_posted_confidence: merged.date_posted_confidence,
-      date_posted_raw: merged.date_posted_raw,
       status: "open" as const,
       first_seen_at: firstSeenAt,
       last_seen_at: now,
-    };
-  });
+    });
+  }
+
+  return rows;
+}
+
+function filterResolvedLocationsToProductScope(
+  resolved: ResolvedLocations,
+): ResolvedLocations | null {
+  if (!US_ONLY_INTERNSHIPS) {
+    return resolved;
+  }
+
+  const places = resolved.places.filter((place) =>
+    PRODUCT_SCOPE_COUNTRIES.has(place.countryCode.toUpperCase()),
+  );
+  if (places.length === 0) {
+    return null;
+  }
+
+  return {
+    places,
+    minConfidence: resolved.minConfidence,
+    display: canonicalPlacesToField(places),
+    countries: countriesFromPlaces(places),
+  };
 }
 
 async function loadExistingPostingState(
@@ -253,37 +296,10 @@ async function loadExistingPostingState(
   for (const chunk of chunkArray(postingUrls, UPSERT_CHUNK_SIZE)) {
     const { data, error } = await supabase
       .from("scraped_postings")
-      .select(
-        "posting_url, first_seen_at, date_posted, date_modified, date_posted_source, date_posted_confidence, date_posted_raw",
-      )
+      .select("posting_url, first_seen_at")
       .in("posting_url", chunk);
 
     if (error) {
-      if (isMissingDateProvenanceColumnError(error)) {
-        const { data: legacyData, error: legacyError } = await supabase
-          .from("scraped_postings")
-          .select("posting_url, first_seen_at, date_posted")
-          .in("posting_url", chunk);
-        if (legacyError) {
-          throw legacyError;
-        }
-        for (const row of legacyData ?? []) {
-          if (!row.posting_url || !row.first_seen_at) {
-            continue;
-          }
-          byUrl.set(row.posting_url, {
-            first_seen_at: row.first_seen_at,
-            dates: {
-              date_posted: row.date_posted,
-              date_modified: null,
-              date_posted_source: "unknown",
-              date_posted_confidence: "unknown",
-              date_posted_raw: null,
-            },
-          });
-        }
-        continue;
-      }
       throw error;
     }
 
@@ -293,13 +309,6 @@ async function loadExistingPostingState(
       }
       byUrl.set(row.posting_url, {
         first_seen_at: row.first_seen_at,
-        dates: {
-          date_posted: row.date_posted,
-          date_modified: row.date_modified ?? null,
-          date_posted_source: (row.date_posted_source ?? "unknown") as PostedDateSource,
-          date_posted_confidence: (row.date_posted_confidence ?? "unknown") as PostedDateConfidence,
-          date_posted_raw: row.date_posted_raw ?? null,
-        },
       });
     }
   }
@@ -312,7 +321,7 @@ async function closeStaleScrapedPostings(
   companyId: string,
   seenUrls: ReadonlySet<string>,
   now: string,
-): Promise<void> {
+): Promise<string[]> {
   const { data: openRows, error: openError } = await supabase
     .from("scraped_postings")
     .select("id, posting_url")
@@ -325,8 +334,10 @@ async function closeStaleScrapedPostings(
 
   const toClose = (openRows ?? []).filter((row) => !seenUrls.has(row.posting_url));
   if (toClose.length === 0) {
-    return;
+    return [];
   }
+
+  const closedIds: string[] = [];
 
   for (const idChunk of chunkArray(
     toClose.map((row) => row.id),
@@ -339,7 +350,10 @@ async function closeStaleScrapedPostings(
     if (closeError) {
       throw closeError;
     }
+    closedIds.push(...idChunk);
   }
+
+  return closedIds;
 }
 
 function chunkArray<T>(items: readonly T[], size: number): T[][] {
@@ -407,14 +421,14 @@ export function mapCompanySourceRow(row: CompanySourceRow): CompanySourceConfig 
   };
 }
 
-function buildKeptPreview(roles: ScrapedRole[]): KeptRolePreview[] | undefined {
-  if (roles.length === 0) {
+function buildKeptPreview(rows: ScrapedPostingUpsertRow[]): KeptRolePreview[] | undefined {
+  if (rows.length === 0) {
     return undefined;
   }
-  return roles.slice(0, KEPT_PREVIEW_LIMIT).map((role) => ({
-    title: role.roleName,
-    season: role.season,
-    location: role.location,
+  return rows.slice(0, KEPT_PREVIEW_LIMIT).map((row) => ({
+    title: row.role_name,
+    season: row.season,
+    location: row.location,
   }));
 }
 

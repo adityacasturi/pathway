@@ -1,14 +1,14 @@
 import { redirect } from "next/navigation";
-import {
-  AlertsPage,
-  type CompanyAlertView,
-  type SectorAlertView,
-} from "@/components/alerts-page";
+import { pageMetadata } from "@/lib/metadata/page";
+
+export const metadata = pageMetadata("Alerts", "Email alerts for new roles at companies and industry bundles you follow.");
+import { AlertsPage } from "@/components/alerts/alerts-page";
+import type { AlertSubscriptionView } from "@/components/alerts/types";
 import { loadCuratedAlertSectors } from "@/lib/alerts/load-curated-sectors";
 import { resolveSectorCompanies, type SectorCompanyDisplay } from "@/lib/alerts/curated-sectors";
+import { alertFiltersFromPreferenceRow, parseFilterOverrideJson } from "@/lib/alerts/filters";
 import { loadDiscoverCompanies } from "@/lib/discover/companies";
 import { loadDiscoverIndustryCatalog } from "@/lib/discover/catalog";
-import { isAlertsLaunched } from "@/lib/config/alerts-launch";
 import { assertSupabaseOk } from "@/lib/supabase/errors";
 import { createClient } from "@/lib/supabase/server";
 
@@ -18,23 +18,29 @@ interface SubscriptionRow {
   id: string;
   target_type: "company" | "sector";
   target_id: string;
+  filter_override: Record<string, unknown> | null;
+  paused: boolean;
 }
 
 export default async function AlertsRoute() {
   const supabase = await createClient();
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) redirect("/login?next=/alerts");
-
-  const alertsLaunched = isAlertsLaunched();
+  const userId = userData.user.id;
 
   const industryCatalog = await loadDiscoverIndustryCatalog(supabase);
   const [companies, curatedAlertSectors, preferencesRes, subscriptionsRes] = await Promise.all([
     loadDiscoverCompanies(supabase, industryCatalog),
     loadCuratedAlertSectors(supabase),
-    supabase.from("alert_preferences").select("emails_enabled, digest_enabled").maybeSingle(),
+    supabase
+      .from("alert_preferences")
+      .select("emails_enabled, digest_enabled, alert_seasons, alert_countries, alert_include_remote")
+      .eq("user_id", userId)
+      .maybeSingle(),
     supabase
       .from("alert_subscriptions")
-      .select("id, target_type, target_id")
+      .select("id, target_type, target_id, filter_override, paused")
+      .eq("user_id", userId)
       .in("target_type", ["company", "sector"])
       .eq("cadence", "instant")
       .order("created_at", { ascending: true }),
@@ -42,6 +48,8 @@ export default async function AlertsRoute() {
 
   assertSupabaseOk(preferencesRes.error, "Load alert preferences");
   assertSupabaseOk(subscriptionsRes.error, "Load alert subscriptions");
+
+  const globalFilters = alertFiltersFromPreferenceRow(preferencesRes.data);
 
   const companyNameById = new Map(companies.map((company) => [company.id, company.name]));
   const companyWebsiteById = new Map(companies.map((company) => [company.id, company.websiteUrl]));
@@ -53,21 +61,51 @@ export default async function AlertsRoute() {
     ]),
   );
 
+  const sectorBySlug = new Map(
+    curatedAlertSectors.map((sector) => [
+      sector.slug,
+      {
+        label: sector.label,
+        companies: resolveSectorCompanies(sector, companiesBySlug),
+      },
+    ]),
+  );
+
   const rows = (subscriptionsRes.data ?? []) as SubscriptionRow[];
-  const sectorAlerts: SectorAlertView[] = [];
-  const companyAlerts: CompanyAlertView[] = [];
+  const subscriptions: AlertSubscriptionView[] = [];
 
   for (const row of rows) {
+    const filterOverride = parseFilterOverrideJson(
+      row.filter_override as Parameters<typeof parseFilterOverrideJson>[0],
+    );
+
     if (row.target_type === "sector") {
-      sectorAlerts.push({ id: row.id, slug: row.target_id });
+      const sector = sectorBySlug.get(row.target_id);
+      subscriptions.push({
+        id: row.id,
+        type: "sector",
+        label: sector?.label ?? row.target_id,
+        companyId: null,
+        companySlug: null,
+        sectorSlug: row.target_id,
+        websiteUrl: null,
+        sectorCompanies: sector?.companies ?? [],
+        filterOverride,
+        paused: row.paused,
+      });
       continue;
     }
-    companyAlerts.push({
+
+    subscriptions.push({
       id: row.id,
+      type: "company",
+      label: companyNameById.get(row.target_id) ?? "Company",
       companyId: row.target_id,
       companySlug: companySlugById.get(row.target_id) ?? null,
-      name: companyNameById.get(row.target_id) ?? "Company",
+      sectorSlug: null,
       websiteUrl: companyWebsiteById.get(row.target_id) ?? null,
+      filterOverride,
+      paused: row.paused,
     });
   }
 
@@ -78,16 +116,10 @@ export default async function AlertsRoute() {
     companies: resolveSectorCompanies(sector, companiesBySlug),
   }));
 
-  const subscriptionKey = rows.map((row) => row.id).join("|") || "empty";
-
   return (
     <AlertsPage
-      key={subscriptionKey}
-      userEmail={userData.user.email ?? ""}
-      emailsEnabled={preferencesRes.data?.emails_enabled ?? false}
-      digestEnabled={preferencesRes.data?.digest_enabled ?? false}
-      sectorAlerts={sectorAlerts}
-      companyAlerts={companyAlerts}
+      globalFilters={globalFilters}
+      subscriptions={subscriptions}
       curatedSectors={curatedSectors}
       companies={companies.map((company) => ({
         id: company.id,
@@ -96,7 +128,6 @@ export default async function AlertsRoute() {
         websiteUrl: company.websiteUrl,
         industryLabel: company.industryLabel,
       }))}
-      previewMode={!alertsLaunched}
     />
   );
 }

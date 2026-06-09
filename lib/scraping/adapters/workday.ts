@@ -1,9 +1,9 @@
 import { classifyForSource } from "../adapter-parse.ts";
+import { collectWorkdayStructuredPlaces } from "../structured-place.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { relativeParseDate } from "../posted-date.ts";
-import { fetchJsonWithTimeout, isHttpUrl, safeToIsoDate } from "./shared.ts";
+import { fetchJsonWithTimeout, isHttpUrl } from "./shared.ts";
 import { INTERNSHIP_LIST_TITLE_PATTERN } from "../list-filters.ts";
 import { mapWithConcurrency } from "../scrape-concurrency.ts";
 
@@ -11,8 +11,8 @@ const WORKDAY_PAGE_SIZE = 20;
 const WORKDAY_MAX_PAGES = 40;
 const WORKDAY_SEARCH_TEXT = "intern";
 const WORKDAY_DETAIL_CONCURRENCY = 6;
-/** When Workday only exposes "30+ Days Ago", bucket to this many days before reference for sorting. */
-const WORKDAY_STALE_POSTING_DAYS = 45;
+const WORKDAY_MAINTENANCE_REDIRECT_PATTERN =
+  /(?:community\.workday\.com\/maintenance|\/wday\/drs\/outage)/i;
 
 /** List titles must look internship-related before we fetch full descriptions. */
 const MYWORKDAY_HOST = /^([a-z0-9-]+)\.(wd\d+)\.myworkdayjobs\.com$/i;
@@ -34,7 +34,6 @@ export interface WorkdayJobPostingSummary {
   title?: string;
   externalPath?: string;
   locationsText?: string;
-  postedOn?: string;
   bulletFields?: string[];
 }
 
@@ -61,7 +60,6 @@ export interface WorkdayJobPostingDetail {
   jobRequisitionLocation?: WorkdayLocationRef;
   timeType?: string;
   posted?: boolean;
-  postedOn?: string;
 }
 
 interface WorkdayJobDetailResponse {
@@ -173,54 +171,11 @@ export function buildWorkdayDetailUrl(board: WorkdayBoardConfig, externalPath: s
   return `${board.cxsOrigin}/wday/cxs/${board.tenant}/${board.site}${normalizedPath}`;
 }
 
-export function parseWorkdayPostedOn(
-  value: string | null | undefined,
-  referenceDate: Date = new Date(),
-): string | null {
-  if (!value?.trim()) {
-    return null;
-  }
-
-  const normalized = value.trim();
-  let daysAgo: number | null = null;
-
-  if (/^posted\s+today$/i.test(normalized)) {
-    daysAgo = 0;
-  } else if (/^posted\s+yesterday$/i.test(normalized)) {
-    daysAgo = 1;
-  } else if (/^posted\s+30\+\s+days?\s+ago$/i.test(normalized)) {
-    daysAgo = WORKDAY_STALE_POSTING_DAYS;
-  } else {
-    const dayMatch = normalized.match(/^posted\s+(\d+)\s+days?\s+ago$/i);
-    if (dayMatch) {
-      daysAgo = Number.parseInt(dayMatch[1], 10);
-    } else {
-      const weekMatch = normalized.match(/^posted\s+(\d+)\s+weeks?\s+ago$/i);
-      if (weekMatch) {
-        daysAgo = Number.parseInt(weekMatch[1], 10) * 7;
-      }
-    }
-  }
-
-  if (daysAgo === null || !Number.isFinite(daysAgo) || daysAgo < 0) {
-    return null;
-  }
-
-  const posted = startOfUtcDay(referenceDate);
-  posted.setUTCDate(posted.getUTCDate() - daysAgo);
-  return safeToIsoDate(posted);
-}
-
-function startOfUtcDay(date: Date): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-}
-
 export function parseWorkdayPostings(
   postings: WorkdayEnrichedPosting[],
   source: CompanySourceConfig,
   board: WorkdayBoardConfig,
   fetchedTotal: number,
-  referenceDate: Date = new Date(),
 ): RoleParseResult {
   const roles: ReturnType<typeof buildScrapedRole>[] = [];
   const rejected: RoleParseResult["stats"]["rejected"] = [];
@@ -231,13 +186,13 @@ export function parseWorkdayPostings(
     const roleName = (detail?.title ?? summary.title)?.trim() || "";
     const postingUrl = buildWorkdayPostingUrl(board, summary.externalPath ?? "");
     const description = detail?.jobDescription ?? "";
-    const locations = collectWorkdayLocationSegments(detail, summary);
+    const structuredLocations = collectWorkdayStructuredPlaces(detail, summary);
 
     const classification = classifyForSource(source, {
       title: roleName,
       description,
       commitment: detail?.timeType ?? null,
-      locations,
+      structuredLocations,
     });
 
     if (!classification.include) {
@@ -252,8 +207,6 @@ export function parseWorkdayPostings(
       continue;
     }
 
-    const postedOnRaw = detail?.postedOn ?? summary.postedOn ?? null;
-    const published = parseWorkdayPostedOn(postedOnRaw, referenceDate);
     roles.push(
       buildScrapedRole({
         postingUrl,
@@ -262,7 +215,6 @@ export function parseWorkdayPostings(
         companySlug: source.companySlug,
         classification,
         description,
-        dates: relativeParseDate(published, postedOnRaw),
         seasonHints: { commitment: detail?.timeType ?? null },
       }),
     );
@@ -325,26 +277,75 @@ function workdayCxsHeaders(board: WorkdayBoardConfig): HeadersInit {
   };
 }
 
+export function workdayCxsRedirectError(
+  status: number,
+  location: string | null,
+  url: string,
+): Error | null {
+  if (status < 300 || status >= 400) {
+    return null;
+  }
+
+  if (location && WORKDAY_MAINTENANCE_REDIRECT_PATTERN.test(location)) {
+    return new Error(
+      `Workday tenant is in maintenance (redirected to ${location}); retry after the maintenance window`,
+    );
+  }
+
+  return new Error(`Workday redirected (${status}) to ${location ?? "unknown"} for ${url}`);
+}
+
+export function parseWorkdayCxsJsonText(text: string, url: string): unknown {
+  const trimmed = text.trimStart();
+  if (trimmed.startsWith("<")) {
+    throw new Error(`Workday returned HTML instead of JSON for ${url}`);
+  }
+
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    throw new Error(`Workday response was not valid JSON for ${url}`);
+  }
+}
+
+async function fetchWorkdayCxs(url: string, init: RequestInit): Promise<Response> {
+  const res = await fetchJsonWithTimeout(url, {
+    ...init,
+    redirect: "manual",
+  });
+
+  const redirectError = workdayCxsRedirectError(res.status, res.headers.get("location"), url);
+  if (redirectError) {
+    throw redirectError;
+  }
+
+  return res;
+}
+
+async function readWorkdayCxsJson<T>(res: Response, url: string): Promise<T> {
+  if (!res.ok) {
+    throw new Error(`Workday returned ${res.status} for ${url}`);
+  }
+
+  const payload = parseWorkdayCxsJsonText(await res.text(), url);
+  if (!payload || typeof payload !== "object") {
+    throw new Error(`Workday response was not JSON for ${url}`);
+  }
+
+  return payload as T;
+}
+
 async function postWorkdayJobs(
   board: WorkdayBoardConfig,
   body: Record<string, unknown>,
 ): Promise<WorkdayJobsListResponse> {
-  const res = await fetchJsonWithTimeout(board.cxsJobsUrl, {
+  const res = await fetchWorkdayCxs(board.cxsJobsUrl, {
     method: "POST",
     headers: workdayCxsHeaders(board),
     body: JSON.stringify(body),
   });
 
-  if (!res.ok) {
-    throw new Error(`Workday returned ${res.status} for ${board.cxsJobsUrl}`);
-  }
-
-  const payload = (await res.json()) as unknown;
-  if (!payload || typeof payload !== "object") {
-    throw new Error(`Workday response was not JSON for ${board.cxsJobsUrl}`);
-  }
-
-  return payload as WorkdayJobsListResponse;
+  return readWorkdayCxsJson<WorkdayJobsListResponse>(res, board.cxsJobsUrl);
 }
 
 export async function enrichWorkdayPostings(
@@ -358,11 +359,8 @@ export async function enrichWorkdayPostings(
     }
 
     try {
-      const res = await fetchJsonWithTimeout(detailUrl);
-      if (!res.ok) {
-        return { summary, detail: null };
-      }
-      const payload = (await res.json()) as WorkdayJobDetailResponse;
+      const res = await fetchWorkdayCxs(detailUrl, { headers: workdayCxsHeaders(board) });
+      const payload = await readWorkdayCxsJson<WorkdayJobDetailResponse>(res, detailUrl);
       return { summary, detail: payload.jobPostingInfo ?? null };
     } catch {
       return { summary, detail: null };

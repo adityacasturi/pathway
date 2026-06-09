@@ -1,23 +1,27 @@
-import { Button as ButtonPrimitive } from "@base-ui/react/button"
+"use client"
+
+import * as React from "react"
+import { Button as HeroButton } from "@heroui/react"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "group/button box-border inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md border border-transparent bg-clip-padding text-sm font-medium leading-[1.2] tracking-normal whitespace-nowrap outline-none select-none transition-[background-color,border-color,color,box-shadow,opacity,transform] duration-200 ease-[var(--motion-ease-smooth)] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button box-border shrink-0 gap-1.5 rounded-lg border bg-clip-padding font-medium leading-[1.2] tracking-normal whitespace-nowrap outline-none select-none transition-[background-color,border-color,color,box-shadow,opacity] duration-150 ease-[var(--motion-ease-smooth)] disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        default:
+          "border-transparent bg-primary text-primary-foreground hover:brightness-105",
         outline:
-          "border-[color:var(--rule-strong)] bg-card hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
+          "border-border bg-[color-mix(in_oklab,var(--foreground)_4%,transparent)] text-foreground hover:bg-[color-mix(in_oklab,var(--foreground)_7%,transparent)] aria-expanded:bg-[color-mix(in_oklab,var(--foreground)_7%,transparent)]",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80 aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80 aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
         ghost:
-          "shadow-none hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
+          "border-transparent bg-transparent shadow-none hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
         destructive:
-          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20",
-        link: "shadow-none text-primary underline-offset-4 hover:underline",
+          "border-transparent bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20",
+        link: "border-transparent bg-transparent px-0 shadow-none text-[var(--link)] underline-offset-4 hover:text-[var(--link-hover)] hover:underline",
       },
       size: {
         default:
@@ -38,19 +42,39 @@ const buttonVariants = cva(
       size: "default",
     },
   }
-)
+  )
 
 function Button({
   className,
   variant = "default",
   size = "default",
+  disabled,
   ...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+}: Omit<React.ComponentProps<typeof HeroButton>, "variant" | "size" | "isDisabled"> &
+  React.ButtonHTMLAttributes<HTMLButtonElement> &
+  VariantProps<typeof buttonVariants> & { disabled?: boolean }) {
+  const heroVariant =
+    variant === "default"
+      ? "primary"
+      : variant === "destructive"
+        ? "danger-soft"
+        : variant === "outline"
+          ? "outline"
+          : variant === "secondary"
+            ? "secondary"
+            : "ghost";
+  const heroSize = size === "lg" || size === "icon-lg" ? "lg" : size === "sm" || size === "xs" || size === "icon-sm" || size === "icon-xs" ? "sm" : "md";
+  const isIconOnly = typeof size === "string" && size.startsWith("icon");
+
   return (
-    <ButtonPrimitive
+    <HeroButton
       data-slot="button"
+      variant={heroVariant}
+      size={heroSize}
+      isIconOnly={isIconOnly}
+      isDisabled={disabled}
       className={cn(buttonVariants({ variant, size, className }))}
-      {...props}
+      {...(props as React.ComponentProps<typeof HeroButton>)}
     />
   )
 }

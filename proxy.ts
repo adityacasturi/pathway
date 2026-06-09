@@ -27,7 +27,6 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/brand/") ||
     pathname.startsWith("/school-logos/") ||
     pathname.startsWith("/company-logos/") ||
-    pathname.startsWith("/product-screenshots/") ||
     pathname === "/favicon.ico" ||
     pathname === "/icon.png" ||
     pathname === "/apple-icon.png";

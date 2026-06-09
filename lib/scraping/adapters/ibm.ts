@@ -1,12 +1,10 @@
-import { extractAvatureDetailDatePosted } from "../avature-dates.ts";
 import { stripHtml } from "../html-utils.ts";
-import { atsPublishDate } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl, resolveBoardToken, safeToIsoDate } from "./shared.ts";
+import { fetchJsonWithTimeout, isHttpUrl, resolveBoardToken } from "./shared.ts";
 
 /**
  * IBM careers run on Avature (ibmglobal.avature.net / careers.ibm.com).
@@ -23,7 +21,7 @@ const IBM_PAGE_SIZE = 12;
 const IBM_MAX_PAGES = 15;
 const IBM_DETAIL_CONCURRENCY = 6;
 
-/** List titles that may be internships before we fetch JobDetail for publish dates. */
+/** List titles that may be internships before we fetch JobDetail for descriptions. */
 const INTERNSHIP_LIST_TITLE_PATTERN =
   /\bintern(?:ship|ships)?\b|\bco-?op\b|\bfellowship\b|\buniversity\b|\bapprentice\b/i;
 
@@ -54,7 +52,6 @@ export interface IbmListing {
   department: string | null;
   employmentType: string | null;
   description?: string | null;
-  datePosted?: string | null;
 }
 
 export interface IbmSession {
@@ -166,7 +163,6 @@ export function parseIbmSearchJobsHtml(html: string, board: IbmBoardConfig): Ibm
 
 export function parseIbmJobDetailFields(html: string): {
   description: string;
-  datePosted: string | null;
 } {
   const descriptionBlock =
     html.match(/<div id="job-description-wrapper"[^>]*>([\s\S]*?)<\/div>\s*<div id="job-team"/i)?.[1] ??
@@ -175,7 +171,6 @@ export function parseIbmJobDetailFields(html: string): {
 
   return {
     description,
-    datePosted: extractAvatureDetailDatePosted(html),
   };
 }
 
@@ -221,7 +216,6 @@ export function parseIbmJobs(
       continue;
     }
 
-
     roles.push(
       buildScrapedRole({
         postingUrl,
@@ -230,7 +224,6 @@ export function parseIbmJobs(
         companySlug: source.companySlug,
         classification,
         description: buildIbmClassificationDescription(listing, listing.description),
-        dates: atsPublishDate(safeToIsoDate(listing.datePosted)),
       }),
     );
   }
@@ -314,7 +307,7 @@ async function enrichIbmListings(
         const html = await fetchIbmHtml(current.postingUrl, session);
         details.set(current.postingUrl, parseIbmJobDetailFields(html));
       } catch {
-        details.set(current.postingUrl, { description: "", datePosted: null });
+        details.set(current.postingUrl, { description: "" });
       }
     }
   }
@@ -331,7 +324,6 @@ async function enrichIbmListings(
     return {
       ...listing,
       description: detail.description || listing.description,
-      datePosted: detail.datePosted ?? listing.datePosted,
     };
   });
 }

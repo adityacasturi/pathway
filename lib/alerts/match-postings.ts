@@ -1,4 +1,10 @@
 import { isCompanyInCuratedSector } from "@/lib/alerts/curated-sectors";
+import {
+  DEFAULT_ALERT_FILTERS,
+  mergeAlertFilters,
+  postingMatchesAlertFilters,
+  type AlertFilters,
+} from "@/lib/alerts/filters";
 import type { AlertCadence, AlertChannel } from "@/lib/config/alerts";
 import type { AlertMatch, AlertPostingCandidate, AlertSubscription } from "@/lib/alerts/types";
 
@@ -20,6 +26,7 @@ export function matchPostingsToUsers(
     channel: AlertChannel;
     /** Defaults to `[channel]`. Digest uses instant follows with digest delivery. */
     subscriptionCadences?: AlertCadence[];
+    globalFiltersByUserId: Map<string, AlertFilters>;
   },
 ): AlertMatch[] {
   const matches: AlertMatch[] = [];
@@ -28,6 +35,7 @@ export function matchPostingsToUsers(
 
   for (const posting of eligible) {
     for (const sub of subscriptions) {
+      if (sub.paused) continue;
       if (!subscriptionCadences.includes(sub.cadence)) continue;
       if (!options.enabledUserIds.has(sub.userId)) continue;
 
@@ -36,6 +44,13 @@ export function matchPostingsToUsers(
         (sub.targetType === "sector" &&
           isCompanyInCuratedSector(sub.targetId, posting.companySlug, sectorMembers));
       if (!matched) continue;
+
+      const globalFilters =
+        options.globalFiltersByUserId.get(sub.userId) ?? DEFAULT_ALERT_FILTERS;
+      const effectiveFilters = mergeAlertFilters(globalFilters, sub.filterOverride);
+      if (!postingMatchesAlertFilters(posting, effectiveFilters)) {
+        continue;
+      }
 
       const key = buildSentKey(sub.userId, posting.postingId, options.channel);
       if (options.sentKeys.has(key)) continue;

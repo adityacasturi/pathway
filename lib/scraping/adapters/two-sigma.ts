@@ -1,11 +1,9 @@
-import { extractAvatureDetailDatePosted } from "../avature-dates.ts";
 import { decodeHtmlEntities, stripHtml } from "../html-utils.ts";
-import { atsPublishDate } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl, resolveBoardToken, safeToIsoDate } from "./shared.ts";
+import { fetchJsonWithTimeout, isHttpUrl, resolveBoardToken } from "./shared.ts";
 
 /**
  * Two Sigma careers run on Avature (careers.twosigma.com), not Greenhouse.
@@ -43,7 +41,6 @@ export interface TwoSigmaListing {
   function: string | null;
   experienceLevel: string | null;
   description?: string | null;
-  datePosted?: string | null;
 }
 
 export function createTwoSigmaAdapter(source: CompanySourceConfig): ScrapeAdapter {
@@ -148,7 +145,6 @@ export function parseTwoSigmaJobs(
       continue;
     }
 
-
     roles.push(
       buildScrapedRole({
         postingUrl,
@@ -157,7 +153,6 @@ export function parseTwoSigmaJobs(
         companySlug: source.companySlug,
         classification,
         description: buildTwoSigmaClassificationDescription(listing),
-        dates: atsPublishDate(safeToIsoDate(listing.datePosted)),
       }),
     );
   }
@@ -167,11 +162,9 @@ export function parseTwoSigmaJobs(
 
 export function parseTwoSigmaJobDetailFields(html: string): {
   description: string;
-  datePosted: string | null;
 } {
   return {
     description: extractTwoSigmaJobDescription(html),
-    datePosted: extractAvatureDetailDatePosted(html),
   };
 }
 
@@ -242,7 +235,7 @@ async function enrichTwoSigmaListings(listings: TwoSigmaListing[]): Promise<TwoS
         const html = await fetchTwoSigmaHtml(current.postingUrl);
         details.set(current.postingUrl, parseTwoSigmaJobDetailFields(html));
       } catch {
-        details.set(current.postingUrl, { description: "", datePosted: null });
+        details.set(current.postingUrl, { description: "" });
       }
     }
   }
@@ -259,7 +252,6 @@ async function enrichTwoSigmaListings(listings: TwoSigmaListing[]): Promise<TwoS
     return {
       ...listing,
       description: detail.description || listing.description,
-      datePosted: detail.datePosted ?? listing.datePosted,
     };
   });
 }

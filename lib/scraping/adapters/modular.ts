@@ -1,9 +1,8 @@
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
-import { atsPublishDate, unknownScrapedDates } from "../posted-date.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl, safeToIsoDate } from "./shared.ts";
+import { fetchJsonWithTimeout, isHttpUrl } from "./shared.ts";
 
 export const MODULAR_CAREERS_URL = "https://www.modular.com/company/careers";
 export const MODULAR_GEM_BOARD_TOKEN = "modular";
@@ -101,7 +100,6 @@ export function parseModularJobs(
       continue;
     }
 
-    const publishedAt = safeToIsoDate(job.first_published_at);
     roles.push(
       buildScrapedRole({
         postingUrl,
@@ -110,7 +108,6 @@ export function parseModularJobs(
         companySlug: source.companySlug,
         classification,
         description: job.content_plain?.trim() || "",
-        dates: publishedAt ? atsPublishDate(publishedAt) : unknownScrapedDates(),
       }),
     );
   }

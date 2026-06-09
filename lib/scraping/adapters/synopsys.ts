@@ -1,12 +1,10 @@
-import { extractJsonLdDatePosted } from "../avature-dates.ts";
 import { decodeHtmlEntities, stripHtml } from "../html-utils.ts";
-import { atsPublishDate } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl, resolveBoardToken, safeToIsoDate } from "./shared.ts";
+import { fetchJsonWithTimeout, isHttpUrl, resolveBoardToken } from "./shared.ts";
 
 /**
  * Synopsys careers run on Radancy TalentBrew (careers.synopsys.com, org 44408).
@@ -41,7 +39,6 @@ export interface SynopsysListing {
   location: string | null;
   category: string | null;
   description?: string | null;
-  datePosted?: string | null;
 }
 
 export function createSynopsysAdapter(source: CompanySourceConfig): ScrapeAdapter {
@@ -107,7 +104,6 @@ export function parseSynopsysJobDetailFields(html: string): {
   category: string | null;
   location: string | null;
   description: string;
-  datePosted: string | null;
 } {
   const title =
     html.match(/<h1 class="ajd_header__job-title">([^<]+)/i)?.[1]?.trim() ??
@@ -126,11 +122,6 @@ export function parseSynopsysJobDetailFields(html: string): {
     html.match(/<meta[^>]+name="gtm_tbcn_jobcategory"[^>]+content="([^"]+)"/i)?.[1]?.trim() ??
     null;
 
-  const datePosted =
-    extractJsonLdDatePosted(html) ??
-    html.match(/<span class="job-date job-info">\s*<b>Date [Pp]osted<\/b>\s*([^<]+)/i)?.[1]?.trim() ??
-    null;
-
   const descriptionBlock =
     html.match(/<div class="ats-description[^"]*">([\s\S]*?)<\/div>\s*<div class="qualifications"/i)?.[1] ??
     html.match(/<div class="ats-description[^"]*">([\s\S]*?)<\/div>\s*<\/section>/i)?.[1];
@@ -141,7 +132,6 @@ export function parseSynopsysJobDetailFields(html: string): {
     category,
     location,
     description,
-    datePosted,
   };
 }
 
@@ -178,7 +168,6 @@ export function parseSynopsysJobs(
       continue;
     }
 
-
     roles.push(
       buildScrapedRole({
         postingUrl,
@@ -187,7 +176,6 @@ export function parseSynopsysJobs(
         companySlug: source.companySlug,
         classification,
         description: buildSynopsysClassificationDescription(listing),
-        dates: atsPublishDate(safeToIsoDate(listing.datePosted)),
       }),
     );
   }
@@ -285,7 +273,6 @@ async function enrichSynopsysListings(
           category: null,
           location: null,
           description: "",
-          datePosted: null,
         });
       }
     }
@@ -306,7 +293,6 @@ async function enrichSynopsysListings(
       category: detail.category ?? listing.category,
       location: detail.location ?? listing.location,
       description: detail.description || listing.description,
-      datePosted: detail.datePosted ?? listing.datePosted,
     };
   });
 }

@@ -9,6 +9,11 @@ const PRIVATE_IPV4_RANGES = [
 
 function looksLikePrivateHost(hostname: string): boolean {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, "").replace(/\.$/, "");
+  const mappedIpv4 = ipv4FromMappedIpv6(host);
+  if (mappedIpv4) {
+    return PRIVATE_IPV4_RANGES.some((range) => range.test(mappedIpv4));
+  }
+
   if (
     host === "localhost" ||
     host.endsWith(".localhost") ||
@@ -21,6 +26,15 @@ function looksLikePrivateHost(hostname: string): boolean {
     return true;
   }
   return PRIVATE_IPV4_RANGES.some((range) => range.test(host));
+}
+
+function ipv4FromMappedIpv6(host: string): string | null {
+  const match = host.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i);
+  if (!match) return null;
+
+  const high = Number.parseInt(match[1]!, 16);
+  const low = Number.parseInt(match[2]!, 16);
+  return `${high >> 8}.${high & 255}.${low >> 8}.${low & 255}`;
 }
 
 /**

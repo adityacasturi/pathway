@@ -3,7 +3,6 @@ import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import { inferSeason } from "../season.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter, ScrapedSeason } from "../types.ts";
-import { greenhouseRoleDates } from "../posted-date.ts";
 import {
   fetchJsonWithTimeout,
   isHttpUrl,
@@ -132,7 +131,6 @@ export function parseJaneStreetJobs(
         companySlug: source.companySlug,
         classification,
         description: content,
-        dates: greenhouseRoleDates(job),
         season: inferJaneStreetSeason(roleName, employment, content),
         seasonHints: {
           employmentType: employment.employmentType,

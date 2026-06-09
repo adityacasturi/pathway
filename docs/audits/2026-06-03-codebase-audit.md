@@ -1,5 +1,7 @@
 # 2026-06-03 Codebase Audit
 
+> **Historical snapshot.** Findings below reflect the June 2026 hardening pass. For current deploy checks, use [production-runbook.md](../production-runbook.md). Product routes are now Home, Openings, Companies, Scout — not Live/Discover/Stats.
+
 Scope: alerts, auth/session boundaries, Supabase RLS/grants/RPCs, browser persistence, cron/deployment assumptions, and documentation drift.
 
 ## Fixed In This Pass
@@ -42,7 +44,7 @@ Scope: alerts, auth/session boundaries, Supabase RLS/grants/RPCs, browser persis
 ## Verification Run During Audit
 
 - Focused unit tests: `alert-match-postings.test.ts` and `legacy-view-storage.test.ts` passed.
-- Full e2e suite passed with 14 tests passing and 8 authenticated tests skipped because no `E2E_USER_EMAIL` / `E2E_USER_PASSWORD` values were present locally.
+- E2e at the time: 14 public tests; authenticated suite since removed (see [tests/README.md](../../tests/README.md)).
 - Supabase migration list confirmed latest hosted migrations through `harden_discover_industries_grants`.
 - Supabase integrity check passed after each migration (`violations = 0` on every row).
 - Supabase security and performance advisors were run after the final migration.

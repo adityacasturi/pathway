@@ -1,9 +1,8 @@
-import { atsPublishDate } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl, resolveBoardToken, safeToIsoDate } from "./shared.ts";
+import { fetchJsonWithTimeout, isHttpUrl, resolveBoardToken } from "./shared.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 
 const SMARTRECRUITERS_API_ORIGIN = "https://api.smartrecruiters.com";
@@ -243,7 +242,6 @@ export function parseSmartRecruitersJobs(
         companySlug: source.companySlug,
         classification,
         description: extractSmartRecruitersDescription(posting),
-        dates: atsPublishDate(safeToIsoDate(posting.releasedDate)),
       }),
     );
   }

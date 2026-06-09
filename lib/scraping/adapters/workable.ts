@@ -1,9 +1,8 @@
-import { atsPublishDate } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl, safeToIsoDate } from "./shared.ts";
+import { fetchJsonWithTimeout, isHttpUrl } from "./shared.ts";
 
 /** Public Workable job-board widget API (no auth). */
 export const WORKABLE_WIDGET_API_ORIGIN = "https://apply.workable.com";
@@ -159,7 +158,6 @@ export function parseWorkableJobs(jobs: WorkableWidgetJob[], source: CompanySour
         companySlug: source.companySlug,
         classification,
         description: descriptionParts.join("\n"),
-        dates: atsPublishDate(safeToIsoDate(job.published_on ?? job.created_at)),
       }),
     );
   }

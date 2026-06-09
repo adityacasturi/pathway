@@ -3,7 +3,6 @@ export const SOURCE_TYPES = [
   "ashby",
   "lever",
   "workday",
-  "nvidia",
   "microsoft",
   "google",
   "jane_street",
@@ -37,7 +36,6 @@ export const SOURCE_TYPES = [
   "ibm",
   "coinbase",
   "citigroup",
-  "rtx",
   "millennium",
   "lockheed_martin",
   "workable",
@@ -73,6 +71,7 @@ export const SOURCE_TYPES = [
   "synopsys",
   "x_corp",
   "pinpoint",
+  "rippling",
 ] as const;
 
 export type SourceType = (typeof SOURCE_TYPES)[number];
@@ -83,9 +82,7 @@ export function isSourceType(value: string): value is SourceType {
 
 export type ScrapedSeason = "Summer" | "Fall" | "Spring" | "Winter";
 
-export type { PostedDateConfidence, PostedDateSource, ScrapedRoleDates } from "./posted-date.ts";
-
-import type { ScrapedRoleDates } from "./posted-date.ts";
+import type { StructuredPlaceInput } from "../geo/types.ts";
 
 export interface ScrapedRole {
   postingUrl: string;
@@ -93,10 +90,11 @@ export interface ScrapedRole {
   companyName: string;
   season: ScrapedSeason;
   location: string | null;
-  /** Legacy ISO publish field; ignored when `dates` is set. */
-  datePosted: string | null;
-  /** Structured provenance; preferred over `datePosted`. */
-  dates?: ScrapedRoleDates;
+  /** Structured adapter inputs preserved for upsert resolution. */
+  structuredLocations?: StructuredPlaceInput[];
+  locationConfidence?: number;
+  /** Truncated plain-text description for search indexing. */
+  description?: string | null;
 }
 
 export interface CompanySourceConfig {
@@ -126,9 +124,6 @@ export interface RoleParseStats {
   fetched: number;
   kept: number;
   rejected: RoleRejection[];
-  datesPublishCount?: number;
-  datesModifiedOnlyCount?: number;
-  datesUnknownCount?: number;
 }
 
 export interface RoleParseResult {

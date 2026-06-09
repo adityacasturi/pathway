@@ -1,0 +1,59 @@
+/** Top CS programs shown on the statement landing page. */
+export const LANDING_SCHOOL_LOGOS = [
+  {
+    name: "Cornell University",
+    src: "/school-logos/cornell.png",
+    width: 293,
+    height: 96,
+    scale: 1.48,
+  },
+  {
+    name: "MIT",
+    src: "/school-logos/mit.png",
+    width: 417,
+    height: 96,
+    scale: 1,
+  },
+  {
+    name: "Georgia Institute of Technology",
+    src: "/school-logos/gatech.png",
+    width: 536,
+    height: 96,
+    scale: 1,
+  },
+  {
+    name: "University of Washington",
+    src: "/school-logos/uw.png",
+    width: 458,
+    height: 96,
+    scale: 1,
+  },
+  {
+    name: "University of Illinois Urbana-Champaign",
+    src: "/school-logos/uiuc.png",
+    width: 366,
+    height: 96,
+    scale: 1,
+  },
+  {
+    name: "University of Michigan",
+    src: "/school-logos/michigan.png",
+    width: 496,
+    height: 96,
+    scale: 1,
+  },
+  {
+    name: "Stanford University",
+    src: "/school-logos/stanford.png",
+    width: 294,
+    height: 96,
+    scale: 1,
+  },
+  {
+    name: "UCLA",
+    src: "/school-logos/ucla.png",
+    width: 298,
+    height: 96,
+    scale: 1,
+  },
+] as const;

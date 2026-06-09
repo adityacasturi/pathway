@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildRoleParseResult, dedupeScrapeRoles } from "../../lib/scraping/role-parse-result.ts";
-import { atsPublishDate } from "../../lib/scraping/posted-date.ts";
 import type { ScrapedRole } from "../../lib/scraping/types.ts";
 
 function role(url: string, title = "SWE Intern"): ScrapedRole {
@@ -11,8 +10,6 @@ function role(url: string, title = "SWE Intern"): ScrapedRole {
     companyName: "Acme",
     location: "Remote US",
     season: "Summer",
-    datePosted: "2026-01-01",
-    dates: atsPublishDate("2026-01-01"),
   };
 }
 

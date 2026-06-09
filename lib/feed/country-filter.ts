@@ -1,6 +1,6 @@
 import { detectCountriesAcross } from "./location.ts";
 import { expandLocationSegments } from "./us-locations.ts";
-import { normalizeCountryCode } from "../scraping/location.ts";
+import { normalizeCountryCode } from "../geo/countries.ts";
 
 /** Canonical English labels for filter pills (never raw ISO or variant names). */
 export const CANONICAL_COUNTRY_LABELS: Record<string, string> = {
@@ -242,7 +242,7 @@ export function matchesCountryFilter(
 export interface CountryFilterOption {
   code: string;
   label: string;
-  count: number;
+  count?: number;
 }
 
 export function buildCountryFilterOptions(

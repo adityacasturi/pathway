@@ -1,6 +1,6 @@
 # Pathway
 
-Internship search and application tracking for students. Get a daily **Home** briefing, track applications and timelines, browse scraped roles on **Live**, explore employers on **Discover**, see trends on **Stats**, and get **email alerts** for new roles.
+Internship search and application tracking for students. **Home** briefing, **Applications** tracker, **Openings** feed, **Companies** catalog, and **Alerts** for new roles. **Scout** AI chat is present in the codebase but locked while it is in progress.
 
 **Stack:** Next.js 16 · React 19 · Supabase · Tailwind v4 · Playwright
 
@@ -9,11 +9,13 @@ Internship search and application tracking for students. Get a daily **Home** br
 | Doc | When to read |
 | --- | --- |
 | [docs/README.md](docs/README.md) | Index of all documentation |
-| [docs/architecture.md](docs/architecture.md) | Routes, data model, feeds, actions |
+| [docs/architecture.md](docs/architecture.md) | Routes, data model, feeds, Scout, actions |
 | [docs/scraping.md](docs/scraping.md) | Scrape runner, adapters, onboarding companies |
-| [docs/discover-industries.md](docs/discover-industries.md) | Discover industry taxonomy (Supabase) |
+| [docs/discover-industries.md](docs/discover-industries.md) | Company industry taxonomy (`discover_industries`) |
+| [docs/alerts-filters.md](docs/alerts-filters.md) | Alert season/country/remote filter semantics |
 | [docs/production-runbook.md](docs/production-runbook.md) | Deploy and incident checks |
 | [supabase/README.md](supabase/README.md) | Database changes (remote-first) |
+| [tests/README.md](tests/README.md) | Unit and e2e test layout |
 | [AGENTS.md](AGENTS.md) | Rules for coding agents |
 
 ## Requirements
@@ -40,13 +42,14 @@ Internship search and application tracking for students. Get a daily **Home** br
 
    # Scraping (required for npm run scrape and cron parity)
    SUPABASE_SERVICE_ROLE_KEY=eyJ...
-   CRON_SECRET=any-long-random-string-for-local-cron-tests
 
-   # Email alerts (required for /alerts sends; see docs/production-runbook.md)
+   # Email alerts (required for outbound alert email)
    RESEND_API_KEY=...
    RESEND_FROM_EMAIL="Pathway <alerts@yourdomain.com>"
    ALERT_UNSUBSCRIBE_SECRET=any-long-random-string
-   ALERTS_LAUNCHED=true            # gate: omit to keep /alerts preview-only
+
+   # Scout chat (optional while Scout is locked)
+   OPENAI_API_KEY=sk-...
 
    # Distributed rate limiting (recommended in production)
    UPSTASH_REDIS_REST_URL=...
@@ -84,66 +87,52 @@ You do **not** need to run SQL files from git — the hosted database is already
 | `npm run lint` | ESLint |
 | `npm run typecheck` | TypeScript |
 | `npm run test:unit` | Unit tests (`tests/unit/`) |
-| `npm run test:e2e` | Playwright |
+| `npm run test:e2e` | Playwright public smoke (no credentials) |
 | `npm run test:e2e:ui` | Playwright UI mode |
-| `npm run scrape` | Scrape boards → `scraped_postings` |
-| `npm run discover-queue` | Discover onboarding queue CLI |
+| `npm run test:preprod:full` | lint + verify + e2e |
 | `npm run verify` | lint + typecheck + audit + unit + build |
+| `npm run scrape` | Scrape boards → `scraped_postings` |
+| `npm run alerts:instant` | Send instant alert email for new matching postings |
+| `npm run discover-company` | Onboard one company (dry-run or `--apply --scrape`) |
+| `npm run discover-queue` | Bulk Discover onboarding queue CLI |
+| `npm run company-logos` | Download static PNGs + manifest |
+| `npm run qstash:cron` | Cleanup/list retired QStash schedules |
 
 ### E2E
 
-Public tests run without credentials.
-
-Authenticated:
-
-```bash
-E2E_USER_EMAIL="your-qa@example.com" \
-E2E_USER_PASSWORD="..." \
-npm run test:e2e
-```
-
-Mutation tests (shared QA account, single worker):
-
-```bash
-E2E_ALLOW_MUTATION=1 \
-E2E_USER_EMAIL="..." \
-E2E_USER_PASSWORD="..." \
-npm run test:e2e
-```
-
-Live tests expect open rows in `scraped_postings` on the linked project.
+`npm run test:e2e` runs anonymous smoke tests only (landing, auth, redirects, security headers). Playwright starts the production build on port 3100 — run `npm run build` first, or use `npm run test:preprod:full`. Set `E2E_BASE_URL` to reuse an existing server.
 
 ## Project layout
 
 ```text
-app/                    Routes, layouts, cron + logo API
-components/             Product UI (incl. landing/ and ui/ primitives)
+app/                    Routes, layouts, cron + chat + logo API
+components/             Product UI (app-shell/, home/, openings/, companies/, …)
 components/ui/          Design-system primitives
 lib/actions/            Server Actions
+lib/alerts/             Email alert matching, digest/instant send
 lib/auth/               Signup / login validation helpers
-lib/config/             Events, accent, season filter, nav, status colors, alerts launch gate
-lib/discover/           Discover loaders (catalog from discover_industries)
-lib/feed/               Live feed types and loaders
-lib/home/               Home briefing aggregation
-lib/alerts/             Email alert matching, digest/instant send, unsubscribe tokens
-lib/email/              Resend client + email templates
-lib/stats/              Application + market analytics
+lib/chat/               Scout tools, prompts, persistence
+lib/config/             Events, accent, season filter, nav, status colors
+lib/discover/           Companies catalog loaders (discover_industries)
+lib/feed/               Openings feed types and loaders
+lib/home/               Home briefing helpers
 lib/scraping/           Adapters, upsert, scrape runner
 lib/supabase/           Supabase clients (user + service role)
 discover-queue/         Onboarding queue (SQLite + inbox.json)
 docs/                   Architecture, scraping, runbook
 supabase/               DB workflow + archived SQL history
-tests/e2e/              Playwright
+tests/e2e/              Playwright smoke tests
 tests/unit/             Node unit tests
 ```
 
 ## Product notes
 
 - Public signup: open to any valid email. App-level hygiene (format + disposable-domain blocklist) lives in `lib/auth/validation.ts`. To restrict the audience later, enforce both in app code and at the Auth layer — see [docs/production-runbook.md](docs/production-runbook.md).
-- Default accent: **midnight** (`user_preferences`).
-- Discover hides postings you already applied to (by normalized posting URL).
-- Scrape ingestion: QStash 30-minute cron in production; local `npm run scrape`.
-- Email alerts (`/alerts`) are launch-gated by `ALERTS_LAUNCHED` / `lib/config/alerts-launch.ts`.
+- Default post-login route: **Home** (`/home`). Default accent: **midnight** (`user_preferences`).
+- Openings hides postings you already applied to (by normalized posting URL).
+- Scrape ingestion: GitHub Actions runs `npm run scrape` + `npm run alerts:instant` every 6 hours; local `npm run scrape`.
+- Email alerts (`/alerts`) send when `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and `ALERT_UNSUBSCRIBE_SECRET` are configured.
+- Scout is locked for now (`SCOUT_ENABLED = false` in `lib/config/scout.ts`); `/chat` redirects to `/home` and `/api/chat` returns 503. Re-enable later with `OPENAI_API_KEY`.
 
 ## Agents and database work
 
@@ -152,4 +141,4 @@ Read [AGENTS.md](AGENTS.md). Summary:
 - **Supabase remote** = source of truth for schema and migration history.
 - Apply changes with `apply_migration`; verify integrity check and advisors.
 - Do **not** grep `supabase/migrations_archive/` (historical, ignored by Cursor).
-- Onboard Discover companies via [discover-queue/](discover-queue/) and [docs/scraping.md](docs/scraping.md).
+- Onboard companies via `npm run discover-company` or [discover-queue/](discover-queue/) — see [docs/scraping.md](docs/scraping.md).

@@ -1,5 +1,5 @@
 import { AlertsSkeleton } from "@/components/route-skeletons";
 
-export default function AlertsLoading() {
+export default function Loading() {
   return <AlertsSkeleton />;
 }

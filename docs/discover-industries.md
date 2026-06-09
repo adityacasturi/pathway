@@ -1,6 +1,6 @@
 # Discover industries
 
-Discover groups companies under a fixed industry taxonomy. **Supabase is the only source of truth** — labels, descriptions, display order, and company assignments all live in Postgres. The app does not keep a parallel slug map in TypeScript.
+The Companies page groups employers under a fixed industry taxonomy. **Supabase is the only source of truth** — labels, descriptions, display order, and company assignments all live in Postgres. The app does not keep a parallel slug map in TypeScript.
 
 ## Tables
 
@@ -20,7 +20,8 @@ Authenticated users can `SELECT` from `discover_industries` (RLS). Writes go thr
 | `lib/discover/catalog.ts` | `loadDiscoverIndustryCatalog()` — reads `discover_industries` |
 | `lib/discover/companies.ts` | Loads companies; joins labels from catalog |
 | `lib/discover/industries.ts` | `groupCompaniesByIndustry()` — ordering uses catalog `sort_order` |
-| `components/discover-companies.tsx` | Industry filter chips and section headings |
+| `components/companies/companies-page.tsx` | Industry filter rail and company list |
+| `components/companies/companies-industry-rail.tsx` | Industry chip navigation |
 
 ## Industry slugs (34)
 
@@ -29,6 +30,7 @@ Use these exact `slug` values when seeding `companies.industry`.
 | Slug | Label |
 | --- | --- |
 | `platform` | Big tech |
+| `quant` | Quant trading |
 | `semiconductor` | Semiconductors |
 | `networking` | Networking |
 | `ai-research` | AI research |
@@ -50,7 +52,6 @@ Use these exact `slug` values when seeding `companies.industry`.
 | `autonomous-vehicles` | Autonomous vehicles |
 | `robotics` | Robotics |
 | `drones` | Drones |
-| `quant` | Quant trading |
 | `gaming` | Gaming |
 | `streaming` | Streaming |
 | `social` | Social |
@@ -100,7 +101,7 @@ See [scraping.md](./scraping.md) for the full Discover onboarding flow and [.cur
 
 ## Adding or changing industries
 
-1. **New industry slug** — `apply_migration` that `INSERT`s into `discover_industries` (slug, label, description, sort_order). Pick `sort_order` to control section order on Discover.
+1. **New industry slug** — `apply_migration` that `INSERT`s into `discover_industries` (slug, label, description, sort_order). Pick `sort_order` to control section order on Companies.
 2. **Reclassify companies** — `UPDATE public.companies SET industry = '<slug>' WHERE slug IN (...)` in the same or a follow-up migration.
 3. **Large backfills** — edit `COMPANY_INDUSTRY` in `scripts/generate-discover-industry-migration.mjs`, run `node scripts/generate-discover-industry-migration.mjs`, review generated SQL, then `apply_migration` (do not commit generated bulk SQL without review).
 

@@ -1,5 +1,5 @@
 import { detectCountriesAcross } from "./location.ts";
-import { splitScrapedLocationInput } from "../scraping/location.ts";
+import { splitLocationInput as splitScrapedLocationInput } from "../geo/sanitize.ts";
 
 /** Same separator as {@link formatScrapedLocation} in lib/scraping/location.ts. */
 export const US_LOCATION_SEPARATOR = " · ";

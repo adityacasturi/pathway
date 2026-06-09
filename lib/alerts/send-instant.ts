@@ -1,5 +1,6 @@
 import { dedupeAlertMatches } from "@/lib/alerts/dedupe-matches";
 import {
+  loadAlertFilterDefaults,
   loadAlertPostingCandidates,
   loadAlertSentKeys,
   loadAlertSubscriptions,
@@ -9,8 +10,6 @@ import {
 } from "@/lib/alerts/load-alert-data";
 import { loadCuratedSectorCompanyMap } from "@/lib/alerts/load-curated-sectors";
 import { matchPostingsToUsers } from "@/lib/alerts/match-postings";
-import type { AlertMatch } from "@/lib/alerts/types";
-import { isAlertsLaunched } from "@/lib/config/alerts-launch";
 import {
   handleResendBatchFailure,
   pauseBetweenResendSends,
@@ -24,17 +23,19 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function processInstantAlerts(since: Date): Promise<ResendBatchResult> {
-  if (!isAlertsLaunched() || !isEmailConfigured()) {
+  if (!isEmailConfigured()) {
     return { sent: 0, errors: 0 };
   }
 
   const supabase = createAdminClient();
-  const [enabledUserIds, allSubscriptions, postings, sectorMembers] = await Promise.all([
-    loadEnabledAlertUserIds(supabase),
-    loadAlertSubscriptions(supabase),
-    loadAlertPostingCandidates(supabase, since),
-    loadCuratedSectorCompanyMap(supabase),
-  ]);
+  const [enabledUserIds, allSubscriptions, postings, sectorMembers, globalFiltersByUserId] =
+    await Promise.all([
+      loadEnabledAlertUserIds(supabase),
+      loadAlertSubscriptions(supabase),
+      loadAlertPostingCandidates(supabase, since),
+      loadCuratedSectorCompanyMap(supabase),
+      loadAlertFilterDefaults(supabase),
+    ]);
 
   const subscriptions = allSubscriptions.filter((sub) => sub.cadence === "instant");
 
@@ -48,6 +49,7 @@ export async function processInstantAlerts(since: Date): Promise<ResendBatchResu
     enabledUserIds,
     sentKeys,
     channel: "instant",
+    globalFiltersByUserId,
   });
   const matches = dedupeAlertMatches(rawMatches);
 

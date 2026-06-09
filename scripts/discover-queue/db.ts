@@ -97,6 +97,26 @@ export class DiscoverQueueDb {
         status = CASE
           WHEN discover_queue.status IN ('done', 'skipped') THEN discover_queue.status
           ELSE 'pending'
+        END,
+        claimed_by = CASE
+          WHEN discover_queue.status IN ('done', 'skipped') THEN discover_queue.claimed_by
+          ELSE NULL
+        END,
+        claimed_at = CASE
+          WHEN discover_queue.status IN ('done', 'skipped') THEN discover_queue.claimed_at
+          ELSE NULL
+        END,
+        heartbeat_at = CASE
+          WHEN discover_queue.status IN ('done', 'skipped') THEN discover_queue.heartbeat_at
+          ELSE NULL
+        END,
+        completed_at = CASE
+          WHEN discover_queue.status IN ('done', 'skipped') THEN discover_queue.completed_at
+          ELSE NULL
+        END,
+        result = CASE
+          WHEN discover_queue.status IN ('done', 'skipped') THEN discover_queue.result
+          ELSE NULL
         END
       RETURNING *
     `);

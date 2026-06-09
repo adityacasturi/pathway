@@ -38,8 +38,8 @@ async function main() {
     return;
   }
 
-  const baseUrl = readRequiredEnv("CRON_BASE_URL");
-  const cronSecret = readRequiredEnv("CRON_SECRET");
+  const baseUrl = process.env.CRON_BASE_URL ?? "";
+  const cronSecret = process.env.CRON_SECRET ?? "";
   await upsertSchedules(token, baseUrl, cronSecret, qstashSchedulesUrl);
 }
 
@@ -50,7 +50,13 @@ async function upsertSchedules(
   qstashSchedulesUrl: string,
 ) {
   const schedules = getProductionQstashSchedules(baseUrl);
+  if (schedules.length === 0) {
+    console.log("No active Pathway QStash schedules to upsert.");
+  }
   for (const schedule of schedules) {
+    if (!cronSecret) {
+      throw new Error("Missing required env var CRON_SECRET");
+    }
     const request = buildQstashScheduleRequest(schedule, cronSecret, qstashSchedulesUrl);
     const response = await fetch(request.url, {
       method: "POST",

@@ -1,12 +1,10 @@
-import { extractJsonLdDatePosted } from "../avature-dates.ts";
 import { decodeHtmlEntities, stripHtml } from "../html-utils.ts";
-import { atsPublishDate } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl, resolveBoardToken, safeToIsoDate } from "./shared.ts";
+import { fetchJsonWithTimeout, isHttpUrl, resolveBoardToken } from "./shared.ts";
 
 /**
  * Arm careers run on Radancy TalentBrew (careers.arm.com, org 33099).
@@ -41,7 +39,6 @@ export interface ArmListing {
   location: string | null;
   category: string | null;
   description?: string | null;
-  datePosted?: string | null;
 }
 
 export function createArmAdapter(source: CompanySourceConfig): ScrapeAdapter {
@@ -108,7 +105,6 @@ export function parseArmJobDetailFields(html: string): {
   category: string | null;
   location: string | null;
   description: string;
-  datePosted: string | null;
 } {
   const title =
     html.match(/<h1 class="ajd_header__job-title[^"]*">([^<]+)/i)?.[1]?.trim() ??
@@ -119,11 +115,6 @@ export function parseArmJobDetailFields(html: string): {
     html.match(/<span class="job-location job-info"[^>]*>\s*<b>Location<\/b>\s*([^<]+)/i)?.[1]?.trim() ??
     null;
 
-  const datePosted =
-    extractJsonLdDatePosted(html) ??
-    html.match(/<meta[^>]+property="og:updated_time"[^>]+content="([^"]+)"/i)?.[1]?.trim() ??
-    null;
-
   const descriptionBlock = html.match(/<div class="ats-description">([\s\S]*?)<\/div>\s*<\/div>/i)?.[1];
   const description = descriptionBlock ? htmlToPlainText(descriptionBlock) : "";
 
@@ -132,7 +123,6 @@ export function parseArmJobDetailFields(html: string): {
     category: null,
     location,
     description,
-    datePosted,
   };
 }
 
@@ -166,7 +156,6 @@ export function parseArmJobs(listings: ArmListing[], source: CompanySourceConfig
       continue;
     }
 
-
     roles.push(
       buildScrapedRole({
         postingUrl,
@@ -175,7 +164,6 @@ export function parseArmJobs(listings: ArmListing[], source: CompanySourceConfig
         companySlug: source.companySlug,
         classification,
         description: buildArmClassificationDescription(listing),
-        dates: atsPublishDate(safeToIsoDate(listing.datePosted)),
       }),
     );
   }
@@ -266,7 +254,6 @@ async function enrichArmListings(
           category: null,
           location: null,
           description: "",
-          datePosted: null,
         });
       }
     }
@@ -287,7 +274,6 @@ async function enrichArmListings(
       category: detail.category ?? listing.category,
       location: detail.location ?? listing.location,
       description: detail.description || listing.description,
-      datePosted: detail.datePosted ?? listing.datePosted,
     };
   });
 }

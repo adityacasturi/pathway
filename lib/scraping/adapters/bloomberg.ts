@@ -1,6 +1,4 @@
-import { extractAvatureDetailDatePosted } from "../avature-dates.ts";
 import { decodeHtmlEntities, stripHtml } from "../html-utils.ts";
-import { atsPublishDate, pagePublishDate, parseFlexiblePostedDate } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
@@ -46,7 +44,6 @@ export interface BloombergListing {
   location: string | null;
   businessArea: string | null;
   description?: string | null;
-  datePosted?: string | null;
 }
 
 export function createBloombergAdapter(source: CompanySourceConfig): ScrapeAdapter {
@@ -143,14 +140,6 @@ export function parseBloombergJobDetailFields(html: string): {
   };
 }
 
-export function bloombergListingDates(listing: BloombergListing) {
-  const published = parseFlexiblePostedDate(listing.datePosted ?? null);
-  if (published) {
-    return pagePublishDate(published, "medium");
-  }
-  return atsPublishDate(null);
-}
-
 export function parseBloombergJobs(
   listings: BloombergListing[],
   source: CompanySourceConfig,
@@ -185,7 +174,6 @@ export function parseBloombergJobs(
       continue;
     }
 
-
     roles.push(
       buildScrapedRole({
         postingUrl,
@@ -194,7 +182,6 @@ export function parseBloombergJobs(
         companySlug: source.companySlug,
         classification,
         description: buildBloombergClassificationDescription(listing),
-        dates: bloombergListingDates(listing),
       }),
     );
   }
@@ -237,10 +224,7 @@ async function enrichBloombergListings(listings: BloombergListing[]): Promise<Bl
     return listings;
   }
 
-  const details = new Map<
-    string,
-    ReturnType<typeof parseBloombergJobDetailFields> & { datePosted: string | null }
-  >();
+  const details = new Map<string, ReturnType<typeof parseBloombergJobDetailFields>>();
   let index = 0;
 
   async function worker(): Promise<void> {
@@ -255,14 +239,12 @@ async function enrichBloombergListings(listings: BloombergListing[]): Promise<Bl
         const fields = parseBloombergJobDetailFields(html);
         details.set(current.postingUrl, {
           ...fields,
-          datePosted: extractAvatureDetailDatePosted(html),
         });
       } catch {
         details.set(current.postingUrl, {
           location: null,
           businessArea: null,
           description: "",
-          datePosted: null,
         });
       }
     }
@@ -282,7 +264,6 @@ async function enrichBloombergListings(listings: BloombergListing[]): Promise<Bl
       location: detail.location ?? listing.location,
       businessArea: detail.businessArea ?? listing.businessArea,
       description: detail.description || listing.description,
-      datePosted: detail.datePosted ?? listing.datePosted ?? null,
     };
   });
 }

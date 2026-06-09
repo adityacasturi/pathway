@@ -4,7 +4,6 @@ import {
   parseGreenhouseEmploymentMetadata,
 } from "../greenhouse-board.ts";
 import { isInvalidScrapedLocationToken } from "../location.ts";
-import { greenhouseRoleDates } from "../posted-date.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
@@ -84,7 +83,6 @@ export function parseGreenhouseJobs(jobs: GreenhouseJob[], source: CompanySource
         companySlug: source.companySlug,
         classification,
         description: content,
-        dates: greenhouseRoleDates(job),
         seasonHints: {
           employmentType: employment.employmentType,
           commitment: employment.commitment,

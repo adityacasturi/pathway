@@ -1,4 +1,5 @@
 import type { PostedDisplay } from "./posted-display.ts";
+import type { CanonicalPlace } from "../geo/types.ts";
 
 export type FeedSeason = "Summer" | "Fall" | "Spring" | "Winter";
 
@@ -17,16 +18,18 @@ export interface FeedPosting {
   title: string;
   url: string;
   locations: string[];
+  /** Structured places from scrape-time geo resolution. */
+  canonicalPlaces: CanonicalPlace[];
   /** ISO 3166-1 alpha-2 codes derived from `locations`. May be empty. */
   countries: string[];
   /** True if any location reads as remote; used for the Remote filter pill. */
   hasRemote: boolean;
   season: FeedSeason;
-  /** Unix seconds for sort (effective publish or first_seen). */
+  /** Unix seconds for sort (`first_seen_at`). */
   datePosted: number;
-  /** Unix seconds for Live NEW badge (Pathway first_seen_at). */
+  /** Unix seconds for Live NEW badge (`first_seen_at`). */
   pathwayNewUnix: number;
-  /** Relative-time source (publish when credible, else first_seen_at). */
+  /** Relative-time source (`first_seen_at`). */
   postedDisplay: PostedDisplay;
   dateUpdated: number;
 }

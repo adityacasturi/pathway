@@ -1,10 +1,9 @@
-import { atsPublishDate, unknownScrapedDates } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl, safeToIsoDate, scraperDelay } from "./shared.ts";
+import { fetchJsonWithTimeout, isHttpUrl, scraperDelay } from "./shared.ts";
 import { INTERNSHIP_LIST_TITLE_PATTERN } from "../list-filters.ts";
 import { mapWithConcurrency } from "../scrape-concurrency.ts";
 
@@ -217,8 +216,6 @@ export function parseMillenniumPostings(
       continue;
     }
 
-    const postedTs = summary.t_update ?? detail?.t_update ?? summary.t_create ?? detail?.t_create ?? null;
-
     roles.push(
       buildScrapedRole({
         postingUrl,
@@ -227,7 +224,6 @@ export function parseMillenniumPostings(
         companySlug: source.companySlug,
         classification,
         description: detail?.job_description ? htmlToPlainText(detail.job_description) : "",
-        dates: postedTs ? atsPublishDate(safeToIsoDate(new Date(postedTs * 1000))) : unknownScrapedDates(),
       }),
     );
   }

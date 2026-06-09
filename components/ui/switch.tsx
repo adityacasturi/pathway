@@ -1,3 +1,5 @@
+"use client";
+
 import { cn } from "@/lib/utils";
 
 export function Switch({
@@ -19,25 +21,27 @@ export function Switch({
       role="switch"
       aria-checked={checked}
       aria-label={ariaLabel}
-      aria-busy={disabled}
       disabled={disabled}
       onClick={() => onCheckedChange(!checked)}
       className={cn(
-        "relative h-6 w-11 min-w-11 shrink-0 rounded-full border",
-        "transition-[transform,box-shadow] duration-150",
-        "disabled:pointer-events-none disabled:opacity-50",
+        "relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border p-0.5",
+        "transition-[background-color,border-color,box-shadow] duration-200 ease-[var(--motion-ease-smooth)]",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "disabled:cursor-not-allowed disabled:opacity-50",
         checked
-          ? "border-[color:var(--primary)] bg-[color:var(--primary)]"
-          : "border-[color:var(--rule-strong)] bg-[color-mix(in_oklab,var(--ink)_12%,var(--card))]",
+          ? "border-[color-mix(in_oklab,var(--switch-track-on)_40%,var(--border))] bg-[var(--switch-track-on)]"
+          : "border-border bg-[var(--switch-track-off)]",
         className,
       )}
     >
       <span
         aria-hidden
         className={cn(
-          "pointer-events-none absolute top-1/2 left-0.5 size-5 -translate-y-1/2 rounded-full bg-white shadow-sm",
-          "transition-transform duration-150 ease-out",
-          checked && "translate-x-5",
+          "pointer-events-none block size-5 rounded-full bg-[var(--switch-thumb)]",
+          "shadow-[0_1px_3px_color-mix(in_oklab,var(--foreground)_22%,transparent)]",
+          "ring-1 ring-[var(--switch-thumb-border)]",
+          "transition-transform duration-200 ease-[var(--motion-ease-smooth)]",
+          checked ? "translate-x-5" : "translate-x-0",
         )}
       />
     </button>

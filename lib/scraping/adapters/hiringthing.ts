@@ -1,12 +1,10 @@
-import { atsPublishDate } from "../posted-date.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
-import { extractJsonLdDatePosted } from "../avature-dates.ts";
 import { extractLocationFromPlainText, isInvalidScrapedLocationToken, normalizeScrapedLocationPart } from "../location.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl, safeToIsoDate } from "./shared.ts";
+import { fetchJsonWithTimeout, isHttpUrl } from "./shared.ts";
 import { INTERNSHIP_LIST_TITLE_PATTERN } from "../list-filters.ts";
 
 export interface HiringThingBoardConfig {
@@ -103,7 +101,6 @@ export function parseHiringThingJobDetailHtml(
   title: string;
   description: string;
   location: string | null;
-  postedOn: string | null;
 } {
   const title =
     readHiringThingMeta(html, "og:title") ??
@@ -117,18 +114,10 @@ export function parseHiringThingJobDetailHtml(
 
   const location = extractHiringThingLocation(html, description, context);
 
-  const postedOn =
-    extractJsonLdDatePosted(html) ??
-    readHiringThingMeta(html, "article:published_time") ??
-    readHiringThingMeta(html, "og:published_time") ??
-    html.match(/<time[^>]+datetime=["']([^"']+)["']/i)?.[1]?.trim() ??
-    null;
-
   return {
     title: title.trim(),
     description: description.trim(),
     location,
-    postedOn: postedOn?.trim() || null,
   };
 }
 
@@ -174,7 +163,6 @@ export async function parseHiringThingJobs(
     let roleName = listing.title;
     let description = "";
     let location: string | null = null;
-    let datePosted: string | null = null;
 
     try {
       const detailHtml = await fetchHiringThingHtml(listing.listUrl);
@@ -187,7 +175,6 @@ export async function parseHiringThingJobs(
       }
       description = detail.description;
       location = detail.location;
-      datePosted = safeToIsoDate(detail.postedOn);
     } catch {
       // List metadata is enough for classification when detail fetch fails.
     }
@@ -219,7 +206,6 @@ export async function parseHiringThingJobs(
         companySlug: source.companySlug,
         classification,
         description,
-        dates: atsPublishDate(datePosted),
       }),
     );
   }

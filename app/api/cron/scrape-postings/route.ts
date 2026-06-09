@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isCronAuthorized } from "@/lib/cron/is-authorized";
 import { processInstantAlertsForCron } from "@/lib/cron/instant-alerts";
 import { parseScrapeCronParams } from "@/lib/cron/scrape-request";
+import { errorMessage, logServerEvent } from "@/lib/observability";
 import { runAllScrapes } from "@/lib/scraping/run-all";
 
 export const runtime = "nodejs";
@@ -25,7 +26,12 @@ export async function GET(request: Request) {
       try {
         alerts = await processInstantAlertsForCron();
       } catch (alertError) {
-        console.error("Instant alerts failed:", alertError);
+        logServerEvent({
+          level: "error",
+          event: "cron.scrape_postings.instant_alerts_failed",
+          route: "/api/cron/scrape-postings",
+          message: errorMessage(alertError),
+        });
         alerts = { sent: 0, errors: 1 };
       }
     }
@@ -36,7 +42,12 @@ export async function GET(request: Request) {
       alerts,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Scrape failed";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    logServerEvent({
+      level: "error",
+      event: "cron.scrape_postings.failed",
+      route: "/api/cron/scrape-postings",
+      message: errorMessage(error),
+    });
+    return NextResponse.json({ ok: false, error: "Scrape failed." }, { status: 500 });
   }
 }

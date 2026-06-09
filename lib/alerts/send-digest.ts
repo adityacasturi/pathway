@@ -1,6 +1,7 @@
 import { dedupeAlertMatches } from "@/lib/alerts/dedupe-matches";
 import {
   loadAlertDigestState,
+  loadAlertFilterDefaults,
   loadAlertPostingCandidates,
   loadAlertSentKeys,
   loadAlertSubscriptions,
@@ -13,7 +14,6 @@ import { loadCuratedSectorCompanyMap } from "@/lib/alerts/load-curated-sectors";
 import { matchPostingsToUsers } from "@/lib/alerts/match-postings";
 import type { AlertPostingCandidate } from "@/lib/alerts/types";
 import { DIGEST_MAX_POSTINGS } from "@/lib/config/alerts";
-import { isAlertsLaunched } from "@/lib/config/alerts-launch";
 import {
   handleResendBatchFailure,
   pauseBetweenResendSends,
@@ -29,7 +29,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 const DEFAULT_DIGEST_LOOKBACK_MS = 24 * 60 * 60 * 1000;
 
 export async function processDigestAlerts(now = new Date()): Promise<ResendBatchResult> {
-  if (!isAlertsLaunched() || !isEmailConfigured()) {
+  if (!isEmailConfigured()) {
     return { sent: 0, errors: 0 };
   }
 
@@ -42,10 +42,11 @@ export async function processDigestAlerts(now = new Date()): Promise<ResendBatch
 
   const digestState = await loadAlertDigestState(supabase, digestUserIds);
   const earliestSince = getEarliestDigestSince(digestState, now);
-  const [subscriptions, postings, sectorMembers] = await Promise.all([
+  const [subscriptions, postings, sectorMembers, globalFiltersByUserId] = await Promise.all([
     loadAlertSubscriptions(supabase),
     loadAlertPostingCandidates(supabase, earliestSince),
     loadCuratedSectorCompanyMap(supabase),
+    loadAlertFilterDefaults(supabase),
   ]);
 
   if (postings.length === 0) {
@@ -60,6 +61,7 @@ export async function processDigestAlerts(now = new Date()): Promise<ResendBatch
     sentKeys,
     channel: "digest",
     subscriptionCadences: ["instant", "digest"],
+    globalFiltersByUserId,
   });
   const matches = dedupeAlertMatches(rawMatches);
 

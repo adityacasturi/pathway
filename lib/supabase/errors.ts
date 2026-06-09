@@ -74,6 +74,9 @@ export function formatSupabaseMutationError(
   if (normalized.includes("invalid event type")) {
     return "Invalid event type.";
   }
+  if (normalized.includes("invalid season")) {
+    return "Invalid season.";
+  }
 
   if (error.code === "23505") {
     return "That item already exists.";
@@ -82,6 +85,9 @@ export function formatSupabaseMutationError(
     return "Some fields are invalid. Please review and try again.";
   }
   if (error.code === "42501") {
+    if (normalized.includes("app_private")) {
+      return "Unable to save alert filters right now. Please try again shortly.";
+    }
     return "You do not have permission to make that change.";
   }
 
