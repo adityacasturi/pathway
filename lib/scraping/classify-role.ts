@@ -2,15 +2,29 @@ import {
   hasEngineeringSignal,
   hasInternshipSignal,
   INTERNSHIP_TITLE_PATTERN,
-  isFullTimeGradRole,
   isInternshipEmploymentMetadata,
   isNonTargetRoleTitle,
   matchesInternshipTitle,
 } from "../feed/roles.ts";
-import { formatCanonicalPlace, resolveScrapedLocations, type LocationInput } from "../geo/server.ts";
 import type { StructuredPlaceInput } from "../geo/types.ts";
-import { formatScrapedLocation } from "./location.ts";
 import { htmlToPlainText } from "./plain-text.ts";
+
+/**
+ * Centralized role relevance classification.
+ *
+ * Every adapter funnels candidates through {@link classifyScrapeRole} (via
+ * `classifyForSource`). The decision is explainable: `reason` is the primary
+ * machine-readable outcome and `signals` lists every positive and negative
+ * cue that fired, so logs can answer "why was this role kept/dropped?".
+ *
+ * Location is intentionally NOT part of relevance: a real internship with an
+ * unparseable location is kept and stored with honest unknowns.
+ */
+
+/** Include full-time new-grad roles? Off until the product intentionally supports them. */
+export const INCLUDE_NEW_GRAD_ROLES = false;
+
+export type ScrapeRoleType = "internship" | "co_op" | "new_grad";
 
 export interface ScrapeRoleCandidate {
   title: string;
@@ -28,148 +42,252 @@ export interface ScrapeRoleCandidate {
 export interface RoleClassification {
   include: boolean;
   reason: RoleClassificationReason;
+  /** internship / co_op / new_grad when a student-opportunity signal matched. */
+  roleType: ScrapeRoleType | null;
+  /** Every positive and negative cue that fired, for explainability. */
   signals: string[];
-  /** Normalized location segments when {@link include} is true. */
-  locations?: string[];
-  structuredLocations?: StructuredPlaceInput[];
-  /** Minimum confidence across resolved places when {@link include} is true. */
-  locationConfidence?: number;
+  /** Raw location inputs carried through to role building (resolved exactly once there). */
+  locations: string[];
+  structuredLocations: StructuredPlaceInput[];
 }
 
 export type RoleClassificationReason =
   | "included"
   | "missing_title"
-  | "no_internship_signal"
-  | "full_time_grad_role"
   | "title_false_positive"
-  | "non_engineering_role"
-  | "missing_location"
+  | "no_student_signal"
+  | "senior_level_role"
+  | "new_grad_excluded"
+  | "non_engineering_role";
 
-/** Lenient internship cues — prefer keeping borderline roles over dropping real interns. */
-const LENIENT_INTERNSHIP_TITLE_PATTERN =
-  /\bintern(?:ship|ships)?\b|\bco-?op\b|\bfellowship\b|\buniversity\b|\bsummer\s+analyst\b|\bseasonal\/off[- ]?cycle\b/i;
+/** "Internal Audit", "International Sales", "Internet Services" are not internships. */
+const TITLE_FALSE_POSITIVE_PATTERN = /\binternal\b|\binternational\b|\binternet\b/i;
 
-const LENIENT_INTERNSHIP_CONTEXT_PATTERN =
-  /\buniversity\b|\bintern\b|\bearly talent\b|\bemerging talent\b|\bstudent\s+(?:researcher|engineer)\b|\bphd\s+intern\b/i;
+/** Strong student-opportunity cues in titles. */
+const STUDENT_TITLE_PATTERN =
+  /\bintern(?:ship|ships)?\b|\bco-?op\b|\bcooperative education\b|\bsummer\s+(?:analyst|associate)\b|\bindustrial placement\b|\bplacement year\b|\bworking student\b|\bstudent\s+(?:researcher|engineer|developer|assistant|worker)\b|\bfellowship\b|\bgraduate intern\b/i;
+
+const CO_OP_PATTERN = /\bco-?op\b|\bcooperative education\b/i;
+
+/** Full-time campus-hire titles: real roles, but not internships. */
+const NEW_GRAD_TITLE_PATTERN =
+  /\bnew\s*grad(?:uate)?\b|\bentry[-\s]?level\b|\bgraduate (?:program|scheme|engineer|analyst|hire)\b|\bcampus hire\b/i;
+
+/** Department/team names that indicate student programs. */
+const STUDENT_CONTEXT_PATTERN =
+  /\buniversity\b|\bintern\b|\bearly talent\b|\bemerging talent\b|\bcampus\b|\bstudent\b/i;
+
+/**
+ * Seniority cues that veto weak (non-title) student signals. "Senior Hardware
+ * Engineer" whose description mentions the company's intern program must not
+ * be kept.
+ */
+const SENIORITY_TITLE_PATTERN =
+  /\bsenior\b|\bsr\.?\b|\bstaff\b|\bprincipal\b|\bdistinguished\b|\blead\b|\bmanager\b|\bdirector\b|\bhead of\b|\bchief\b|\bvp\b|\bvice president\b|\bexperienced\b|\barchitect\b/i;
+
+/** "Engineer II/III/IV", "L5", "Level 3" — leveled full-time tracks. */
+const LEVELED_TITLE_PATTERN =
+  /\b(?:ii|iii|iv|v|vi)\b\s*$|\b(?:ii|iii|iv|v|vi)\b\s*[,(-]|\b(?:level|lvl)\s*[2-9]\b|\bL[4-9]\b/i;
+
+const PERMANENT_METADATA_PATTERN =
+  /\bpermanent\b|\bfull[-\s]?time\b|\bfulltime\b|\bregular\b|\bsalaried\b/i;
+
+interface SignalScan {
+  /** Strongest student signal location: title beats metadata beats description. */
+  strength: "title" | "metadata" | "context" | "description" | null;
+  roleType: ScrapeRoleType | null;
+  signals: string[];
+}
+
+function scanStudentSignals(
+  candidate: ScrapeRoleCandidate,
+  title: string,
+  descriptionPlain: string,
+): SignalScan {
+  const signals: string[] = [];
+  let strength: SignalScan["strength"] = null;
+  let roleType: ScrapeRoleType | null = null;
+
+  const record = (
+    signal: string,
+    s: NonNullable<SignalScan["strength"]>,
+    type: ScrapeRoleType,
+  ) => {
+    signals.push(signal);
+    const order = { title: 3, metadata: 2, context: 1, description: 0 };
+    if (strength === null || order[s] > order[strength]) {
+      strength = s;
+      roleType = type;
+    }
+  };
+
+  if (matchesInternshipTitle(title) || STUDENT_TITLE_PATTERN.test(title)) {
+    record(
+      CO_OP_PATTERN.test(title) ? "title:co_op" : "title:student_opportunity",
+      "title",
+      CO_OP_PATTERN.test(title) ? "co_op" : "internship",
+    );
+  }
+
+  if (isInternshipEmploymentMetadata(candidate.employmentType)) {
+    record(
+      "metadata:employment_type",
+      "metadata",
+      CO_OP_PATTERN.test(candidate.employmentType ?? "") ? "co_op" : "internship",
+    );
+  }
+  if (isInternshipEmploymentMetadata(candidate.commitment)) {
+    record(
+      "metadata:commitment",
+      "metadata",
+      CO_OP_PATTERN.test(candidate.commitment ?? "") ? "co_op" : "internship",
+    );
+  }
+
+  if (candidate.team && STUDENT_CONTEXT_PATTERN.test(candidate.team)) {
+    record(`context:team`, "context", "internship");
+  }
+  for (const department of candidate.departments ?? []) {
+    if (STUDENT_CONTEXT_PATTERN.test(department)) {
+      record(`context:department:${department.trim()}`, "context", "internship");
+      break;
+    }
+  }
+
+  if (descriptionPlain && hasInternshipSignal("", descriptionPlain)) {
+    record("description:internship_program", "description", "internship");
+  }
+
+  return { strength, roleType, signals };
+}
 
 export function classifyScrapeRole(candidate: ScrapeRoleCandidate): RoleClassification {
-  const signals: string[] = [];
   const title = candidate.title.trim();
+  const locations = candidate.locations ?? [];
+  const structuredLocations = candidate.structuredLocations ?? [];
+
+  const rejected = (
+    reason: RoleClassificationReason,
+    signals: string[],
+    roleType: ScrapeRoleType | null = null,
+  ): RoleClassification => ({
+    include: false,
+    reason,
+    roleType,
+    signals,
+    locations,
+    structuredLocations,
+  });
 
   if (!title) {
-    return { include: false, reason: "missing_title", signals };
+    return rejected("missing_title", []);
+  }
+
+  // "Internal Tools Engineer" / "International Tax Analyst" without a real
+  // student token is a false positive of substring-style matching.
+  if (
+    TITLE_FALSE_POSITIVE_PATTERN.test(title) &&
+    !INTERNSHIP_TITLE_PATTERN.test(title) &&
+    !STUDENT_TITLE_PATTERN.test(title)
+  ) {
+    return rejected("title_false_positive", ["negative:title_false_positive"]);
   }
 
   const descriptionPlain = normalizeDescription(candidate.description);
-  const context = buildClassificationContext(descriptionPlain, candidate);
+  const scan = scanStudentSignals(candidate, title, descriptionPlain);
+  const signals = [...scan.signals];
 
-  if (/\binternal\b|\binternational\b|\binternet\b/i.test(title) && !INTERNSHIP_TITLE_PATTERN.test(title)) {
-    signals.push("title_false_positive");
-    return { include: false, reason: "title_false_positive", signals };
+  // New-grad titles are full-time campus hires, not internships, unless the
+  // title itself also carries an intern token ("New Grad & Intern Openings").
+  if (NEW_GRAD_TITLE_PATTERN.test(title) && scan.strength !== "title") {
+    signals.push("title:new_grad");
+    if (!INCLUDE_NEW_GRAD_ROLES) {
+      return rejected("new_grad_excluded", signals, "new_grad");
+    }
+    return finishInclude(candidate, title, descriptionPlain, "new_grad", signals, locations, structuredLocations);
   }
 
-  if (isFullTimeGradRole(title, buildClassificationContext(descriptionPlain, candidate))) {
-    signals.push("full_time_grad_role");
-    return { include: false, reason: "full_time_grad_role", signals };
+  if (scan.strength === null) {
+    return rejected("no_student_signal", signals);
   }
 
-  if (!hasLenientInternshipSignal(candidate, title, descriptionPlain, signals)) {
-    return { include: false, reason: "no_internship_signal", signals };
+  // Negative signals veto anything weaker than an explicit student title.
+  if (scan.strength !== "title") {
+    if (SENIORITY_TITLE_PATTERN.test(title)) {
+      signals.push("negative:seniority_title");
+      return rejected("senior_level_role", signals, scan.roleType);
+    }
+    if (LEVELED_TITLE_PATTERN.test(title)) {
+      signals.push("negative:leveled_title");
+      return rejected("senior_level_role", signals, scan.roleType);
+    }
+    if (
+      PERMANENT_METADATA_PATTERN.test(candidate.employmentType ?? "") &&
+      !isInternshipEmploymentMetadata(candidate.employmentType)
+    ) {
+      signals.push("negative:permanent_employment_type");
+      return rejected("senior_level_role", signals, scan.roleType);
+    }
   }
 
+  return finishInclude(
+    candidate,
+    title,
+    descriptionPlain,
+    scan.roleType ?? "internship",
+    signals,
+    locations,
+    structuredLocations,
+  );
+}
+
+function finishInclude(
+  candidate: ScrapeRoleCandidate,
+  title: string,
+  descriptionPlain: string,
+  roleType: ScrapeRoleType,
+  signals: string[],
+  locations: string[],
+  structuredLocations: StructuredPlaceInput[],
+): RoleClassification {
   if (isNonTargetRoleTitle(title)) {
-    signals.push("non_target_title");
-    return { include: false, reason: "non_engineering_role", signals };
+    signals.push("negative:non_target_title");
+    return {
+      include: false,
+      reason: "non_engineering_role",
+      roleType,
+      signals,
+      locations,
+      structuredLocations,
+    };
   }
 
+  const context = buildClassificationContext(descriptionPlain, candidate);
   const engineering =
     hasEngineeringSignal(title, context) ||
     (candidate.team ? hasEngineeringSignal(candidate.team, context) : false);
 
   if (!engineering) {
-    signals.push("missing_engineering_signal");
-    return { include: false, reason: "non_engineering_role", signals };
+    signals.push("negative:missing_engineering_signal");
+    return {
+      include: false,
+      reason: "non_engineering_role",
+      roleType,
+      signals,
+      locations,
+      structuredLocations,
+    };
   }
 
-  const locationContext = {
-    companyName: candidate.companyName,
-    companySlug: candidate.companySlug,
-  };
-  const inputs: LocationInput[] = [
-    ...(candidate.structuredLocations ?? []),
-    ...(candidate.locations ?? []),
-  ];
-  const resolved = resolveScrapedLocations(inputs, locationContext);
-  if (resolved.places.length === 0) {
-    signals.push("missing_location");
-    return { include: false, reason: "missing_location", signals };
-  }
-
-  if (resolved.minConfidence < 50) {
-    signals.push("low_confidence_location");
-    return { include: false, reason: "missing_location", signals };
-  }
-
-  const locations = resolved.places.map((place) => formatCanonicalPlace(place));
-  signals.push("has_location");
+  signals.push("engineering_scope");
   return {
     include: true,
     reason: "included",
+    roleType,
     signals,
     locations,
-    locationConfidence: resolved.minConfidence,
+    structuredLocations,
   };
-}
-
-/** Storage-ready location string from a successful classification. */
-export function formatClassifiedScrapeLocation(
-  classification: RoleClassification,
-  context: { companyName?: string | null; companySlug?: string | null } = {},
-): string | null {
-  if (!classification.include || !classification.locations?.length) {
-    return null;
-  }
-  return formatScrapedLocation(classification.locations, context);
-}
-
-function hasLenientInternshipSignal(
-  candidate: ScrapeRoleCandidate,
-  title: string,
-  descriptionPlain: string,
-  signals: string[],
-): boolean {
-  if (matchesInternshipTitle(title) || LENIENT_INTERNSHIP_TITLE_PATTERN.test(title)) {
-    signals.push("internship_title");
-    return true;
-  }
-
-  if (isInternshipEmploymentMetadata(candidate.employmentType)) {
-    signals.push("internship_employment_type");
-    return true;
-  }
-  if (isInternshipEmploymentMetadata(candidate.commitment)) {
-    signals.push("internship_commitment");
-    return true;
-  }
-
-  if (candidate.team && LENIENT_INTERNSHIP_CONTEXT_PATTERN.test(candidate.team)) {
-    signals.push("internship_team");
-    return true;
-  }
-
-  for (const department of candidate.departments ?? []) {
-    if (LENIENT_INTERNSHIP_CONTEXT_PATTERN.test(department)) {
-      signals.push(`internship_department:${department}`);
-      return true;
-    }
-  }
-
-  if (descriptionPlain && hasInternshipSignal("", descriptionPlain)) {
-    signals.push("internship_description");
-    return true;
-  }
-
-  return false;
 }
 
 function normalizeDescription(description: string | null | undefined): string {
@@ -183,7 +301,10 @@ function normalizeDescription(description: string | null | undefined): string {
   return trimmed.replace(/\s+/g, " ").trim();
 }
 
-function buildClassificationContext(descriptionPlain: string, candidate: ScrapeRoleCandidate): string {
+function buildClassificationContext(
+  descriptionPlain: string,
+  candidate: ScrapeRoleCandidate,
+): string {
   const parts = [descriptionPlain];
   if (candidate.team?.trim()) {
     parts.push(candidate.team.trim());

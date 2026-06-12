@@ -73,11 +73,12 @@ export function parseAshbyJobs(jobs: AshbyJob[], source: CompanySourceConfig): R
       "";
     const structuredLocations = collectAshbyStructuredPlaces(job);
     const departments = [job.department?.trim(), job.team?.trim()].filter(Boolean) as string[];
+    const employmentType = normalizeAshbyEmploymentType(job.employmentType, job.workplaceType);
 
     const classification = classifyForSource(source, {
       title: roleName,
       description,
-      employmentType: normalizeAshbyEmploymentType(job.employmentType, job.workplaceType),
+      employmentType,
       team: job.team ?? null,
       departments,
       structuredLocations,
@@ -165,7 +166,8 @@ export function collectAshbyStructuredPlaces(job: AshbyJob): StructuredPlaceInpu
   }
 
   if (remote && out.length === 0) {
-    out.push({ remote: true, countryCode: "US" });
+    // Remote with no stated geography: keep the remote flag, never invent a country.
+    out.push({ rawLabel: "Remote", remote: true });
   }
 
   return out;

@@ -5,7 +5,7 @@ import { canonicalPlacesToField } from "./format.ts";
 import {
   canonicalizeLocationParts,
   parseStructuredPlaceInput,
-  resolveLocationString,
+  resolveLocationCandidates,
 } from "./parse.ts";
 import { sanitizeLocationInput, splitLocationInput } from "./sanitize.ts";
 import type {
@@ -124,7 +124,8 @@ export function looksLikeGeographicLocation(raw: string, context: ScrapedLocatio
   const key = normalizeLocationKey(value);
   if (INVALID_LOCATION_TOKENS.has(key)) return false;
   if (detectCountriesAcross([value]).length > 0) return true;
-  if (/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*$/.test(value)) return true;
+  // Bare TitleCase words need 3+ letters: "In", "On", "At" are ATS noise, not places.
+  if (value.length >= 3 && /^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*$/.test(value)) return true;
   return /^[A-Z]{2,}(?:\s+[A-Z]{2,})*$/.test(value) && value.length <= 48;
 }
 
@@ -166,18 +167,6 @@ export function isStructuredPlaceInput(value: LocationInput): value is Structure
   return typeof value === "object" && value !== null;
 }
 
-function resolveInput(
-  input: LocationInput,
-  context: ScrapedLocationContext,
-): ResolvedPlace | null {
-  if (isStructuredPlaceInput(input)) {
-    return parseStructuredPlaceInput(input);
-  }
-  const normalized = normalizeScrapedLocationPart(input, context);
-  if (!normalized) return null;
-  return resolveLocationString(normalized);
-}
-
 export function resolveScrapedLocations(
   inputs: readonly LocationInput[],
   context: ScrapedLocationContext = {},
@@ -187,15 +176,27 @@ export function resolveScrapedLocations(
 
   for (const input of inputs) {
     let results: ResolvedPlace[] = [];
-    if (typeof input === "string") {
-      for (const part of splitLocationInput(input)) {
+    const labelOnly =
+      typeof input !== "string" &&
+      !input.city &&
+      !input.region &&
+      !input.countryCode &&
+      input.rawLabel?.trim();
+    if (typeof input === "string" || labelOnly) {
+      // A structured input that is only a label ("Remote (United States | Canada)")
+      // is a plain string in disguise: split it like one so multi-place lists
+      // aren't collapsed to their first entry by parseStructuredPlaceInput.
+      const raw = typeof input === "string" ? input : input.rawLabel!;
+      for (const part of splitLocationInput(raw)) {
         const normalized = normalizeScrapedLocationPart(part, context);
         if (!normalized) continue;
-        const r = resolveLocationString(normalized);
-        if (r) results.push(r);
+        results.push(...resolveLocationCandidates(normalized));
+      }
+      if (typeof input !== "string" && input.remote) {
+        results = results.map((r) => ({ ...r, place: { ...r.place, remote: true } }));
       }
     } else {
-      const r = resolveInput(input, context);
+      const r = parseStructuredPlaceInput(input);
       if (r) results = [r];
     }
 

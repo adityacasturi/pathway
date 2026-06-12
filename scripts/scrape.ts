@@ -114,24 +114,30 @@ function logScrapeProgress(
       const label = verbose ? labelCompany(result.slug, companyName) : companyName;
       const prefix = `[${event.index}/${event.total}] ${label}`;
 
-      if (result.status === "ok") {
-        const roleCount = result.openCount;
-        const action = dryRun ? "would save" : "saved";
-        const stats = result.stats;
-        const detail =
-          verbose && stats
-            ? `${roleCount} ${action} (${stats.fetched} fetched, ${stats.rejected.length} filtered out)`
-            : `${roleCount} ${action}`;
-        console.log(`${prefix}: ${detail} (${seconds}s)`);
-        if (verbose) {
-          console.log(`  ${sourceType} · ${result.slug}`);
-          logKeptRolePreview(result);
-        }
-      } else {
+      if (result.status === "error") {
         console.log(`${prefix}: failed — ${result.error ?? "unknown error"} (${seconds}s)`);
         if (verbose) {
           console.log(`  ${sourceType} · ${result.slug}`);
         }
+        return;
+      }
+
+      const roleCount = result.openCount;
+      const action = dryRun ? "would save" : "saved";
+      const stats = result.stats;
+      const suspicious = isSuspiciousScrapeStatus(result.status) ? ` ⚠ ${formatStatus(result.status)}` : "";
+      const unknownNote =
+        verbose && (result.unknownLocationCount ?? 0) > 0
+          ? `, ${result.unknownLocationCount} unknown location`
+          : "";
+      const detail =
+        verbose && stats
+          ? `${roleCount} ${action} (${stats.fetched} fetched, ${stats.rejected.length} filtered out${unknownNote})`
+          : `${roleCount} ${action}`;
+      console.log(`${prefix}: ${detail}${suspicious} (${seconds}s)`);
+      if (verbose) {
+        console.log(`  ${sourceType} · ${result.slug}`);
+        logKeptRolePreview(result);
       }
       return;
     }
@@ -145,8 +151,9 @@ function logKeptRolePreview(result: SourceScrapeResult) {
   }
 
   for (const role of preview) {
-    const location = role.location ? ` · ${role.location}` : "";
-    console.log(`  · ${role.title} (${role.season})${location}`);
+    const location = role.location ? ` · ${role.location}` : " · location unknown";
+    const season = role.season ? ` (${role.season})` : "";
+    console.log(`  · ${role.title}${season}${location}`);
   }
   const remaining = result.openCount - preview.length;
   if (remaining > 0) {
@@ -164,9 +171,15 @@ function printScrapeSummary(
     durationMs: number;
   },
 ) {
-  const succeeded = results.filter((result) => result.status === "ok");
+  const succeeded = results.filter(
+    (result) => result.status !== "error" && !isSuspiciousScrapeStatus(result.status),
+  );
+  const suspicious = results.filter((result) => isSuspiciousScrapeStatus(result.status));
   const failed = results.filter((result) => result.status === "error");
-  const totalOpen = succeeded.reduce((sum, result) => sum + result.openCount, 0);
+  const totalOpen = results.reduce(
+    (sum, result) => (result.status === "error" ? sum : sum + result.openCount),
+    0,
+  );
 
   console.log("");
   const filter = options.filterSlug ? ` · filter: ${options.filterSlug}` : "";
@@ -175,6 +188,15 @@ function printScrapeSummary(
     `Done in ${formatDuration(options.durationMs)}${filter} — ` +
       `${succeeded.length}/${results.length} ok · ${totalOpen} roles ${saved}`,
   );
+
+  if (suspicious.length > 0) {
+    console.log("");
+    console.log(`${suspicious.length} suspicious scrape result (source likely changed):`);
+    for (const result of sortByCompanyLabel(suspicious, companyMeta)) {
+      const meta = companyMeta.get(result.slug);
+      console.log(`  ${meta?.companyName ?? result.slug}: ${formatStatus(result.status)}`);
+    }
+  }
 
   if (failed.length > 0) {
     console.log("");
@@ -251,6 +273,14 @@ function sortByCompanyLabel(
 
 function sortByOpenCountDesc(results: SourceScrapeResult[]): SourceScrapeResult[] {
   return [...results].sort((a, b) => b.openCount - a.openCount || a.slug.localeCompare(b.slug));
+}
+
+function isSuspiciousScrapeStatus(status: SourceScrapeResult["status"]): boolean {
+  return status === "suspicious_zero" || status === "suspicious_drop" || status === "suspicious_filter";
+}
+
+function formatStatus(status: SourceScrapeResult["status"]): string {
+  return status.replace(/_/g, " ");
 }
 
 function formatDuration(ms: number): string {

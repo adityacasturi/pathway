@@ -86,6 +86,32 @@ test("resolveScrapedLocations removes stale appended United States from foreign 
   }
 });
 
+test("resolveScrapedLocations preserves multi-city lists across countries", () => {
+  const result = resolveScrapedLocations(["London, NY, Miami"]);
+  assert.equal(result.places.length, 3);
+  assert.deepEqual(result.countries, ["GB", "US"]);
+  assert.match(result.display ?? "", /London, United Kingdom/);
+  assert.match(result.display ?? "", /Miami, FL, United States/);
+});
+
+test("resolveScrapedLocations treats comma-separated US state names as states", () => {
+  const result = resolveScrapedLocations(["Colorado, Florida, Texas"]);
+  assert.equal(result.places.length, 3);
+  assert.deepEqual(result.countries, ["US"]);
+  assert.equal(
+    result.display,
+    "Colorado, United States · Florida, United States · Texas, United States",
+  );
+});
+
+test("ambiguous state-vs-country codes require corroboration", () => {
+  // Known city in Israel → Israel, known city in Illinois → US.
+  assert.deepEqual(resolveScrapedLocations(["Tel Aviv, IL"]).countries, ["IL"]);
+  assert.deepEqual(resolveScrapedLocations(["Chicago, IL"]).countries, ["US"]);
+  // Unknown city with an ambiguous code resolves to nothing, never a guess.
+  assert.equal(resolveScrapedLocations(["Foosburg, IL"]).places.length, 0);
+});
+
 test("resolveScrapedLocations fails closed instead of assuming unknown locations are US", () => {
   const examples = [
     "Some Unknown City",
@@ -98,4 +124,50 @@ test("resolveScrapedLocations fails closed instead of assuming unknown locations
     assert.equal(result.countries.includes("US"), false, location);
     assert.doesNotMatch(result.display ?? "", /United States/, location);
   }
+});
+
+test("splitLocationInput handles ' or ' lists and parenthesized separator lists", () => {
+  const orList = resolveScrapedLocations(["New York, London, or Paris"]);
+  assert.equal(orList.countries.includes("US"), true);
+  assert.equal(orList.countries.includes("GB"), true);
+  assert.equal(orList.countries.includes("FR"), true);
+
+  const parenList = resolveScrapedLocations(["Remote (United States | Canada)"]);
+  assert.deepEqual(parenList.countries, ["CA", "US"]);
+
+  const orPair = resolveScrapedLocations(["Beijing OR Shanghai"]);
+  assert.deepEqual(orPair.countries, ["CN"]);
+});
+
+test("two-letter TitleCase noise like 'In' never resolves to a place", () => {
+  const result = resolveScrapedLocations(["In"]);
+  assert.equal(result.places.length, 0);
+  assert.equal(result.display, null);
+});
+
+test("ambiguous province/country tails corroborate via gazetteer, never guess", () => {
+  // NL must be the Netherlands when the city corroborates it…
+  const amsterdam = resolveScrapedLocations(["Amsterdam, NL"]);
+  assert.deepEqual(amsterdam.countries, ["NL"]);
+  // …and an uncorroborated ambiguous tail stays an honest unknown.
+  const unknown = resolveScrapedLocations(["Zzyzx Springs, IL"]);
+  assert.equal(unknown.places.length, 0);
+});
+
+test("label-only structured inputs split multi-place lists like strings", () => {
+  const result = resolveScrapedLocations([
+    { rawLabel: "Remote (United States | Canada)", remote: true },
+  ]);
+  assert.deepEqual(result.countries, ["CA", "US"]);
+  assert.ok(result.places.every((p) => p.remote));
+});
+
+test("city-region-country convention beats the province reading of an ambiguous tail", () => {
+  const result = resolveScrapedLocations(["Middenmeer, NH, NL"]);
+  assert.deepEqual(result.countries, ["NL"]);
+});
+
+test("user-assigned ISO codes are not countries", () => {
+  const result = resolveScrapedLocations(["Springfield, ZZ"]);
+  assert.equal(result.countries.includes("ZZ"), false);
 });

@@ -13,6 +13,7 @@ loadDotEnvLocal();
 
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
+const includeClosed = args.includes("--include-closed");
 const limitArg = args.find((arg) => arg.startsWith("--limit="));
 const limit = limitArg ? Number.parseInt(limitArg.split("=")[1] ?? "", 10) : null;
 const progressEveryArg = args.find((arg) => arg.startsWith("--progress-every="));
@@ -22,20 +23,41 @@ const progressEvery = progressEveryArg
 
 const supabase = createAdminClient();
 
-let query = supabase
-  .from("scraped_postings")
-  .select("id, location, posting_url")
-  .eq("status", "open")
-  .order("last_seen_at", { ascending: false });
+// Page past PostgREST's 1000-row response cap.
+const PAGE_SIZE = 1000;
+type BackfillRow = {
+  id: string;
+  location: string | null;
+  raw_location: string | null;
+  posting_url: string;
+};
+const data: BackfillRow[] = [];
 
-if (limit && Number.isFinite(limit)) {
-  query = query.limit(limit);
+for (let offset = 0; ; offset += PAGE_SIZE) {
+  let query = supabase
+    .from("scraped_postings")
+    .select("id, location, raw_location, posting_url")
+    .order("last_seen_at", { ascending: false })
+    .order("id", { ascending: true })
+    .range(offset, offset + PAGE_SIZE - 1);
+
+  if (!includeClosed) {
+    query = query.eq("status", "open");
+  }
+
+  const { data: page, error } = await query;
+  if (error) {
+    console.error(error.message);
+    process.exit(1);
+  }
+
+  data.push(...((page ?? []) as BackfillRow[]));
+  if (!page || page.length < PAGE_SIZE) break;
+  if (limit && Number.isFinite(limit) && data.length >= limit) break;
 }
 
-const { data, error } = await query;
-if (error) {
-  console.error(error.message);
-  process.exit(1);
+if (limit && Number.isFinite(limit) && data.length > limit) {
+  data.length = limit;
 }
 
 let updated = 0;
@@ -49,7 +71,9 @@ console.log(
 
 for (const row of data ?? []) {
   scanned += 1;
-  const raw = row.location?.trim() ?? "";
+  // Prefer the original ATS string when present; otherwise the stored display
+  // value is the best remaining record of what was scraped.
+  const raw = row.raw_location?.trim() || row.location?.trim() || "";
   if (!raw) {
     printProgress();
     continue;
@@ -60,15 +84,16 @@ for (const row of data ?? []) {
   const location_places = canonicalPlacesToJson(resolved.places);
   const countries = resolved.countries;
   const location_confidence = resolved.places.length > 0 ? resolved.minConfidence : null;
+  const raw_location = row.raw_location?.trim() || row.location?.trim() || null;
 
-  if (location === raw && location_places.length > 0) {
+  if (location === row.location && location_places.length > 0 && row.raw_location) {
     unchanged += 1;
     printProgress();
     continue;
   }
 
   if (dryRun) {
-    console.log(`${row.posting_url}\n  before: ${raw}\n  after:  ${location}\n`);
+    console.log(`${row.posting_url}\n  before: ${row.location}\n  after:  ${location ?? "(unknown)"}\n`);
     updated += 1;
     printProgress();
     continue;
@@ -76,23 +101,12 @@ for (const row of data ?? []) {
 
   const { error: updateError } = await supabase
     .from("scraped_postings")
-    .update({ location, location_places, countries, location_confidence })
+    .update({ location, location_places, countries, location_confidence, raw_location })
     .eq("id", row.id);
 
   if (updateError) {
-    if (updateError.message.includes("location_confidence")) {
-      const { error: legacyError } = await supabase
-        .from("scraped_postings")
-        .update({ location, location_places, countries })
-        .eq("id", row.id);
-      if (legacyError) {
-        console.error(legacyError.message);
-        process.exit(1);
-      }
-    } else {
-      console.error(updateError.message);
-      process.exit(1);
-    }
+    console.error(updateError.message);
+    process.exit(1);
   }
 
   updated += 1;

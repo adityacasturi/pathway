@@ -133,7 +133,7 @@ Loader: `lib/feed/scraped-postings.ts` → `FeedPosting` (`lib/feed/source.ts`).
 
 - Open rows from `scraped_postings` for **active** companies with **enabled** `company_sources`.
 - Posting ids: stable URL hash (`lib/feed/ids.ts`) plus row uuid for interactions.
-- `countries` on `scraped_postings` stores ISO codes when known. Product scope (`US_ONLY_INTERNSHIPS` in `lib/config/product-scope.ts`) gates scrape upserts to roles with at least one US location, trims multi-site roles to US places before storage, and keeps read-path filtering as a defense-in-depth guard. Unknown locations fail closed. Openings country pills remain available for finer filtering within that scope.
+- `countries` on `scraped_postings` stores ISO codes when known. The catalog is global: roles from any country are stored and shown, and per-user country filter pills (Openings/Companies/Alerts) handle narrowing. Unknown locations are stored honestly (`location` null, `raw_location` preserved, UI shows "Unknown") rather than guessed.
 - **Posted vs Discovered:** see [scraped-posted-dates.md](./scraped-posted-dates.md). **NEW** badge uses `first_seen_at` vs `user_preferences.live_last_seen_at`.
 - Applied postings hidden by default when posting URL matches an active application.
 - `refreshFeed()` revalidates `/openings` only — it does **not** scrape.

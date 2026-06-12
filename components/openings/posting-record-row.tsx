@@ -61,7 +61,7 @@ export function PostingRecordRow({
   layout: "desktop" | "mobile" | "chat";
 }) {
   const postingHref = safeExternalHref(posting.url);
-  const locationLabel = formatCompactLocationSegments(posting.locations, layout === "chat" ? 2 : 1) || "—";
+  const locationLabel = formatCompactLocationSegments(posting.locations, layout === "chat" ? 2 : 1) || "Unknown";
   const ageLabel = formatPostingRelativeTime(posting.postedDisplay) || "—";
   const metaLine = [locationLabel, ageLabel].filter((value) => value !== "—").join(" · ");
 

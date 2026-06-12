@@ -73,7 +73,7 @@ function RoleCell({ posting }: { posting: FeedPosting }) {
 }
 
 function LocationCell({ posting }: { posting: FeedPosting }) {
-  const location = formatCompactLocationSegments(posting.locations, 1) || "—";
+  const location = formatCompactLocationSegments(posting.locations, 1) || "Unknown";
   return (
     <HomeTableBodyCell>
       <span className="min-w-0 truncate text-sm text-foreground/80">{location}</span>

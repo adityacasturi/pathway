@@ -179,11 +179,12 @@ export function parseMicrosoftPostings(
     const description = detail?.job_description ?? "";
     const locations = formatMicrosoftLocations(summary, detail);
     const postingUrl = buildMicrosoftPostingUrl(board, summary, detail);
+    const departments = summary.department ? [summary.department] : [];
 
     const classification = classifyForSource(source, {
       title: roleName,
       description,
-      departments: summary.department ? [summary.department] : [],
+      departments,
       locations,
     });
 
@@ -310,4 +311,3 @@ function normalizeMicrosoftDomain(boardToken: string | null | undefined): string
 
   return `${trimmed}.com`;
 }
-

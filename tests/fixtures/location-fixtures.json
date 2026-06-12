@@ -1,106 +1,317 @@
 [
   {
     "input": "Sunnyvale",
-    "expect": { "display": "Sunnyvale, CA, United States", "countryCode": "US" }
+    "expect": {
+      "display": "Sunnyvale, CA, United States",
+      "countryCode": "US"
+    }
   },
   {
     "input": "Spain, ES",
-    "expect": { "display": "Spain", "countryCode": "ES" }
+    "expect": {
+      "display": "Spain",
+      "countryCode": "ES"
+    }
   },
   {
     "input": "Singapore",
-    "expect": { "display": "Singapore", "countryCode": "SG" }
+    "expect": {
+      "display": "Singapore",
+      "countryCode": "SG"
+    }
   },
   {
     "input": "United States",
-    "expect": { "display": "United States", "countryCode": "US" }
+    "expect": {
+      "display": "United States",
+      "countryCode": "US"
+    }
   },
   {
     "input": "Vimercate (MB), Italy",
-    "expect": { "display": "Vimercate, Italy", "countryCode": "IT" }
+    "expect": {
+      "display": "Vimercate, Italy",
+      "countryCode": "IT"
+    }
   },
   {
     "input": "Malaysia, Penang",
-    "expect": { "display": "Penang, Malaysia", "countryCode": "MY" }
+    "expect": {
+      "display": "Penang, Malaysia",
+      "countryCode": "MY"
+    }
   },
   {
     "input": "Poland, Gdansk",
-    "expect": { "display": "Gdansk, Poland", "countryCode": "PL" }
+    "expect": {
+      "display": "Gdansk, Poland",
+      "countryCode": "PL"
+    }
   },
   {
     "input": "US, New Mexico, Albuquerque, United States",
-    "expect": { "display": "Albuquerque, NM, United States", "countryCode": "US" }
+    "expect": {
+      "display": "Albuquerque, NM, United States",
+      "countryCode": "US"
+    }
   },
   {
     "input": "Bala Cynwyd (Philadelphia Area), Pennsylvania",
-    "expect": { "display": "Bala Cynwyd, PA, United States", "countryCode": "US" }
+    "expect": {
+      "display": "Bala Cynwyd, PA, United States",
+      "countryCode": "US"
+    }
   },
   {
     "input": "Basel, Basel-Landschaft, CH",
-    "expect": { "display": "Basel, Switzerland", "countryCode": "CH" }
+    "expect": {
+      "display": "Basel, Switzerland",
+      "countryCode": "CH"
+    }
   },
   {
     "input": "Dublin, Ireland",
-    "expect": { "display": "Dublin, Ireland", "countryCode": "IE" }
+    "expect": {
+      "display": "Dublin, Ireland",
+      "countryCode": "IE"
+    }
   },
   {
     "input": "Guangzhou, China",
-    "expect": { "display": "Guangzhou, China", "countryCode": "CN" }
+    "expect": {
+      "display": "Guangzhou, China",
+      "countryCode": "CN"
+    }
   },
   {
     "input": "Dublin, D, IE",
-    "expect": { "display": "Dublin, Ireland", "countryCode": "IE" }
+    "expect": {
+      "display": "Dublin, Ireland",
+      "countryCode": "IE"
+    }
   },
   {
     "input": "China, Shanghai",
-    "expect": { "display": "Shanghai, China", "countryCode": "CN" }
+    "expect": {
+      "display": "Shanghai, China",
+      "countryCode": "CN"
+    }
   },
   {
     "input": "China, Beijing",
-    "expect": { "display": "Beijing, China", "countryCode": "CN" }
+    "expect": {
+      "display": "Beijing, China",
+      "countryCode": "CN"
+    }
   },
   {
     "input": "MSB, Singapore",
-    "expect": { "display": "Singapore", "countryCode": "SG" }
+    "expect": {
+      "display": "Singapore",
+      "countryCode": "SG"
+    }
   },
   {
     "input": "X, Singapore",
-    "expect": { "display": "Singapore", "countryCode": "SG" }
+    "expect": {
+      "display": "Singapore",
+      "countryCode": "SG"
+    }
   },
   {
     "input": "PETAH TIKVA, Israel",
-    "expect": { "display": "Petah Tikva, Israel", "countryCode": "IL" }
+    "expect": {
+      "display": "Petah Tikva, Israel",
+      "countryCode": "IL"
+    }
   },
   {
     "input": "CAMBRIDGE, United Kingdom",
-    "expect": { "display": "Cambridge, United Kingdom", "countryCode": "GB" }
+    "expect": {
+      "display": "Cambridge, United Kingdom",
+      "countryCode": "GB"
+    }
   },
   {
     "input": "nyc",
-    "expect": { "display": "New York City, NY, United States", "countryCode": "US" }
+    "expect": {
+      "display": "New York City, NY, United States",
+      "countryCode": "US"
+    }
   },
   {
     "input": "New York, United States",
-    "expect": { "display": "New York City, NY, United States", "countryCode": "US" }
+    "expect": {
+      "display": "New York City, NY, United States",
+      "countryCode": "US"
+    }
   },
   {
     "input": "Remote US",
-    "expect": { "display": "Remote, United States", "countryCode": "US" }
+    "expect": {
+      "display": "Remote, United States",
+      "countryCode": "US"
+    }
   },
   {
     "input": "US-TX-RICHARDSON-C17 ~ 1717 Cityline Dr",
-    "expect": { "display": "Richardson, TX, United States", "countryCode": "US" }
+    "expect": {
+      "display": "Richardson, TX, United States",
+      "countryCode": "US"
+    }
   },
   {
     "input": "Boston, MA",
-    "expect": { "display": "Boston, MA, United States", "countryCode": "US" }
+    "expect": {
+      "display": "Boston, MA, United States",
+      "countryCode": "US"
+    }
   },
   {
     "input": "Hong Kong",
-    "expect": { "display": "Hong Kong", "countryCode": "HK" }
+    "expect": {
+      "display": "Hong Kong",
+      "countryCode": "HK"
+    }
   },
   {
     "input": "Miami, FL",
-    "expect": { "display": "Miami, FL, United States", "countryCode": "US" }
+    "expect": {
+      "display": "Miami, FL, United States",
+      "countryCode": "US"
+    }
+  },
+  {
+    "input": "Tel Aviv District, IL",
+    "expect": {
+      "display": "Tel Aviv, Israel",
+      "countryCode": "IL"
+    }
+  },
+  {
+    "input": "ר\"ג, Tel Aviv District, IL",
+    "expect": {
+      "display": "Tel Aviv, Israel",
+      "countryCode": "IL"
+    }
+  },
+  {
+    "input": "Chicago, IL",
+    "expect": {
+      "display": "Chicago, IL, United States",
+      "countryCode": "US"
+    }
+  },
+  {
+    "input": "ca, santa clara, US",
+    "expect": {
+      "display": "Santa Clara, CA, United States",
+      "countryCode": "US"
+    }
+  },
+  {
+    "input": "Bengaluru, Ka, IN",
+    "expect": {
+      "display": "Bengaluru, India",
+      "countryCode": "IN"
+    }
+  },
+  {
+    "input": "Vilnius, Lithuania",
+    "expect": {
+      "display": "Vilnius, Lithuania",
+      "countryCode": "LT"
+    }
+  },
+  {
+    "input": "Tampere, Finland",
+    "expect": {
+      "display": "Tampere, Finland",
+      "countryCode": "FI"
+    }
+  },
+  {
+    "input": "Zurich, Switzerland",
+    "expect": {
+      "display": "Zürich, Switzerland",
+      "countryCode": "CH"
+    }
+  },
+  {
+    "input": "Lithuania, United States",
+    "expect": {
+      "display": "Lithuania",
+      "countryCode": "LT"
+    }
+  },
+  {
+    "input": "Bangalore, United States",
+    "expect": {
+      "display": "Bengaluru, India",
+      "countryCode": "IN"
+    }
+  },
+  {
+    "input": "Georgia, United States",
+    "expect": {
+      "display": "Georgia, United States",
+      "countryCode": "US"
+    }
+  },
+  {
+    "input": "Springfield, Illinois",
+    "expect": {
+      "display": "Springfield, IL, United States",
+      "countryCode": "US"
+    }
+  },
+  {
+    "input": "Foster City, CA",
+    "expect": {
+      "display": "Foster City, CA, United States",
+      "countryCode": "US"
+    }
+  },
+  {
+    "input": "Toronto, CAN",
+    "expect": {
+      "display": "Toronto, ON, Canada",
+      "countryCode": "CA"
+    }
+  },
+  {
+    "input": "Amsterdam, NH, NL",
+    "expect": {
+      "display": "Amsterdam, Netherlands",
+      "countryCode": "NL"
+    }
+  },
+  {
+    "input": "San Mateo, CA United States",
+    "expect": {
+      "display": "San Mateo, CA, United States",
+      "countryCode": "US"
+    }
+  },
+  {
+    "input": "Germany Off-site",
+    "expect": {
+      "display": "Germany",
+      "countryCode": "DE"
+    }
+  },
+  {
+    "input": "London, United Kingdom",
+    "expect": {
+      "display": "London, United Kingdom",
+      "countryCode": "GB"
+    }
+  },
+  {
+    "input": "San Francisco Bay Area",
+    "expect": {
+      "display": "San Francisco, CA, United States",
+      "countryCode": "US"
+    }
   }
 ]

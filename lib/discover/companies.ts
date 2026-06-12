@@ -1,7 +1,6 @@
 import type { DiscoverIndustryCatalogItem } from "@/lib/discover/catalog";
 import { loadDiscoverCompanyOpenCounts } from "@/lib/discover/open-counts";
 import type { DiscoverCompanyCard, ScrapedPostingRow } from "@/lib/discover/types";
-import { scrapedPostingRowMatchesProductScope } from "@/lib/feed/product-scope";
 import { stablePostingId } from "@/lib/feed/ids";
 import { resolvePostedDisplay } from "@/lib/feed/posted-display";
 import type { FeedSeason } from "@/lib/feed/types";
@@ -27,28 +26,22 @@ interface PostingRow {
   id: string;
   role_name: string;
   posting_url: string;
-  season: string;
+  season: string | null;
   location: string | null;
+  raw_location?: string | null;
   location_places: import("@/lib/geo/types").LocationPlaceJson[] | null;
   countries: string[] | null;
   first_seen_at: string;
 }
 
 function mapPostingRow(row: PostingRow): ScrapedPostingRow | null {
-  if (!scrapedPostingRowMatchesProductScope(row)) {
-    return null;
-  }
+  // Honest fallback: normalized display → raw ATS string → null ("Unknown" in UI).
+  const normalizedLocation = row.location?.trim() || row.raw_location?.trim() || null;
 
-  const normalizedLocation = row.location?.trim() || null;
-  if (!normalizedLocation) {
-    return null;
-  }
-
-  const seasonValue = row.season.trim();
-  if (!(FEED_SEASONS as readonly string[]).includes(seasonValue)) {
-    return null;
-  }
-  const season = seasonValue as FeedSeason;
+  const seasonValue = row.season?.trim() ?? "";
+  const season = (FEED_SEASONS as readonly string[]).includes(seasonValue)
+    ? (seasonValue as FeedSeason)
+    : null;
   const postedDisplay = resolvePostedDisplay(row);
   const displayIso = postedDisplay.kind === "added" ? row.first_seen_at : null;
 
@@ -136,7 +129,7 @@ export async function loadDiscoverCompanyPostings(
 ): Promise<ScrapedPostingRow[]> {
   const { data, error } = await supabase
     .from("scraped_postings")
-    .select("id, role_name, posting_url, season, location, location_places, countries, first_seen_at")
+    .select("id, role_name, posting_url, season, location, raw_location, location_places, countries, first_seen_at")
     .eq("company_id", companyId)
     .eq("status", "open")
     .order("first_seen_at", { ascending: false })

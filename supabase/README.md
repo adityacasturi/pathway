@@ -62,6 +62,8 @@ or install the CLI (`brew install supabase/tap/supabase`) and run
 
 ## Recent hosted migrations
 
+- `company_source_health_baselines` — adds trusted scrape health baselines and last-attempt fields to `company_sources`; suspicious/error runs no longer overwrite healthy baselines; integrity check passed with all violations `0`.
+- `drop_scrape_role_llm_normalizations` — removes the discontinued LLM scrape shadow cache table; integrity check passed with all violations `0`.
 - `remove_scout_hybrid_rag` — drops Scout hybrid search tables/RPC and `scraped_postings.description_text`; restores pre-RAG integrity checks.
 - `harden_scout_chat` — chat persistence hardening and `chat_tool_calls` audit table.
 - `global_open_role_counts` — `discover_company_open_counts()` and `market_posting_summary(_now)` count all open roles for eligible companies (removed US-only `countries` filter from aggregates).

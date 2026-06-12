@@ -10,7 +10,7 @@ export interface ScrapedPostingRow {
   interactionIds: string[];
   roleName: string;
   postingUrl: string;
-  season: FeedSeason;
+  season: FeedSeason | null;
   location: string | null;
   /** ISO timestamp for sort (effective posted or first_seen). */
   datePosted: string | null;

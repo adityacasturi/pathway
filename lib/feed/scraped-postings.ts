@@ -5,14 +5,14 @@ import {
   toUnixSeconds,
 } from "./posted-display.ts";
 import { stablePostingId } from "./ids.ts";
-import { formatPlacesFromJson, placesFromJson } from "../geo/format.ts";
+import { formatCanonicalPlace, placesFromJson } from "../geo/format.ts";
+import { countriesFromPlaces } from "../geo/countries.ts";
 import type { LocationPlaceJson } from "../geo/types.ts";
 import {
   detectCountriesAcross,
   hasRemoteLocation,
 } from "./location.ts";
 import { expandLocationSegments } from "./us-locations.ts";
-import { feedPostingMatchesProductScope } from "./product-scope.ts";
 import type { FeedPosting, FeedSeason } from "./types.ts";
 import { FEED_SEASONS } from "./types.ts";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -22,8 +22,9 @@ export interface ScrapedPostingFeedRow {
   company_name: string;
   role_name: string;
   posting_url: string;
-  season: string;
+  season: string | null;
   location: string | null;
+  raw_location?: string | null;
   location_places: LocationPlaceJson[] | null;
   countries: string[] | null;
   first_seen_at: string;
@@ -40,36 +41,60 @@ function isFeedSeason(season: string): season is FeedSeason {
   return (FEED_SEASONS as readonly string[]).includes(season);
 }
 
-export function mapScrapedRowToFeedPosting(row: ScrapedPostingFeedRow): FeedPosting | null {
+interface FeedPostingMapOptions {
+  enabledCountryCodes?: readonly string[] | null;
+}
+
+function enabledCountrySet(options?: FeedPostingMapOptions): Set<string> | null {
+  const codes = options?.enabledCountryCodes;
+  if (!codes) return null;
+  return new Set(codes.map((code) => code.toUpperCase()));
+}
+
+export function mapScrapedRowToFeedPosting(
+  row: ScrapedPostingFeedRow,
+  options?: FeedPostingMapOptions,
+): FeedPosting | null {
   const url = row.posting_url?.trim();
   const company = row.company_name?.trim();
   const title = row.role_name?.trim();
   if (!url || !company || !title) return null;
-  const season = row.season.trim();
-  if (!isFeedSeason(season)) return null;
+  const seasonValue = row.season?.trim() ?? "";
+  const season = isFeedSeason(seasonValue) ? seasonValue : null;
 
-  const canonicalPlaces = placesFromJson(row.location_places);
-  const fromPlaces = formatPlacesFromJson(row.location_places);
-  const rawLocation = row.location?.trim() ?? "";
-  if (fromPlaces.length === 0 && !rawLocation) {
-    return null;
-  }
+  const allCanonicalPlaces = placesFromJson(row.location_places);
+  const allowedCountries = enabledCountrySet(options);
+  const canonicalPlaces = allowedCountries
+    ? allCanonicalPlaces.filter((place) => allowedCountries.has(place.countryCode.toUpperCase()))
+    : allCanonicalPlaces;
+  const fromPlaces = canonicalPlaces.map((place) => formatCanonicalPlace(place));
+  // Honest fallback chain: resolved places → stored display → raw ATS string.
+  // Postings with no location information at all are kept; the UI shows "Unknown".
+  const rawLocation = row.location?.trim() || row.raw_location?.trim() || "";
   const locations =
     fromPlaces.length > 0
       ? fromPlaces
-      : (() => {
-          const segments = expandLocationSegments(rawLocation);
-          return segments.length > 0 ? segments : [rawLocation];
-        })();
+      : allowedCountries && allCanonicalPlaces.length > 0
+        ? []
+      : rawLocation
+        ? (() => {
+            const segments = expandLocationSegments(rawLocation);
+            return segments.length > 0 ? segments : [rawLocation];
+          })()
+        : [];
 
   const storedCountries = (row.countries ?? []).map((code) => code.toUpperCase()).filter(Boolean);
   const countries =
-    storedCountries.length > 0
+    allowedCountries && canonicalPlaces.length > 0
+      ? countriesFromPlaces(canonicalPlaces)
+      : allowedCountries && allCanonicalPlaces.length > 0
+        ? []
+      : storedCountries.length > 0
       ? [...new Set(storedCountries)].sort()
       : detectCountriesAcross(locations);
 
   const hasRemote =
-    row.location_places?.some((place) => place.remote) ??
+    canonicalPlaces.some((place) => place.remote) ||
     hasRemoteLocation(locations);
   const id = stablePostingId(url);
   const datePosted = resolveEffectivePostedUnix(row);
@@ -102,6 +127,18 @@ export function mapScrapedRowToFeedPosting(row: ScrapedPostingFeedRow): FeedPost
   };
 }
 
+async function loadEnabledCountryCodes(supabase: SupabaseClient): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("allowed_countries")
+    .select("country_code")
+    .eq("enabled", true);
+
+  if (error) throw error;
+  return (data ?? [])
+    .map((row) => String(row.country_code ?? "").toUpperCase())
+    .filter(Boolean);
+}
+
 async function loadEligibleCompanyIds(supabase: SupabaseClient): Promise<string[]> {
   const { data, error } = await supabase
     .from("companies")
@@ -114,7 +151,10 @@ async function loadEligibleCompanyIds(supabase: SupabaseClient): Promise<string[
 }
 
 export async function loadScrapedFeedPostings(supabase: SupabaseClient): Promise<FeedPosting[]> {
-  const companyIds = await loadEligibleCompanyIds(supabase);
+  const [companyIds, enabledCountryCodes] = await Promise.all([
+    loadEligibleCompanyIds(supabase),
+    loadEnabledCountryCodes(supabase),
+  ]);
   if (companyIds.length === 0) return [];
 
   const { data, error } = await supabase
@@ -127,6 +167,7 @@ export async function loadScrapedFeedPostings(supabase: SupabaseClient): Promise
       posting_url,
       season,
       location,
+      raw_location,
       location_places,
       countries,
       first_seen_at,
@@ -154,8 +195,9 @@ export async function loadScrapedFeedPostings(supabase: SupabaseClient): Promise
       company_name: raw.company_name,
       role_name: raw.role_name,
       posting_url: raw.posting_url,
-      season: raw.season,
+      season: raw.season ?? null,
       location: raw.location,
+      raw_location: raw.raw_location ?? null,
       location_places: raw.location_places ?? null,
       countries: raw.countries ?? null,
       first_seen_at: raw.first_seen_at,
@@ -167,9 +209,8 @@ export async function loadScrapedFeedPostings(supabase: SupabaseClient): Promise
         logo_asset_key: company.logo_asset_key ?? null,
       },
     };
-    const posting = mapScrapedRowToFeedPosting(row);
+    const posting = mapScrapedRowToFeedPosting(row, { enabledCountryCodes });
     if (!posting) continue;
-    if (!feedPostingMatchesProductScope(posting)) continue;
     postings.push(posting);
   }
 
@@ -184,6 +225,7 @@ const FEED_POSTING_SELECT = `
   posting_url,
   season,
   location,
+  raw_location,
   location_places,
   countries,
   first_seen_at,
@@ -213,8 +255,9 @@ function mapRawScrapedFeedRow(raw: Record<string, unknown>): ScrapedPostingFeedR
     company_name: String(raw.company_name),
     role_name: String(raw.role_name),
     posting_url: String(raw.posting_url),
-    season: String(raw.season),
+    season: (raw.season as string | null) ?? null,
     location: (raw.location as string | null) ?? null,
+    raw_location: (raw.raw_location as string | null) ?? null,
     location_places: (raw.location_places as LocationPlaceJson[] | null) ?? null,
     countries: (raw.countries as string[] | null) ?? null,
     first_seen_at: String(raw.first_seen_at),
@@ -235,6 +278,7 @@ export async function loadFeedPostingsByPostingIds(
   if (postingIds.length === 0) {
     return { postings: [] };
   }
+  const enabledCountryCodes = await loadEnabledCountryCodes(supabase);
 
   const { data, error } = await supabase
     .from("scraped_postings")
@@ -248,9 +292,8 @@ export async function loadFeedPostingsByPostingIds(
   for (const raw of data ?? []) {
     const row = mapRawScrapedFeedRow(raw as Record<string, unknown>);
     if (!row) continue;
-    const posting = mapScrapedRowToFeedPosting(row);
+    const posting = mapScrapedRowToFeedPosting(row, { enabledCountryCodes });
     if (!posting) continue;
-    if (!feedPostingMatchesProductScope(posting)) continue;
     postings.push(posting);
   }
 

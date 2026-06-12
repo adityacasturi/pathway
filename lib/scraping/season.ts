@@ -36,6 +36,7 @@ function seasonFromText(text: string): ScrapedSeason | null {
   return null;
 }
 
+/** Defaults to Summer when no season is stated anywhere. */
 export function inferSeason(
   title: string,
   description = "",

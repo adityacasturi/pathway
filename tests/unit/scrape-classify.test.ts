@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { classifyScrapeRole } from "../../lib/scraping/classify-role.ts";
 
-test("classifyScrapeRole includes Palantir FDSE internship in the US", () => {
+// --- True positives -----------------------------------------------------------
+
+test("includes engineering internships by title", () => {
   const result = classifyScrapeRole({
     title: "Forward Deployed Software Engineer, Internship - US Government",
     commitment: "Internship",
@@ -11,9 +13,157 @@ test("classifyScrapeRole includes Palantir FDSE internship in the US", () => {
 
   assert.equal(result.include, true);
   assert.equal(result.reason, "included");
+  assert.equal(result.roleType, "internship");
+  assert.ok(result.signals.includes("title:student_opportunity"));
 });
 
-test("classifyScrapeRole excludes Palantir Deployment Strategist internship", () => {
+test("includes non-US engineering internships", () => {
+  const result = classifyScrapeRole({
+    title: "Forward Deployed Software Engineer, Internship - France",
+    commitment: "Internship",
+    locations: ["Paris, France"],
+  });
+
+  assert.equal(result.include, true);
+});
+
+test("includes co-ops and types them as co_op", () => {
+  const result = classifyScrapeRole({
+    title: "Software Engineering Co-op, Fall 2026",
+    locations: ["Boston, MA"],
+  });
+
+  assert.equal(result.include, true);
+  assert.equal(result.roleType, "co_op");
+});
+
+test("includes summer analyst engineering programs", () => {
+  const result = classifyScrapeRole({
+    title: "Technology - Software Development, Summer Analyst, 2026",
+    locations: ["New York, New York, United States"],
+    departments: ["Operations & Technology", "Technology", "Internship"],
+  });
+
+  assert.equal(result.include, true);
+});
+
+test("includes intern signal from employment metadata when title is plain", () => {
+  const result = classifyScrapeRole({
+    title: "Software Engineer, Android",
+    employmentType: "Intern",
+    team: "Emerging Talent - SWE",
+    locations: ["New York, NY (HQ)", "San Francisco, CA"],
+  });
+
+  assert.equal(result.include, true);
+  assert.ok(result.signals.includes("metadata:employment_type"));
+});
+
+test("includes roles with no parseable location (location does not gate relevance)", () => {
+  const result = classifyScrapeRole({
+    title: "Software Engineer, Intern",
+    locations: [],
+  });
+
+  assert.equal(result.include, true);
+  assert.equal(result.reason, "included");
+});
+
+test("includes working student / industrial placement titles", () => {
+  const result = classifyScrapeRole({
+    title: "Working Student - Backend Development",
+    locations: ["Munich, Germany"],
+  });
+
+  assert.equal(result.include, true);
+});
+
+// --- False positives that must be rejected -------------------------------------
+
+test("rejects leveled full-time roles even when the description mentions interns", () => {
+  const result = classifyScrapeRole({
+    title: "Hardware Engineer II",
+    description: "Our team also hosts a summer internship program for students.",
+    locations: ["Santa Clara, CA"],
+  });
+
+  assert.equal(result.include, false);
+  assert.equal(result.reason, "senior_level_role");
+  assert.ok(result.signals.includes("negative:leveled_title"));
+});
+
+test("rejects senior titles with weak (description-only) intern signals", () => {
+  const result = classifyScrapeRole({
+    title: "Senior Software Engineer",
+    description: "Mentor interns in our internship program.",
+    locations: ["Seattle, WA"],
+  });
+
+  assert.equal(result.include, false);
+  assert.equal(result.reason, "senior_level_role");
+  assert.ok(result.signals.includes("negative:seniority_title"));
+});
+
+test("rejects staff/principal/manager titles without student signals", () => {
+  for (const title of [
+    "Staff Software Engineer",
+    "Principal Engineer, Infrastructure",
+    "Engineering Manager, Payments",
+  ]) {
+    const result = classifyScrapeRole({ title, locations: ["Denver, CO"] });
+    assert.equal(result.include, false, title);
+  }
+});
+
+test("rejects plain full-time roles with no student signal anywhere", () => {
+  const result = classifyScrapeRole({
+    title: "Software Engineer, Backend",
+    employmentType: "Full Time",
+    locations: ["Austin, TX"],
+  });
+
+  assert.equal(result.include, false);
+  assert.equal(result.reason, "no_student_signal");
+});
+
+test("rejects new grad roles while new-grad support is off", () => {
+  for (const title of [
+    "Software Engineer - New Grad",
+    "Entry Level Software Engineer",
+    "Software Engineer, Entry-Level",
+  ]) {
+    const result = classifyScrapeRole({
+      title,
+      departments: ["University"],
+      locations: ["San Francisco, CA"],
+    });
+    assert.equal(result.include, false, title);
+    assert.equal(result.reason, "new_grad_excluded", title);
+    assert.equal(result.roleType, "new_grad", title);
+  }
+});
+
+test("rejects early-career full-time titles (often new grad, not intern)", () => {
+  for (const title of ["Early Career Software Engineer", "Software Engineer, Early Career"]) {
+    const result = classifyScrapeRole({ title, locations: ["Costa Mesa, CA"] });
+    assert.equal(result.include, false, title);
+    assert.equal(result.reason, "no_student_signal", title);
+  }
+});
+
+test("rejects Internal/International/Internet false positives", () => {
+  for (const title of [
+    "Internal Audit Lead, Merchant Acquirer Limited Purpose Bank (MALPB)",
+    "International Tax Engineer",
+    "Internet Services Engineer",
+  ]) {
+    const result = classifyScrapeRole({ title, locations: ["San Francisco, CA"] });
+    assert.equal(result.include, false, title);
+    assert.equal(result.reason, "title_false_positive", title);
+  }
+});
+
+test("rejects non-engineering internships", () => {
   const result = classifyScrapeRole({
     title: "Deployment Strategist, Internship",
     commitment: "Internship",
@@ -24,150 +174,44 @@ test("classifyScrapeRole excludes Palantir Deployment Strategist internship", ()
   assert.equal(result.reason, "non_engineering_role");
 });
 
-test("classifyScrapeRole includes non-US engineering internships", () => {
-  const result = classifyScrapeRole({
-    title: "Forward Deployed Software Engineer, Internship - France",
-    commitment: "Internship",
-    locations: ["Paris, France"],
-  });
-
-  assert.equal(result.include, true);
-  assert.equal(result.reason, "included");
-});
-
-test("classifyScrapeRole excludes Internal Audit false positives", () => {
-  const result = classifyScrapeRole({
-    title: "Internal Audit Lead, Merchant Acquirer Limited Purpose Bank (MALPB)",
-    locations: ["San Francisco, CA"],
-  });
-
-  assert.equal(result.include, false);
-  assert.equal(result.reason, "title_false_positive");
-});
-
-test("classifyScrapeRole includes Ashby SWE intern with employment metadata", () => {
-  const result = classifyScrapeRole({
-    title: "Software Engineer, Android",
-    employmentType: "Intern",
-    team: "Emerging Talent - SWE",
-    locations: ["New York, NY (HQ)", "San Francisco, CA"],
-  });
-
-  assert.equal(result.include, true);
-});
-
-test("classifyScrapeRole includes description-only internship signal for SWE roles", () => {
+test("rejects permanent employment metadata with weak intern signals", () => {
   const result = classifyScrapeRole({
     title: "Software Engineer",
-    employmentType: "Intern",
-    description: "Join our summer internship program as a software engineer building payments infrastructure.",
-    locations: ["Remote US"],
-  });
-
-  assert.equal(result.include, true);
-});
-
-test("classifyScrapeRole excludes new grad engineering roles in university departments", () => {
-  const result = classifyScrapeRole({
-    title: "Software Engineer - New Grad",
-    departments: ["University"],
-    employmentType: "Full Time",
-    locations: ["San Francisco, CA"],
+    employmentType: "Permanent",
+    description: "You may collaborate with our internship cohort.",
+    locations: ["London, United Kingdom"],
   });
 
   assert.equal(result.include, false);
-  assert.equal(result.reason, "full_time_grad_role");
+  assert.equal(result.reason, "senior_level_role");
+  assert.ok(result.signals.includes("negative:permanent_employment_type"));
 });
 
-test("classifyScrapeRole excludes entry level engineering titles", () => {
+// --- Explainability -------------------------------------------------------------
+
+test("classification carries raw location inputs through unchanged", () => {
   const result = classifyScrapeRole({
-    title: "Entry Level Software Engineer",
-    locations: ["San Francisco, CA"],
+    title: "Software Engineering Intern",
+    locations: ["Tel Aviv District, IL"],
+    structuredLocations: [{ rawLabel: "Remote", remote: true }],
   });
 
-  assert.equal(result.include, false);
-  assert.equal(result.reason, "full_time_grad_role");
+  assert.deepEqual(result.locations, ["Tel Aviv District, IL"]);
+  assert.equal(result.structuredLocations.length, 1);
 });
 
-test("classifyScrapeRole excludes entry-level engineering titles", () => {
-  const result = classifyScrapeRole({
-    title: "Software Engineer, Entry-Level",
-    locations: ["Austin, TX"],
+test("every decision exposes machine-readable signals", () => {
+  const included = classifyScrapeRole({
+    title: "Machine Learning Intern",
+    locations: ["Zurich, Switzerland"],
   });
+  assert.ok(included.signals.length > 0);
 
-  assert.equal(result.include, false);
-  assert.equal(result.reason, "full_time_grad_role");
-});
-
-test("classifyScrapeRole excludes permanent engineering roles without internship signals", () => {
-  const result = classifyScrapeRole({
-    title: "Staff Software Engineer",
-    commitment: "Permanent",
-    locations: ["Denver, CO"],
+  const rejectedRole = classifyScrapeRole({
+    title: "Director of Engineering",
+    description: "Oversee our internship program.",
+    locations: ["Chicago, IL"],
   });
-
-  assert.equal(result.include, false);
-  assert.equal(result.reason, "no_internship_signal");
-});
-
-test("classifyScrapeRole excludes early career full-time engineering titles", () => {
-  const result = classifyScrapeRole({
-    title: "Early Career Software Engineer",
-    locations: ["Costa Mesa, CA"],
-  });
-
-  assert.equal(result.include, false);
-  assert.equal(result.reason, "no_internship_signal");
-});
-
-test("classifyScrapeRole excludes software engineer early career suffix titles", () => {
-  const result = classifyScrapeRole({
-    title: "Software Engineer, Early Career",
-    locations: ["San Francisco, CA"],
-  });
-
-  assert.equal(result.include, false);
-  assert.equal(result.reason, "no_internship_signal");
-});
-
-test("classifyScrapeRole excludes roles without a location", () => {
-  const result = classifyScrapeRole({
-    title: "Software Engineer, Intern",
-    locations: [],
-  });
-
-  assert.equal(result.include, false);
-  assert.equal(result.reason, "missing_location");
-});
-
-test("classifyScrapeRole includes SpaceX engineering intern with flexible US site location", () => {
-  const result = classifyScrapeRole({
-    title: "Fall 2026 Software Engineering Internship/Co-op",
-    locations: ["Flexible - Any SpaceX Site"],
-    departments: ["Engineering"],
-  });
-
-  assert.equal(result.include, true);
-  assert.equal(result.reason, "included");
-});
-
-test("classifyScrapeRole leniently includes technology summer analyst internships", () => {
-  const result = classifyScrapeRole({
-    title: "Technology - Software Development, Summer Analyst, New York, United States, 2026",
-    locations: ["New York, New York, United States"],
-    departments: ["Operations & Technology", "Technology", "Internship"],
-  });
-
-  assert.equal(result.include, true);
-});
-
-test("classifyScrapeRole leniently includes engineering summer analyst titles", () => {
-  const result = classifyScrapeRole({
-    title: "2027 | Americas | New York | Engineering | Software Engineer Intern",
-    locations: ["New York, New York, United States"],
-    departments: ["Summer Analyst", "Engineering"],
-    description: "Engineering Summer Analysts build software used across the firm.",
-  });
-
-  assert.equal(result.include, true);
+  assert.equal(rejectedRole.include, false);
+  assert.ok(rejectedRole.signals.some((signal) => signal.startsWith("negative:")));
 });

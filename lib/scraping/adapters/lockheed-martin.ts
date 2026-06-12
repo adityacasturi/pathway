@@ -395,7 +395,6 @@ function buildLockheedClassificationDescription(detail: BrassRingJobDetail): str
     detail.jobCode,
     detail.program,
     detail.jobClass,
-    "internship university student software engineering",
   ].filter(Boolean);
 
   return htmlToPlainText(parts.join("\n"));

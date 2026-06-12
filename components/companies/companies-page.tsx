@@ -180,6 +180,7 @@ export function CompaniesPage({
   const postingSeasonCounts = useMemo(() => {
     const counts: Partial<Record<FeedSeason, number>> = {};
     for (const posting of selectedPostingsAvailable ?? []) {
+      if (!posting.season) continue;
       counts[posting.season] = (counts[posting.season] ?? 0) + 1;
     }
     return counts;
@@ -190,6 +191,7 @@ export function CompaniesPage({
     return selectedPostingsAvailable.filter((posting) => {
       if (
         selectedPostingSeasons.size > 0 &&
+        posting.season &&
         !selectedPostingSeasons.has(posting.season)
       ) {
         return false;

@@ -24,7 +24,8 @@ export interface FeedPosting {
   countries: string[];
   /** True if any location reads as remote; used for the Remote filter pill. */
   hasRemote: boolean;
-  season: FeedSeason;
+  /** Scraped postings default to Summer when the source states no season. */
+  season: FeedSeason | null;
   /** Unix seconds for sort (`first_seen_at`). */
   datePosted: number;
   /** Unix seconds for Live NEW badge (`first_seen_at`). */

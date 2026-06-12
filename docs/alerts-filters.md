@@ -28,7 +28,7 @@ Partial keys merge over global defaults in `mergeAlertFilters`. `null` override 
 
 Implemented in `postingMatchesAlertFilters` (`lib/alerts/filters.ts`):
 
-- **Season:** posting `season` must be in the selected set (if any).
+- **Season:** posting `season` must be in the selected set (if any). New scraped postings default to `Summer` when no season is stated; legacy null seasons match any season filter so missing historical data is not hidden.
 - **Country:** location string parsed with `countriesFromLocationField`; any detected country in the selected set matches (same OR semantics as Openings for multi-city strings).
 - **Remote:** if `include_remote` is false and the location reads as remote, the posting is dropped unless a country filter is active and at least one selected country matches.
 

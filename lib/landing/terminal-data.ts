@@ -1,6 +1,5 @@
 import "server-only";
 
-import { scrapedPostingRowMatchesProductScope } from "@/lib/feed/product-scope";
 import { LANDING_TERMINAL_FALLBACK } from "@/lib/landing/terminal-fallback";
 import type { LandingTerminalRole, LandingTerminalSnapshot } from "@/lib/landing/terminal-types";
 import type { LocationPlaceJson } from "@/lib/geo/types";
@@ -78,20 +77,18 @@ export async function loadLandingTerminalSnapshot(): Promise<LandingTerminalSnap
 
     if (error) throw error;
 
-    const scopedRows = ((data ?? []) as LandingPostingRow[]).filter((row) =>
-      scrapedPostingRowMatchesProductScope(row),
-    );
-    const recentRoles = scopedRows.slice(0, RECENT_ROLE_LIMIT).map(formatRoleLine);
+    const rows = (data ?? []) as LandingPostingRow[];
+    const recentRoles = rows.slice(0, RECENT_ROLE_LIMIT).map(formatRoleLine);
     if (recentRoles.length === 0) {
       return {
         ...LANDING_TERMINAL_FALLBACK,
-        roleCount: scopedRows.length,
+        roleCount: rows.length,
         source: "fallback",
       };
     }
 
     return {
-      roleCount: scopedRows.length,
+      roleCount: rows.length,
       recentRoles,
       source: "live",
     };

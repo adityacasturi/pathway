@@ -22,7 +22,7 @@ export interface AlertPostingCandidate {
   companyName: string;
   roleName: string;
   postingUrl: string;
-  season: string;
+  season: string | null;
   location: string | null;
   countries: string[];
   hasRemote: boolean;

@@ -36,14 +36,22 @@ Environment:
 
 Cron (production): `vercel.json` schedules scrape and instant alerts via Vercel Cron (`Authorization: Bearer $CRON_SECRET`). On **Hobby**, each cron expression runs at most once per day — Pathway uses four UTC windows (00:07, 06:07, 12:07, 18:07) with two scrape shards per window (`shards=2`) and instant alerts 30 minutes later. On **Pro**, you can use `7 */6 * * *` with four shards (`shards=4`) instead. Manual/local scrapes can still run `npm run scrape -- <slug>`.
 
-## Location normalization
+## Location normalization (global)
 
-Scrape writes canonical locations via `lib/geo/`:
+Scrape writes canonical locations via `lib/geo/`. Locations are resolved **once**, inside `buildScrapedRole()` — adapters and persistence never re-parse them.
 
-1. **Sanitize** messy ATS strings (Workday descriptors, office prefixes, country-first order).
-2. **Gazetteer** lookup (GeoNames `cities15000` subset in `lib/geo/data/cities.json`).
+1. **Sanitize** messy ATS strings (Workday descriptors, office prefixes, country-first order, postal codes, admin suffixes like "District").
+2. **Gazetteer** lookup (GeoNames `cities15000` subset in `lib/geo/data/cities.json`, global).
 3. **Structured adapter fields** when available (Workday `alpha2Code`, Ashby postal address, Oracle primary + country).
-4. Persist `location` (display), `location_places` (jsonb), `countries`, and `location_confidence` on `scraped_postings`.
+4. Persist `location` (display), `raw_location` (original ATS string, always), `location_places` (jsonb), `countries`, and `location_confidence` on `scraped_postings`.
+
+Honesty rules:
+
+- Any country worldwide is kept — there is no US-only trim.
+- Ambiguous state-vs-country codes (`IL`, `IN`, `DE`, `CA`, …) require gazetteer corroboration ("Tel Aviv, IL" → Israel; "Chicago, IL" → US; "Foo, IL" → unknown). The same applies to Canadian-province collisions (`NL`, `SK`, `PE`, …): "Amsterdam, NL" → Netherlands.
+- Unknown countries are **never** defaulted to the United States.
+- When nothing resolves confidently, the role is still kept: `location` is null, `raw_location` preserves the source string, and the UI shows "Unknown".
+- Multi-city lists ("London, NY, Miami") resolve to multiple places.
 
 Commands:
 
@@ -70,12 +78,22 @@ Requires `LOGO_DEV_TOKEN`. After Discover onboarding, run per slug. The app serv
 ```text
 company_sources (enabled)
     → buildScrapeAdapter() in lib/scraping/registry.ts
-    → adapter.fetchRoles()
-    → classify (intern + engineering + US)
-    → lib/scraping/upsert.ts → scraped_postings
+    → adapter.fetchRoles()                  # fetch + extract only
+    → classifyForSource()                   # central relevance decision (explainable)
+    → buildScrapedRole()                    # single location resolution + season + role_type
+    → lib/scraping/upsert.ts                # canonical URL dedupe, location provenance, stale-close
+    → scraped_postings (+ scrape_runs summary per run)
 ```
 
-Health columns on `company_sources`: `last_success_at`, `last_failure_at`.
+Per-source outcomes: `ok` · `ok_no_roles` · `suspicious_zero` · `suspicious_drop` · `suspicious_filter` · `error`.
+
+Source health uses trusted baselines on `company_sources`: `last_healthy_fetched_count`, `last_healthy_kept_count`, and `last_healthy_at`. Suspicious/error runs update only `last_attempted_*`, `scrape_health_status`, and `consecutive_unhealthy_runs`; they do not overwrite the healthy baseline. This keeps a broken source suspicious across repeated broken runs instead of resetting the comparison to zero.
+
+Suspicious and error runs skip stale-close for that company. Absence is trusted only after a healthy scrape. Every non-dry run inserts a `scrape_runs` row (totals + `attention` list of failing/suspicious slugs):
+
+```sql
+select * from scrape_runs order by started_at desc limit 10;
+```
 
 ## Source types
 
@@ -105,14 +123,16 @@ Shared logic:
 - `lib/feed/location.ts` + `lib/feed/us-locations.ts` — country detection from location strings
 - `lib/feed/country-filter.ts` — Openings and Applications country filters
 
-Rules (biased toward keeping real interns):
+Rules (`classifyScrapeRole` returns `include` + `roleType` + `reason` + `signals` for explainability):
 
-- Title/metadata/description intern signals (`intern`, `co-op`, `university`, etc.). `early career` alone is **not** enough (often full-time new grad).
+- Positive signals: title intern/co-op/summer analyst/working student/etc. (strongest), employment-type/commitment metadata, early-talent team/departments, description-head program mentions (weakest).
+- Negative signals veto weak (non-title) positives: seniority titles (`Senior`, `Staff`, `Principal`, `Manager`, …), leveled titles (`Engineer II/III`, `L5`), permanent employment metadata.
+- `new grad` / `entry level` titles classify as `role_type = new_grad` and are excluded while `INCLUDE_NEW_GRAD_ROLES` is false in `lib/scraping/classify-role.ts`.
 - Must match engineering scope; non-engineering intern titles are dropped.
-- Must have a recognizable location after normalization (any country).
-- Reject false positives like `Internal Audit` unless a real intern signal exists.
+- Location does **not** gate relevance — unparseable locations are stored as honest unknowns.
+- False positives like `Internal Audit` are rejected unless a real student token exists.
 
-Adapters may still use region-scoped ATS queries when that reduces noise, but non-US locations are kept when returned.
+Adapters may still use region-scoped ATS queries when that reduces noise, but all returned locations are kept worldwide.
 
 ## ByteDance and TikTok
 
@@ -132,9 +152,9 @@ When touching an adapter, wire every trustworthy ATS field:
 | Field | Helpers |
 | --- | --- |
 | Intern filter | `classifyScrapeRole()` — pass `employmentType`, `commitment`, `departments`, `description`, all location segments |
-| Season | `inferSeason(title, description, hints)` — title, description, and GH metadata season/duration |
+| Season | `inferSeason(title, description, hints)` — defaults to `Summer` when no season is stated |
 | Posted date | `first_seen_at` from `lib/scraping/upsert.ts` — Pathway's first scrape time is the user-facing posted date |
-| Location | `formatClassifiedScrapeLocation()` after classification — US trim is applied in `classifyScrapeRole` |
+| Location | resolved once in `buildScrapedRole()` from the classification's raw inputs — adapters never format locations |
 
 Shared modules:
 
@@ -146,7 +166,7 @@ Shared modules:
 - `lib/scraping/location.ts` — `extractLocationsFromPlainText()` for HTML-only boards (Valve, Surge)
 - `lib/scraping/season.ts` — season inference
 
-Parser adapters use `buildScrapedRole()` + `buildRoleParseResult()` so US location trim and date stats stay consistent. Run `npm run scrape:audit-adapters` to verify; delegated wrappers are labeled separately from parser adapters.
+Parser adapters use `buildScrapedRole()` + `buildRoleParseResult()` so location resolution, dedupe, and stats stay consistent. Run `npm run scrape:audit-adapters` to verify; delegated wrappers are labeled separately from parser adapters.
 
 **Ashby public API** (`api.ashbyhq.com/posting-api/job-board/{token}`): use `descriptionPlain`, `publishedAt`, `address.postalAddress`, `employmentType`, `workplaceType`, `isListed`; skip `isListed === false`.
 

@@ -291,6 +291,7 @@ export function OpeningsPage({
     const counts: Partial<Record<FeedSeason, number>> = {};
     for (const posting of postings) {
       if (!isFeedPostingVisibleByState(posting, visibilityState)) continue;
+      if (!posting.season) continue;
       counts[posting.season] = (counts[posting.season] ?? 0) + 1;
     }
     return counts;
@@ -317,7 +318,7 @@ export function OpeningsPage({
   const filtered = useMemo(() => {
     const out: FeedPosting[] = [];
     for (const p of postings) {
-      if (selectedSeasons.size > 0 && !selectedSeasons.has(p.season)) continue;
+      if (selectedSeasons.size > 0 && p.season && !selectedSeasons.has(p.season)) continue;
       if (!isFeedPostingVisibleByState(p, visibilityState)) continue;
       if (!matchesCountryFilter(postingCountriesById.get(p.id) ?? [], selectedCountries)) {
         continue;
@@ -388,7 +389,7 @@ export function OpeningsPage({
           comparison = a.locations.join(" ").localeCompare(b.locations.join(" "));
           break;
         case "season":
-          comparison = a.season.localeCompare(b.season);
+          comparison = (a.season ?? "").localeCompare(b.season ?? "");
           break;
         case "posted":
           comparison = a.datePosted - b.datePosted;
@@ -500,7 +501,7 @@ export function OpeningsPage({
         return;
       }
 
-      const applicationSeason = feedSeasonToApplicationSeason(posting.season);
+      const applicationSeason = posting.season ? feedSeasonToApplicationSeason(posting.season) : undefined;
       setDialogPrefill({
         company: posting.company,
         role: posting.title,

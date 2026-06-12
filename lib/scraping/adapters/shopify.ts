@@ -119,7 +119,7 @@ export function formatShopifyLocations(job: ShopifyFeedJob): string[] {
   const title = job.title.trim();
 
   if (rawLocation) {
-    const normalized = normalizeShopifyLocationToken(rawLocation, title);
+    const normalized = normalizeShopifyLocationToken(rawLocation);
     if (normalized) {
       locations.push(normalized);
     }
@@ -236,19 +236,17 @@ export function slugifyShopifyTitle(title: string): string {
     .replace(/^-|-$/g, "");
 }
 
-function normalizeShopifyLocationToken(rawLocation: string, title: string): string | null {
+function normalizeShopifyLocationToken(rawLocation: string): string | null {
   const token = rawLocation.trim();
   if (!token) {
     return null;
   }
 
+  // Region-wide tokens (NAMER, AMERICAS, EMEA) are not places; resolving
+  // them to a specific country would be invented data.
   const upper = token.toUpperCase();
-  if (upper === "NAMER" || upper === "AMERICAS") {
-    return title.includes("(Americas)") || /\bamericas\b/i.test(title) ? "United States" : "North America";
-  }
-
-  if (upper === "EMEA") {
-    return "Europe";
+  if (upper === "NAMER" || upper === "AMERICAS" || upper === "EMEA") {
+    return null;
   }
 
   return token;
@@ -256,9 +254,6 @@ function normalizeShopifyLocationToken(rawLocation: string, title: string): stri
 
 function extractShopifyLocationHintsFromTitle(title: string): string[] {
   const hints: string[] = [];
-  if (/\(americas\)/i.test(title) || /\bamericas\b/i.test(title)) {
-    hints.push("United States");
-  }
 
   const parenMatch = title.match(/\(([^)]+)\)\s*$/);
   if (parenMatch) {

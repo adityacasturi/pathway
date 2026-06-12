@@ -1,6 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { enrichAlertPostingCandidate } from "@/lib/alerts/enrich-posting";
-import { scrapedPostingRowMatchesProductScope } from "@/lib/feed/product-scope";
 import {
   alertFiltersFromPreferenceRow,
   parseFilterOverrideJson,
@@ -33,7 +32,7 @@ interface PostingRow {
   company_name: string;
   role_name: string;
   posting_url: string;
-  season: string;
+  season: string | null;
   location: string | null;
   location_places: import("@/lib/geo/types.ts").LocationPlaceJson[] | null;
   countries: string[] | null;
@@ -186,9 +185,6 @@ export async function loadAlertPostingCandidates(
 
   const postings: AlertPostingCandidate[] = [];
   for (const row of (data ?? []) as PostingRow[]) {
-    if (!scrapedPostingRowMatchesProductScope(row)) {
-      continue;
-    }
     const mapped = mapPosting(row);
     if (mapped) {
       postings.push(mapped);

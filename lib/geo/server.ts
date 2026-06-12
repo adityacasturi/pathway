@@ -35,6 +35,7 @@ export { sanitizeLocationInput, splitLocationInput, collapseRepeatedCommaParts }
 export {
   parseCanonicalPlace,
   parseStructuredPlaceInput,
+  resolveLocationCandidates,
   resolveLocationString,
   canonicalizeLocationParts,
   canonicalizeScrapedLocationPart,

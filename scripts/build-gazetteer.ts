@@ -16,7 +16,8 @@ const citiesOut = path.join(dataDir, "cities.json");
 const aliasesPath = path.join(dataDir, "aliases.json");
 
 const GEONAMES_URL = "https://download.geonames.org/export/dump/cities15000.zip";
-const MIN_POPULATION = 50_000;
+/** cities15000 floor; the old 50k cut dropped HQ towns like Foster City and Menlo Park. */
+const MIN_POPULATION = 15_000;
 
 type CityEntry = {
   name: string;

@@ -2,11 +2,14 @@ import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl } from "./shared.ts";
+import { fetchJsonWithTimeout, isHttpUrl, scraperDelay } from "./shared.ts";
 import { INTERNSHIP_LIST_TITLE_PATTERN } from "../list-filters.ts";
 
-/** Yoast career sitemap (not Cloudflare-blocked; wp-json and HTML detail pages are). */
+/** Yoast career sitemap; not Cloudflare-blocked unlike wp-json. Detail pages are attempted
+ *  with browser-like headers and fall back to slug-inferred location on 403. */
 export const CITADEL_CAREER_SITEMAP_PATH = "/career-sitemap.xml";
+
+const CITADEL_DETAIL_FETCH_DELAY_MS = 500;
 
 export const CITADEL_BRAND_ORIGINS = {
   citadel: "https://www.citadel.com",
@@ -15,14 +18,19 @@ export const CITADEL_BRAND_ORIGINS = {
 
 export type CitadelBrand = keyof typeof CITADEL_BRAND_ORIGINS;
 
-/** List titles must look internship-related before classification. */
+/**
+ * Fallback when detail pages are inaccessible and the slug has a region
+ * suffix. Detail pages are Cloudflare-blocked in practice, so these map to
+ * the actual offices Citadel hires interns into per region — "Europe" alone
+ * resolves to no country and the posting would be invisible.
+ */
 const REGION_SUFFIX_LOCATIONS: Record<string, string | string[]> = {
   us: "United States",
-  europe: "Europe",
+  europe: "London, United Kingdom",
   asia: ["Hong Kong", "Singapore"],
   australia: "Australia",
   apac: ["Hong Kong", "Singapore"],
-  uk: "United Kingdom",
+  uk: "London, United Kingdom",
 };
 
 const TITLE_ACRONYMS = new Set([
@@ -51,6 +59,12 @@ export interface CitadelSitemapEntry {
   lastmod: string | null;
 }
 
+/** Data parsed from a detail page JSON-LD JobPosting block. */
+export interface CitadelDetailData {
+  title: string | null;
+  locations: string[];
+}
+
 export function createCitadelAdapter(source: CompanySourceConfig): ScrapeAdapter {
   const board = resolveCitadelBoard(source);
   const resolvedSource =
@@ -61,7 +75,28 @@ export function createCitadelAdapter(source: CompanySourceConfig): ScrapeAdapter
     async fetchRoles() {
       const xml = await fetchCitadelSitemap(board);
       const entries = parseCitadelSitemapXml(xml);
-      return parseCitadelSitemapEntries(entries, resolvedSource);
+
+      // Pre-filter to internship candidates before issuing detail-page requests.
+      const candidates = entries.filter(
+        (e) =>
+          !shouldSkipCitadelSlug(e.slug) &&
+          INTERNSHIP_LIST_TITLE_PATTERN.test(humanizeCitadelSlug(e.slug)) &&
+          isHttpUrl(e.postingUrl),
+      );
+
+      const detailDataByUrl = new Map<string, CitadelDetailData>();
+      for (let i = 0; i < candidates.length; i++) {
+        const entry = candidates[i]!;
+        const detail = await fetchCitadelDetailPage(entry.postingUrl);
+        if (detail) {
+          detailDataByUrl.set(entry.postingUrl, detail);
+        }
+        if (i < candidates.length - 1) {
+          await scraperDelay(CITADEL_DETAIL_FETCH_DELAY_MS);
+        }
+      }
+
+      return parseCitadelSitemapEntries(entries, resolvedSource, detailDataByUrl);
     },
   };
 }
@@ -111,6 +146,7 @@ export function parseCitadelSitemapXml(xml: string): CitadelSitemapEntry[] {
 export function parseCitadelSitemapEntries(
   entries: CitadelSitemapEntry[],
   source: CompanySourceConfig,
+  detailDataByUrl?: Map<string, CitadelDetailData>,
 ): RoleParseResult {
   const roles: ReturnType<typeof buildScrapedRole>[] = [];
   const rejected: RoleParseResult["stats"]["rejected"] = [];
@@ -120,12 +156,17 @@ export function parseCitadelSitemapEntries(
       continue;
     }
 
-    const roleName = humanizeCitadelSlug(entry.slug);
+    const detail = detailDataByUrl?.get(entry.postingUrl);
+    const roleName = detail?.title?.trim() || humanizeCitadelSlug(entry.slug);
+
     if (!INTERNSHIP_LIST_TITLE_PATTERN.test(roleName)) {
       continue;
     }
 
-    const locations = inferCitadelLocations(entry.slug);
+    const locations = detail?.locations.length
+      ? detail.locations
+      : inferCitadelLocations(entry.slug);
+
     const classification = classifyForSource(source, {
       title: roleName,
       description: "",
@@ -196,6 +237,90 @@ export function inferCitadelLocations(slug: string): string[] {
   return [];
 }
 
+/** Parse city names from a JSON-LD JobPosting block embedded in a detail page. */
+export function parseCitadelDetailHtml(html: string): CitadelDetailData | null {
+  const scriptPattern =
+    /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+
+  for (const match of html.matchAll(scriptPattern)) {
+    const content = match[1]?.trim();
+    if (!content) continue;
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(content);
+    } catch {
+      continue;
+    }
+
+    const detail = extractCitadelJobPosting(parsed);
+    if (detail) return detail;
+  }
+
+  return null;
+}
+
+function extractCitadelJobPosting(data: unknown): CitadelDetailData | null {
+  if (!data || typeof data !== "object") return null;
+
+  const obj = data as Record<string, unknown>;
+
+  // Yoast SEO wraps structured data in an @graph array.
+  if (Array.isArray(obj["@graph"])) {
+    for (const item of obj["@graph"] as unknown[]) {
+      const result = extractCitadelJobPosting(item);
+      if (result) return result;
+    }
+    return null;
+  }
+
+  if (obj["@type"] !== "JobPosting") return null;
+
+  const title =
+    (typeof obj["title"] === "string" ? obj["title"] : null) ??
+    (typeof obj["name"] === "string" ? obj["name"] : null);
+
+  const rawLocations = Array.isArray(obj["jobLocation"])
+    ? obj["jobLocation"]
+    : obj["jobLocation"]
+      ? [obj["jobLocation"]]
+      : [];
+
+  const locations: string[] = [];
+  for (const loc of rawLocations as unknown[]) {
+    if (!loc || typeof loc !== "object") continue;
+    const locObj = loc as Record<string, unknown>;
+    const address = locObj["address"];
+    if (!address || typeof address !== "object") continue;
+    const addr = address as Record<string, unknown>;
+    const city =
+      typeof addr["addressLocality"] === "string" ? addr["addressLocality"].trim() : "";
+    if (city) locations.push(city);
+  }
+
+  if (!title && locations.length === 0) return null;
+
+  return { title: title?.trim() ?? null, locations };
+}
+
+async function fetchCitadelDetailPage(url: string): Promise<CitadelDetailData | null> {
+  try {
+    const res = await fetchJsonWithTimeout(url, {
+      headers: {
+        accept: "text/html,application/xhtml+xml,*/*",
+        "sec-fetch-dest": "document",
+        "sec-fetch-mode": "navigate",
+        "sec-fetch-site": "none",
+      },
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+    return parseCitadelDetailHtml(html);
+  } catch {
+    return null;
+  }
+}
+
 function shouldSkipCitadelSlug(slug: string): boolean {
   return slug.startsWith("campus-referrals");
 }
@@ -238,4 +363,3 @@ async function fetchCitadelSitemap(board: CitadelBoardConfig): Promise<string> {
   }
   return res.text();
 }
-

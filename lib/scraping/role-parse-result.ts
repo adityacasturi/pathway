@@ -1,10 +1,11 @@
+import { canonicalizePostingUrl } from "./posting-url.ts";
 import type { RoleParseResult, RoleRejection, ScrapedRole } from "./types.ts";
 
-/** Deduplicate kept roles by posting URL (last wins). */
+/** Deduplicate kept roles by canonical posting URL (last wins). */
 export function dedupeScrapeRoles(roles: ScrapedRole[]): ScrapedRole[] {
   const byUrl = new Map<string, ScrapedRole>();
   for (const role of roles) {
-    byUrl.set(role.postingUrl, role);
+    byUrl.set(canonicalizePostingUrl(role.postingUrl), role);
   }
   return Array.from(byUrl.values());
 }

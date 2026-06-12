@@ -82,7 +82,7 @@ export function inferJaneStreetSeason(
   title: string,
   employment: JaneStreetEmploymentMetadata,
   description = "",
-): ScrapedSeason {
+): ScrapedSeason | null {
   const seasonText = [title, employment.employmentType, employment.duration, description]
     .filter(Boolean)
     .join(" ");

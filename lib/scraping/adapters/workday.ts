@@ -437,4 +437,3 @@ export function formatWorkdayLocation(
 
   return `${primary}, ${countryLabel}`;
 }
-

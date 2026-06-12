@@ -46,7 +46,7 @@ Read `node_modules/next/dist/docs/` before changing routing, Server Components, 
 
 ## Product snapshot
 
-Public signup (any valid email) · **Home** briefing · application tracker with event-derived status · **Openings** feed (US internships only; toggle `US_ONLY_INTERNSHIPS`) · **Companies** catalog · **Alerts** (email) · **Scout** chat · **Settings** (account, appearance).
+Public signup (any valid email) · **Home** briefing · application tracker with event-derived status · **Openings** feed (global internships; per-user country filters) · **Companies** catalog · **Alerts** (email) · **Scout** chat · **Settings** (account, appearance).
 
 | Route | Purpose |
 | --- | --- |
@@ -76,7 +76,7 @@ Public signup (any valid email) · **Home** briefing · application tracker with
 - User: `applications`, `application_events`, `feed_interactions`, `discover_company_favorites`, `user_preferences`
 - Alerts: `alert_preferences`, `alert_subscriptions`, `alert_sent_postings`, `alert_digest_state`, `alert_curated_sectors`, `alert_unsubscribe_nonces`
 - Scout: `chat_threads`, `chat_messages`, `chat_tool_calls`
-- Scrape catalog: `companies` (`industry` → `discover_industries`), `company_sources`, `scraped_postings`
+- Scrape catalog: `companies` (`industry` → `discover_industries`), `company_sources`, `scraped_postings`, `scrape_runs` (per-run health summary, service-role only)
 - Status from events: `lib/config/events.ts`
 - Alert writes: scoped server actions in `lib/actions/alerts.ts` (direct client table writes revoked).
 

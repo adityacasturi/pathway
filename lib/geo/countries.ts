@@ -204,10 +204,33 @@ export function normalizeGeoKey(value: string): string {
   return value
     .toLowerCase()
     .normalize("NFKD")
+    // Drop combining marks so "Zürich" and "Zurich" share a key, then map
+    // remaining punctuation to spaces.
+    .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
+
+/** All ISO 3166-1 alpha-2 codes whose English display name resolves via Intl. */
+const ISO_COUNTRY_NAME_TO_CODE: Record<string, string> = (() => {
+  const out: Record<string, string> = {};
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  for (const a of letters) {
+    for (const b of letters) {
+      const code = `${a}${b}`;
+      try {
+        const name = REGION_DISPLAY.of(code);
+        if (name && name !== code && name.length > 2) {
+          out[normalizeGeoKey(name)] = code;
+        }
+      } catch {
+        // not a valid region code
+      }
+    }
+  }
+  return out;
+})();
 
 export function countryDisplayName(countryCode: string): string {
   const upper = countryCode.toUpperCase();
@@ -225,18 +248,52 @@ export function countryDisplayName(countryCode: string): string {
   return upper;
 }
 
+/** Common ISO 3166-1 alpha-3 codes seen in ATS data ("Toronto, CAN"). */
+const ALPHA3_COUNTRY_CODES: Record<string, string> = {
+  USA: "US",
+  CAN: "CA",
+  GBR: "GB",
+  AUS: "AU",
+  DEU: "DE",
+  FRA: "FR",
+  NLD: "NL",
+  CHE: "CH",
+  SGP: "SG",
+  IND: "IN",
+  IRL: "IE",
+  JPN: "JP",
+  CHN: "CN",
+  HKG: "HK",
+  ISR: "IL",
+  MEX: "MX",
+  BRA: "BR",
+  POL: "PL",
+  ESP: "ES",
+  ITA: "IT",
+  SWE: "SE",
+  NZL: "NZ",
+  KOR: "KR",
+  TWN: "TW",
+};
+
 export function parseCountryToken(token: string): string | null {
   const trimmed = token.trim();
   if (!trimmed) return null;
 
   const upper = trimmed.toUpperCase();
   if (upper === "US" || upper === "USA") return "US";
+  if (upper.length === 3 && ALPHA3_COUNTRY_CODES[upper]) return ALPHA3_COUNTRY_CODES[upper];
   if (/^united states/i.test(trimmed)) return "US";
   if (upper === "UK") return "GB";
   if (/^united kingdom/i.test(trimmed)) return "GB";
   if (/^canada$/i.test(trimmed)) return "CA";
   if (upper.length === 2 && /^[A-Z]{2}$/.test(upper)) {
     if (US_STATE_CODES.has(upper) || CA_PROVINCE_CODES.has(upper)) {
+      return null;
+    }
+    // ISO user-assigned ranges (AA, QM–QZ, XA–XZ, ZZ): Intl names them
+    // ("Unknown Region") but they are not countries.
+    if (upper === "AA" || upper === "ZZ" || /^Q[M-Z]$/.test(upper) || /^X[A-Z]$/.test(upper)) {
       return null;
     }
     try {
@@ -251,7 +308,15 @@ export function parseCountryToken(token: string): string | null {
   }
 
   const key = normalizeGeoKey(trimmed);
-  return COUNTRY_CODE_ALIASES[key] ?? null;
+  if (COUNTRY_CODE_ALIASES[key]) {
+    return COUNTRY_CODE_ALIASES[key];
+  }
+  // Names that are also US states ("Georgia") are ambiguous — never resolve
+  // them to a country from the name alone.
+  if (US_STATE_NAMES[key]) {
+    return null;
+  }
+  return ISO_COUNTRY_NAME_TO_CODE[key] ?? null;
 }
 
 export function parseRegionToken(token: string, countryCode: string | null): string | null {

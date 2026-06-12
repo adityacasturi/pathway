@@ -17,41 +17,6 @@ export type { ScrapedLocationContext } from "../geo/types.ts";
 
 export { normalizeCountryCode, isUsCountryCode };
 
-/**
- * Oracle / Goldman / JPMorgan-style primary + ISO country field.
- */
-export function formatPrimaryWithCountryCode(
-  primary: string,
-  country: string | null | undefined,
-): string[] {
-  const normalizedCountry = normalizeCountryCode(country);
-  const trimmedPrimary = primary.trim();
-  if (!trimmedPrimary) {
-    if (normalizedCountry === "US") {
-      return ["United States"];
-    }
-    if (normalizedCountry) {
-      return [country?.trim() || normalizedCountry];
-    }
-    return [];
-  }
-
-  const countryToken = country?.trim() ?? "";
-  if (
-    countryToken.length === 2 &&
-    !trimmedPrimary.toUpperCase().includes(countryToken.toUpperCase())
-  ) {
-    if (normalizedCountry === "US") {
-      return trimmedPrimary.toLowerCase().includes("united states")
-        ? [trimmedPrimary]
-        : [`${trimmedPrimary}, United States`];
-    }
-    return [`${trimmedPrimary}, ${countryToken}`];
-  }
-
-  return [trimmedPrimary];
-}
-
 export {
   splitLocationInput as splitScrapedLocationInput,
   collapseRepeatedCommaParts,
@@ -135,13 +100,8 @@ export function extractLocationsFromPlainText(text: string): string[] {
     push(normalizeScrapedLocationPart(`${match[1]?.trim()}, ${match[2]?.trim()}`));
   }
 
-  if (/\bUnited States\b|\bUSA\b|\bU\.S\.A?\.?\b/i.test(text)) {
-    push("United States");
-  }
-
-  if (/\bremote\b.*\b(united states|usa|u\.s\.)\b/i.test(text)) {
-    push("Remote, United States");
-  }
+  // A bare country mention anywhere in job copy is too weak to assert a
+  // location — unknown is stored honestly instead of an invented country.
 
   return out;
 }

@@ -1,3 +1,4 @@
+import { CountryAllowlist } from "./country-allowlist.ts";
 import { buildScrapeAdapter } from "./registry.ts";
 import {
   mapWithConcurrency,
@@ -36,6 +37,7 @@ export async function runAllScrapes(
 ): Promise<SourceScrapeResult[]> {
   const options = normalizeRunOptions(filterSlugOrOptions, onProgress);
   const supabase = createAdminClient();
+  const allowlist = await CountryAllowlist.load(supabase);
 
   const { data, error } = await supabase
     .from("company_sources")
@@ -46,6 +48,10 @@ export async function runAllScrapes(
       adapter_key,
       source_url,
       board_token,
+      last_fetched_count,
+      last_kept_count,
+      last_healthy_fetched_count,
+      last_healthy_kept_count,
       companies (
         id,
         slug,
@@ -102,7 +108,8 @@ export async function runAllScrapes(
     return [];
   }
 
-  return mapWithConcurrency(jobs, companyConcurrency, async (job) => {
+  const runStartedAt = new Date();
+  const results = await mapWithConcurrency(jobs, companyConcurrency, async (job) => {
     const step = job.index + 1;
     const { config } = job;
 
@@ -138,19 +145,73 @@ export async function runAllScrapes(
     const startedAt = Date.now();
 
     const result = await pool.run(hostKey, () =>
-      runScrapeAdapter(supabase, job.adapter!, { dryRun: options.dryRun }),
+      runScrapeAdapter(supabase, job.adapter!, {
+        dryRun: options.dryRun,
+        allowlist,
+      }),
     );
+    result.durationMs = Date.now() - startedAt;
 
     await emitProgress({
       type: "done",
       index: step,
       total: jobs.length,
       result,
-      durationMs: Date.now() - startedAt,
+      durationMs: result.durationMs,
     });
 
     return result;
   });
+
+  if (!options.dryRun) {
+    await recordScrapeRun(supabase, results, {
+      startedAt: runStartedAt,
+      shard: options.sourceShard ?? null,
+    });
+  }
+
+  return results;
+}
+
+/**
+ * Persist a per-run summary so production runs are inspectable after the
+ * fact: which sources failed, which look suspicious, and aggregate counts.
+ * Recording failures must never fail the scrape itself.
+ */
+async function recordScrapeRun(
+  supabase: ReturnType<typeof createAdminClient>,
+  results: SourceScrapeResult[],
+  context: { startedAt: Date; shard: ScrapeSourceShard | null },
+): Promise<void> {
+  const attention = results
+    .filter((result) => result.status === "error" || isSuspiciousScrapeStatus(result.status))
+    .map((result) => ({
+      slug: result.slug,
+      status: result.status,
+      error: result.error ?? null,
+    }));
+
+  const { error } = await supabase.from("scrape_runs").insert({
+    started_at: context.startedAt.toISOString(),
+    finished_at: new Date().toISOString(),
+    shard_index: context.shard?.index ?? null,
+    shard_count: context.shard?.count ?? null,
+    sources_total: results.length,
+    sources_ok: results.filter((r) => r.status === "ok" || r.status === "ok_no_roles").length,
+    sources_failed: results.filter((r) => r.status === "error").length,
+    sources_suspicious: results.filter((r) => isSuspiciousScrapeStatus(r.status)).length,
+    roles_fetched: results.reduce((sum, r) => sum + (r.stats?.fetched ?? 0), 0),
+    roles_kept: results.reduce((sum, r) => sum + r.openCount, 0),
+    attention,
+  });
+
+  if (error) {
+    console.error(`Failed to record scrape run: ${error.message}`);
+  }
+}
+
+function isSuspiciousScrapeStatus(status: SourceScrapeResult["status"]): boolean {
+  return status === "suspicious_zero" || status === "suspicious_drop" || status === "suspicious_filter";
 }
 
 export function sourceBelongsToShard(

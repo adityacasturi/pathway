@@ -81,7 +81,7 @@ function CompanyDialogPostingRow({
 }) {
   const locationLabel = posting.location
     ? formatCompactLocationSegments([posting.location], 2)
-    : "";
+    : "Unknown";
   const ageLabel = formatPostingRelativeTime(posting.postedDisplay);
   const metaLine = [locationLabel, ageLabel].filter(Boolean).join(" · ");
   const postingHref = safeExternalHref(posting.postingUrl);

@@ -119,8 +119,11 @@ export function parseSeagateSearchRowCount(html: string): number | null {
 
 export function parseSeagateSearchHtml(html: string, board: SeagateBoardConfig): SeagateListJob[] {
   const jobs: SeagateListJob[] = [];
+  // Location must be anchored on the value element's id: the label element's
+  // aria-describedby also ends in "section-location-value" and otherwise
+  // matches first, capturing the literal label text "Location".
   const tilePattern =
-    /<li class="job-tile[^"]*"[^>]*data-url="([^"]+)"[\s\S]*?<a class="jobTitle-link[^"]*"[^>]*>\s*([\s\S]*?)\s*<\/a>[\s\S]*?section-location-value[^>]*>\s*([^<]*)/gi;
+    /<li class="job-tile[^"]*"[^>]*data-url="([^"]+)"[\s\S]*?<a class="jobTitle-link[^"]*"[^>]*>\s*([\s\S]*?)\s*<\/a>[\s\S]*?id="[^"]*section-location-value"[^>]*>\s*([^<]*)/gi;
 
   for (const match of html.matchAll(tilePattern)) {
     const path = match[1]?.trim() ?? "";
@@ -247,7 +250,9 @@ function extractSeagateDescriptionBlock(html: string): string {
 }
 
 function extractSeagateDetailLocation(html: string): string | null {
-  const match = html.match(/section-location-value[^>]*>\s*([^<]+)/i);
+  const match =
+    html.match(/id="[^"]*section-location-value"[^>]*>\s*([^<]+)/i) ??
+    html.match(/class="jobGeoLocation"[^>]*>\s*([^<]+)/i);
   return match?.[1]?.trim() || null;
 }
 

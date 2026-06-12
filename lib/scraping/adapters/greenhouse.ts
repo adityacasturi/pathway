@@ -132,4 +132,3 @@ function parseGreenhouseResponse(payload: unknown, url: string): GreenhouseJob[]
   }
   return (payload as { jobs: GreenhouseJob[] }).jobs;
 }
-

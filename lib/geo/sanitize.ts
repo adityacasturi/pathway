@@ -186,6 +186,17 @@ function stripSingleLetterAdminCodes(parts: string[]): string[] {
   });
 }
 
+/** Postal codes ("94304", "SW1A 1AA", "10001-2345") are noise for place resolution. */
+function stripPostalCodeTokens(parts: string[]): string[] {
+  if (parts.length < 2) return parts;
+  return parts.filter((part) => {
+    const trimmed = part.trim();
+    if (/^\d{4,10}(-\d{4})?$/.test(trimmed)) return false;
+    if (/^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i.test(trimmed)) return false;
+    return true;
+  });
+}
+
 function titleCaseIfAllCaps(value: string): string {
   if (!/^[A-Z\s,.-]+$/.test(value) || value.length > 48) {
     return value;
@@ -203,6 +214,35 @@ function titleCaseIfAllCaps(value: string): string {
     .join(", ");
 }
 
+const ADMIN_SUFFIX_PATTERN =
+  /\s+(district|province|prefecture|governorate|municipality|metropolitan area)$/i;
+
+/** "Tel Aviv District" → "Tel Aviv" so gazetteer lookups can corroborate. */
+function stripAdminSuffix(part: string): string {
+  if (/^district of columbia$/i.test(part.trim())) {
+    return part;
+  }
+  const stripped = part.replace(ADMIN_SUFFIX_PATTERN, "").trim();
+  return stripped || part;
+}
+
+/** "Germany Off-site", "London On-site" — workplace descriptors are noise. */
+const WORKPLACE_SUFFIX_PATTERN = /\s+(?:off-?site|on-?site|in-?office)$/i;
+
+/**
+ * Comma dropped between region code and country ("San Mateo, CA United States"):
+ * split "CA United States" back into "CA, United States".
+ */
+function splitMissingCommaCountry(part: string): string[] {
+  const match = part.match(/^([A-Za-z]{2})\s+(.{3,})$/);
+  if (!match) return [part];
+  const [, code, rest] = match;
+  const upper = (code ?? "").toUpperCase();
+  if (!US_STATE_CODES.has(upper)) return [part];
+  if (!parseCountryToken(rest ?? "")) return [part];
+  return [upper, (rest ?? "").trim()];
+}
+
 /** Pre-parse cleanup for messy ATS location strings. */
 export function sanitizeLocationInput(raw: string): string {
   let value = raw.replace(/\s+/g, " ").trim();
@@ -213,10 +253,17 @@ export function sanitizeLocationInput(raw: string): string {
   value = value.replace(PARENTHETICAL_PATTERN, "").trim();
   value = normalizeCountrySpacing(value);
   value = value.replace(/\bD\.C\.?\b/gi, "DC");
+  value = value.replace(WORKPLACE_SUFFIX_PATTERN, "");
   value = collapseRepeatedCommaParts(value);
   value = titleCaseIfAllCaps(value);
 
-  let parts = value.split(",").map((p) => p.trim()).filter(Boolean);
+  let parts = value
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .flatMap(splitMissingCommaCountry);
+  parts = parts.map(stripAdminSuffix);
+  parts = stripPostalCodeTokens(parts);
   parts = dedupRedundantCountryTokens(parts);
   parts = normalizeUsCountryFirstParts(parts);
   parts = reorderCountryFirst(parts);
@@ -227,8 +274,12 @@ export function sanitizeLocationInput(raw: string): string {
 
 export function splitLocationInput(raw: string | null | undefined): string[] {
   if (!raw?.trim()) return [];
-  return raw
-    .split(/\s*·\s*|\s*\|\s*|\s*;\s*|\s*\/\s*(?=\s*[A-Z])/)
-    .map((part) => part.trim())
+  // A parenthetical holding a separated list ("Remote (United States | Canada)")
+  // is a location list, not a qualifier: lift it out before splitting so the
+  // parens don't end up glued to the first/last parts.
+  const lifted = raw.replace(/\(([^)]*(?:\||·|;| or )[^)]*)\)/gi, " | $1 ");
+  return lifted
+    .split(/\s*·\s*|\s*\|\s*|\s*;\s*|\s+or\s+|\s*\/\s*(?=\s*[A-Z])/i)
+    .map((part) => part.trim().replace(/^,\s*|,\s*$/g, ""))
     .filter(Boolean);
 }

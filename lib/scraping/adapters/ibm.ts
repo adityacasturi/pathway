@@ -1,4 +1,5 @@
 import { stripHtml } from "../html-utils.ts";
+import { looksLikeGeographicLocation } from "../location.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
@@ -259,7 +260,12 @@ export async function fetchIbmSession(searchJobsUrl: string): Promise<IbmSession
   return { cookie, referer: searchJobsUrl };
 }
 
-function inferIbmLocation(cardItems: string[]): string | null {
+/**
+ * Card items mix locations with facet values ("Entry Level", "Professional",
+ * "Administration & Technician"); only return an item that actually looks
+ * like a place — a facet stored as a location poisons country resolution.
+ */
+export function inferIbmLocation(cardItems: string[]): string | null {
   for (const item of cardItems) {
     const trimmed = item.trim();
     if (!trimmed) {
@@ -268,20 +274,16 @@ function inferIbmLocation(cardItems: string[]): string | null {
     if (/^internship$|^co-op$|^apprentice/i.test(trimmed)) {
       continue;
     }
+    if (!looksLikeGeographicLocation(trimmed)) {
+      continue;
+    }
     return trimmed;
   }
   return null;
 }
 
 function buildIbmClassificationDescription(listing: IbmListing, detailDescription?: string | null): string {
-  const boost: string[] = ["internship program university student"];
-  if (listing.employmentType && /internship|co-op|apprentice/i.test(listing.employmentType)) {
-    boost.push("internship employment type");
-  }
-  if (listing.department && /software|engineering|cloud|infrastructure|data|research/i.test(listing.department)) {
-    boost.push("engineering technology internship");
-  }
-  return [...boost, detailDescription ?? ""].filter(Boolean).join("\n");
+  return detailDescription?.trim() ?? "";
 }
 
 async function enrichIbmListings(

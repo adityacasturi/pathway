@@ -86,7 +86,13 @@ export function postingMatchesAlertFilters(
   posting: AlertPostingCandidate,
   filters: AlertFilters,
 ): boolean {
-  if (filters.seasons?.length && !filters.seasons.includes(posting.season as AlertSeason)) {
+  // Unknown season is honest missing data: it can match any season filter
+  // rather than being silently hidden from every season-filtered alert.
+  if (
+    filters.seasons?.length &&
+    posting.season !== null &&
+    !filters.seasons.includes(posting.season as AlertSeason)
+  ) {
     return false;
   }
 

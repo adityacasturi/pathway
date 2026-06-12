@@ -63,7 +63,7 @@ export function PostingInspector({
   if (!posting || !open) return null;
 
   const postingHref = safeExternalHref(posting.url);
-  const locationLabel = formatCompactLocationSegments(posting.locations, 6);
+  const locationLabel = formatCompactLocationSegments(posting.locations, 6) || "Unknown";
   const ageLabel = formatPostingRelativeTime(posting.postedDisplay);
 
   const panel = (
