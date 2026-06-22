@@ -1,7 +1,7 @@
 import { splitHomePostingSlots } from "@/lib/home/posting-slots";
 
-export const HOME_POSTING_ROW_REM = 2.75;
-export const HOME_POSTING_TABLE_HEADER_REM = 2.75;
+export const HOME_POSTING_ROW_REM = 2.25;
+export const HOME_POSTING_TABLE_HEADER_REM = 2.25;
 export const HOME_SIDEBAR_ROW_REM = 3;
 /** @deprecated Use HOME_SIDEBAR_ROW_REM */
 export const HOME_HOT_COMPANY_ROW_REM = HOME_SIDEBAR_ROW_REM;

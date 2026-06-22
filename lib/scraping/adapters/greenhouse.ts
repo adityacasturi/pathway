@@ -88,6 +88,10 @@ export function parseGreenhouseJobs(jobs: GreenhouseJob[], source: CompanySource
           commitment: employment.commitment,
           departments,
         },
+        atsDates: {
+          publishedAt: job.first_published ?? null,
+          updatedAt: job.updated_at ?? null,
+        },
       }),
     );
   }

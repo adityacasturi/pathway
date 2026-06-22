@@ -146,7 +146,7 @@ function groupMatchesByUser(
   for (const match of matches) {
     const since =
       digestState.get(match.userId) ?? new Date(now.getTime() - DEFAULT_DIGEST_LOOKBACK_MS);
-    if (Date.parse(match.posting.firstSeenAt) <= since.getTime()) {
+    if (Date.parse(match.posting.postedAt) <= since.getTime()) {
       continue;
     }
 
@@ -156,7 +156,7 @@ function groupMatchesByUser(
   }
 
   for (const [userId, userPostings] of byUser) {
-    userPostings.sort((a, b) => Date.parse(b.firstSeenAt) - Date.parse(a.firstSeenAt));
+    userPostings.sort((a, b) => Date.parse(b.postedAt) - Date.parse(a.postedAt));
     byUser.set(userId, userPostings);
   }
 

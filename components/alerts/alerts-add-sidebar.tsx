@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type ComponentProps } from "react";
+import { useEffect, useMemo, type ComponentProps } from "react";
 import { Loader2, Plus, X } from "lucide-react";
 import { AlertsBundlesList } from "@/components/alerts/alerts-sectors-rail";
 import type { AlertCompanyOption, CuratedSectorView } from "@/components/alerts/types";
@@ -35,11 +35,12 @@ export function AlertsAddSidebar({
 }) {
   const trimmedQuery = query.trim();
   const showCompanies = addableCompanies.length > 0;
+  const groupedBundles = useMemo(() => groupBundleSectors(bundleSectors), [bundleSectors]);
 
   return (
     <aside
       className={cn(
-        "flex min-h-0 w-[min(24rem,100%)] shrink-0 flex-col border-l border-border bg-card px-8",
+        "flex min-h-0 w-[min(34rem,100%)] shrink-0 flex-col border-l border-border bg-card px-8",
         className,
       )}
     >
@@ -75,16 +76,39 @@ export function AlertsAddSidebar({
 
         <section className="pb-5">
           <SectionHeader label="Bundles" />
-          <AlertsBundlesList
-            sectors={bundleSectors}
-            followedSectorSlugs={followedSectorSlugs}
-            pendingSectorSlug={pendingSectorSlug}
-            disabled={disabled}
-            onToggleSector={onToggleSector}
-            emptyMessage={
-              trimmedQuery ? "No bundles match your search." : "No bundles available."
-            }
-          />
+          {groupedBundles.length > 0 ? (
+            groupedBundles.length === 1 && groupedBundles[0]?.label === "Industry bundles" ? (
+              <AlertsBundlesList
+                sectors={groupedBundles[0].sectors}
+                followedSectorSlugs={followedSectorSlugs}
+                pendingSectorSlug={pendingSectorSlug}
+                disabled={disabled}
+                onToggleSector={onToggleSector}
+              />
+            ) : (
+              <div className="space-y-6">
+                {groupedBundles.map((group) => (
+                  <section key={group.label}>
+                    <SectionHeader
+                      label={group.label}
+                      className="border-t border-border/60 pb-2 pt-4 first:border-t-0 first:pt-0"
+                    />
+                    <AlertsBundlesList
+                      sectors={group.sectors}
+                      followedSectorSlugs={followedSectorSlugs}
+                      pendingSectorSlug={pendingSectorSlug}
+                      disabled={disabled}
+                      onToggleSector={onToggleSector}
+                    />
+                  </section>
+                ))}
+              </div>
+            )
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {trimmedQuery ? "No bundles match your search." : "No bundles available."}
+            </p>
+          )}
         </section>
       </div>
     </aside>
@@ -131,13 +155,13 @@ export function AlertsAddSidebarOverlay({
       <button
         type="button"
         aria-label="Close add panel"
-        className="absolute inset-0 bg-background/20 backdrop-blur-[3px]"
+        className="ds-overlay-enter absolute inset-0 bg-background/20 backdrop-blur-[3px]"
         onClick={onClose}
       />
-      <div className="absolute inset-y-0 right-0 flex max-w-full">
+      <div className="ds-drawer-enter absolute inset-y-0 right-0 flex max-w-full">
         <AlertsAddSidebar
           {...props}
-          className="relative z-10 h-full w-[min(24rem,calc(100vw-1rem))] shadow-[-16px_0_48px_-20px_color-mix(in_oklab,var(--ink)_22%,transparent)]"
+          className="relative z-10 h-full w-[min(34rem,calc(100vw-1rem))] shadow-[-16px_0_48px_-20px_color-mix(in_oklab,var(--ink)_22%,transparent)]"
         />
         <button
           type="button"
@@ -150,6 +174,31 @@ export function AlertsAddSidebarOverlay({
       </div>
     </div>
   );
+}
+
+function groupBundleSectors(sectors: CuratedSectorView[]) {
+  const groups = new Map<
+    string,
+    { label: string; sortOrder: number; sectors: CuratedSectorView[] }
+  >();
+
+  for (const sector of sectors) {
+    const label = sector.groupLabel || "Industry bundles";
+    const current = groups.get(label);
+    if (current) {
+      current.sectors.push(sector);
+      current.sortOrder = Math.min(current.sortOrder, sector.groupSortOrder);
+      continue;
+    }
+
+    groups.set(label, {
+      label,
+      sortOrder: sector.groupSortOrder,
+      sectors: [sector],
+    });
+  }
+
+  return [...groups.values()].sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label));
 }
 
 function SectionHeader({ label, className }: { label: string; className?: string }) {

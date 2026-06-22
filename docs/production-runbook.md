@@ -55,7 +55,7 @@ Hobby timing is hourly-precision (±59 min within the scheduled hour).
 
 **Pro plan:** you can switch to five crons with `7 */6 * * *` (four `shards=4` scrape jobs + `37 */6 * * *` instant alerts) for per-minute scheduling and more shards.
 
-Manual fallback (local or one-off):
+Manual fallback (local or one-off) — same `runAllScrapes` adapter pipeline as cron (native `fetch`, not Crawlee):
 
 ```bash
 npm run scrape
@@ -166,7 +166,7 @@ Taxonomy lives in `discover_industries`; `companies.industry` must be a valid FK
 
 ### Posted date confusion
 
-See [scraped-posted-dates.md](./scraped-posted-dates.md). **NEW** on Openings = `first_seen_at`, not ATS `updated_at`.
+See [scraped-posted-dates.md](./scraped-posted-dates.md). **NEW** on Openings = `posted_at`, which advances only when an existing posting URL changes from one explicit season to another. Generic ATS updates and title-only churn do not make old rows look new.
 
 ### Auth spikes
 

@@ -104,21 +104,6 @@ export function OpeningsFilterBar({
   return (
     <div className={cn("relative shrink-0 bg-card", searchFocused && "z-30")}>
       <div className="flex flex-wrap items-center gap-2.5 border-b border-border px-5 py-3 md:px-4">
-        <Button
-          type="button"
-          size="sm"
-          className="h-8 shrink-0 gap-1.5 rounded-md px-3 text-sm"
-          disabled={isRefreshing}
-          onClick={onRefresh}
-        >
-          <RefreshCw
-            size={14}
-            strokeWidth={2}
-            className={isRefreshing ? "animate-spin" : undefined}
-          />
-          Refresh
-        </Button>
-
         <div className="min-w-[10rem] flex-1 [&_input]:h-8 [&_input]:rounded-md [&_input]:text-sm">
           <SearchInput
             ref={searchRef}
@@ -239,6 +224,24 @@ export function OpeningsFilterBar({
               </SectionStack>
             ) : null}
           </div>
+
+          <span className="mx-0.5 h-5 w-px shrink-0 bg-border" aria-hidden />
+
+          <ToolbarButton
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            aria-label="Refresh openings"
+            aria-busy={isRefreshing}
+            title="Refresh"
+            className="px-2"
+          >
+            <RefreshCw
+              size={14}
+              strokeWidth={1.75}
+              className={cn("opacity-80", isRefreshing && "animate-spin")}
+              aria-hidden
+            />
+          </ToolbarButton>
         </div>
       </div>
 

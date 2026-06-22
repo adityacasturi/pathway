@@ -5,6 +5,7 @@ import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
+import type { StructuredPlaceInput } from "../../geo/types.ts";
 import {
   fetchJsonWithTimeout,
   isHttpUrl,
@@ -149,10 +150,11 @@ export function parseGeneralDynamicsSearchResponse(
       continue;
     }
 
-    const location =
+    const location = sanitizeGeneralDynamicsLocation(
       result.LocationNames?.[0]?.trim() ??
       result.Locations?.[0]?.Name?.trim() ??
-      null;
+      null,
+    );
 
     listings.push({
       title,
@@ -191,10 +193,10 @@ export function parseGeneralDynamicsJobDetailFields(html: string): {
   const descriptionBlock = html.match(/<div class="career-detail-description">([\s\S]*?)<\/div>/i)?.[1];
   const description = descriptionBlock ? htmlToPlainText(descriptionBlock) : "";
 
-  const location =
+  const location = sanitizeGeneralDynamicsLocation(
     html.match(/<dt>\s*Location\s*<\/dt>\s*<dd[^>]*>([^<]+)/i)?.[1]?.trim() ??
-    html.match(/US-[A-Z]{2}-[^<]+/i)?.[0]?.trim() ??
-    null;
+    null,
+  );
 
   const category = html.match(/<dt>\s*Category\s*<\/dt>\s*<dd[^>]*>([^<]+)/i)?.[1]?.trim() ?? null;
   const companyUnit =
@@ -222,7 +224,9 @@ export function parseGeneralDynamicsJobs(
     const roleName = listing.title.trim();
     const postingUrl = listing.postingUrl.trim();
     const description = buildGeneralDynamicsClassificationDescription(listing);
-    const locations = listing.location ? [listing.location] : [];
+    const location = normalizeGeneralDynamicsLocation(listing.location);
+    const locations = location.raw ? [location.raw] : [];
+    const structuredLocations = location.structured ? [location.structured] : [];
     const departments = [listing.category, listing.companyUnit].filter(
       (value): value is string => Boolean(value),
     );
@@ -232,6 +236,7 @@ export function parseGeneralDynamicsJobs(
       description,
       departments,
       locations,
+      structuredLocations,
     });
 
     if (!classification.include) {
@@ -259,6 +264,56 @@ export function parseGeneralDynamicsJobs(
   }
 
   return buildRoleParseResult(fetchedTotal, roles, rejected);
+}
+
+function normalizeGeneralDynamicsLocation(location: string | null): {
+  raw: string | null;
+  structured: StructuredPlaceInput | null;
+} {
+  const raw = location?.trim() || null;
+  if (!raw) {
+    return { raw: null, structured: null };
+  }
+
+  const nonUsMatch = raw.match(/^(.+?),\s*Other\s*\/\s*Non-US,\s*([A-Z]{2})$/i);
+  if (nonUsMatch) {
+    const city = nonUsMatch[1]?.trim();
+    const countryCode = nonUsMatch[2]?.trim().toUpperCase();
+    if (city && countryCode) {
+      return {
+        raw,
+        structured: {
+          city,
+          countryCode,
+          rawLabel: raw,
+        },
+      };
+    }
+  }
+
+  return { raw, structured: null };
+}
+
+function sanitizeGeneralDynamicsLocation(location: string | null): string | null {
+  const raw = location?.trim() || null;
+  if (!raw) {
+    return null;
+  }
+
+  if (isGeneralDynamicsSlugLocationFragment(raw)) {
+    return null;
+  }
+
+  return raw;
+}
+
+function isGeneralDynamicsSlugLocationFragment(value: string): boolean {
+  const normalized = value.trim().toLowerCase();
+  return (
+    /-opportunity(?:\\?["'>\s/]|$)/i.test(normalized) ||
+    /\b\d{9,}\b/.test(normalized) ||
+    /\\?["']\s*\/?>$/.test(normalized)
+  );
 }
 
 export function isGeneralDynamicsListCandidate(listing: GeneralDynamicsListing): boolean {
@@ -484,4 +539,3 @@ function dedupeListingsByUrl(listings: GeneralDynamicsListing[]): GeneralDynamic
   }
   return Array.from(byUrl.values());
 }
-

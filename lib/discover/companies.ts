@@ -32,6 +32,7 @@ interface PostingRow {
   location_places: import("@/lib/geo/types").LocationPlaceJson[] | null;
   countries: string[] | null;
   first_seen_at: string;
+  posted_at: string;
 }
 
 function mapPostingRow(row: PostingRow): ScrapedPostingRow | null {
@@ -43,7 +44,12 @@ function mapPostingRow(row: PostingRow): ScrapedPostingRow | null {
     ? (seasonValue as FeedSeason)
     : null;
   const postedDisplay = resolvePostedDisplay(row);
-  const displayIso = postedDisplay.kind === "added" ? row.first_seen_at : null;
+  const displayIso =
+    postedDisplay.kind === "posted"
+      ? row.posted_at
+      : postedDisplay.kind === "added"
+        ? row.first_seen_at
+        : null;
 
   const url = row.posting_url.trim();
   const feedId = stablePostingId(url);
@@ -129,10 +135,10 @@ export async function loadDiscoverCompanyPostings(
 ): Promise<ScrapedPostingRow[]> {
   const { data, error } = await supabase
     .from("scraped_postings")
-    .select("id, role_name, posting_url, season, location, raw_location, location_places, countries, first_seen_at")
+    .select("id, role_name, posting_url, season, location, raw_location, location_places, countries, first_seen_at, posted_at")
     .eq("company_id", companyId)
     .eq("status", "open")
-    .order("first_seen_at", { ascending: false })
+    .order("posted_at", { ascending: false })
     .order("role_name", { ascending: true });
 
   if (error) {

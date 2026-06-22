@@ -65,7 +65,7 @@ User-owned (RLS via `auth.uid()`):
 | `alert_subscriptions` | Per-company or bundle alert follows |
 | `alert_sent_postings` | Dedup ledger for sent alert emails |
 | `alert_digest_state` | Last digest send timestamp per user |
-| `alert_curated_sectors` | Bundle labels/metadata; `alert_curated_sector_companies` maps bundle → company slugs |
+| `alert_curated_sectors` | Industry bundle labels/metadata; `alert_curated_sector_companies` maps bundle → company slugs |
 | `alert_unsubscribe_nonces` | Single-use unsubscribe nonces (service-role only) |
 | `chat_threads` | Scout conversation metadata |
 | `chat_messages` | Persisted message parts (JSON) |
@@ -134,7 +134,7 @@ Loader: `lib/feed/scraped-postings.ts` → `FeedPosting` (`lib/feed/source.ts`).
 - Open rows from `scraped_postings` for **active** companies with **enabled** `company_sources`.
 - Posting ids: stable URL hash (`lib/feed/ids.ts`) plus row uuid for interactions.
 - `countries` on `scraped_postings` stores ISO codes when known. The catalog is global: roles from any country are stored and shown, and per-user country filter pills (Openings/Companies/Alerts) handle narrowing. Unknown locations are stored honestly (`location` null, `raw_location` preserved, UI shows "Unknown") rather than guessed.
-- **Posted vs Discovered:** see [scraped-posted-dates.md](./scraped-posted-dates.md). **NEW** badge uses `first_seen_at` vs `user_preferences.live_last_seen_at`.
+- **Posted vs Discovered:** see [scraped-posted-dates.md](./scraped-posted-dates.md). **NEW** badge uses `posted_at` vs `user_preferences.live_last_seen_at`.
 - Applied postings hidden by default when posting URL matches an active application.
 - `refreshFeed()` revalidates `/openings` only — it does **not** scrape.
 
@@ -161,10 +161,10 @@ Loader: `lib/discover/companies.ts`. UI: `components/companies/companies-page.ts
 ## Email alerts
 
 - UI: `app/alerts/page.tsx`, `components/alerts/alerts-page.tsx` (and related `components/alerts/*`).
-- **Daily digest** — `alert_preferences.digest_enabled`; morning email with new matching roles.
-- **Instant alerts** — `alert_preferences.emails_enabled` + company/bundle subscriptions in `alert_subscriptions`.
+- **Daily digest** — `alert_preferences.digest_enabled` + `/api/cron/send-alert-digests` handler exist but digest is not scheduled in production and has no in-app toggle yet.
+- **Instant alerts** — `alert_preferences.emails_enabled` + company/industry bundle subscriptions in `alert_subscriptions`.
 - Filter semantics: [alerts-filters.md](./alerts-filters.md).
-- Matching: `lib/alerts/match-postings.ts` (`first_seen_at` for new roles).
+- Matching: `lib/alerts/match-postings.ts` (`posted_at` for new or republished roles).
 - Send: Resend via `lib/email/resend-client.ts`; instant alerts run after Vercel Cron scrape shards complete. The digest handler remains available but is not scheduled in production.
 - Env: `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `ALERT_UNSUBSCRIBE_SECRET`.
 - Unsubscribe: `GET /alerts/unsubscribe` confirm form; `POST` performs disable. HMAC token + single-use nonce.
@@ -172,7 +172,8 @@ Loader: `lib/discover/companies.ts`. UI: `components/companies/companies-page.ts
 
 ## Scraping (summary)
 
-- Cron: `vercel.json` schedules scrape and instant alerts via Vercel Cron. On Hobby, four daily windows (00/06/12/18 UTC) each run two scrape shards then instant alerts 30 minutes later; Pro can use `*/6` schedules with four shards. There are no active QStash production schedules.
+- Cron: `vercel.json` → `/api/cron/scrape-postings` → `runAllScrapes` → adapter registry → `upsert.ts` + `posted-at.ts`. Same path as `npm run scrape`. On Hobby, four daily UTC windows (00/06/12/18) with two shards each; instant alerts 30 minutes later. Pro can use `*/6` with four shards. No active QStash production schedules.
+- HTTP: native `fetch` + per-adapter parsers (not Crawlee/Playwright at runtime).
 - Local: `npm run scrape` and `npm run alerts:instant` (need `SUPABASE_SERVICE_ROLE_KEY`; alerts also need Resend env vars to send email).
 - Adapters: `lib/scraping/registry.ts` keyed by `company_sources.source_type`.
 - Full detail: [scraping.md](./scraping.md).
@@ -182,7 +183,7 @@ Loader: `lib/discover/companies.ts`. UI: `components/companies/companies-page.ts
 - Default accent: **midnight** (`lib/config/accent.ts`, `user_preferences`). Other accents: indigo, rose.
 - Company logos: static PNGs under `public/company-logos/`; misses use `/api/logo`.
 - App shell: `components/app-shell/` (`shell.tsx`, `sidebar.tsx`, `top-bar.tsx`).
-- Page structure: `PageShell`, `PageMain`, `PageHeader`, `PageSection` from `components/ui/page.tsx`.
+- Page structure: `PageShell` from `components/design-system/page.tsx`.
 - Core controls: HeroUI-backed wrappers in `components/ui/`.
 - Sonner for async feedback; Motion for subtle transitions only.
 - Listing rows stay simple — avoid per-row animation flourishes.

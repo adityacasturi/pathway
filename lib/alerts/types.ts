@@ -26,7 +26,7 @@ export interface AlertPostingCandidate {
   location: string | null;
   countries: string[];
   hasRemote: boolean;
-  firstSeenAt: string;
+  postedAt: string;
 }
 
 export interface AlertMatch {

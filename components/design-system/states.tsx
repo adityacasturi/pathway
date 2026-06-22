@@ -41,7 +41,13 @@ export function EmptyState({
         <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
           {primaryAction ? (
             primaryAction.href ? (
-              <Link href={primaryAction.href} className={buttonVariants({ size: "sm", className: "h-9" })}>
+              <Link
+                href={primaryAction.href}
+                className={buttonVariants({
+                  size: "sm",
+                  className: "inline-flex h-9 items-center justify-center",
+                })}
+              >
                 {primaryAction.icon}
                 {primaryAction.label}
               </Link>
@@ -55,7 +61,11 @@ export function EmptyState({
           {secondaryAction ? (
             <Link
               href={secondaryAction.href}
-              className={buttonVariants({ variant: "outline", size: "sm", className: "h-9" })}
+              className={buttonVariants({
+                variant: "outline",
+                size: "sm",
+                className: "inline-flex h-9 items-center justify-center",
+              })}
             >
               {secondaryAction.label}
             </Link>

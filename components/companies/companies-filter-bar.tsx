@@ -5,7 +5,6 @@ import { ArrowDownUp, ChevronDown, LayoutGrid, RefreshCw, X } from "lucide-react
 import { SearchInput } from "@/components/search-input";
 import { IndustryIcon } from "@/components/stats/industry-icon";
 import { Surface } from "@/components/design-system/surface";
-import { Button } from "@/components/ui/button";
 import { ToolbarButton } from "@/components/ui/toolbar-button";
 import { cn } from "@/lib/utils";
 
@@ -83,22 +82,6 @@ export function CompaniesFilterBar({
     <div className={cn("relative shrink-0 bg-card", searchFocused && "z-30", className)}>
       <h1 className="sr-only">Companies</h1>
       <div className="flex flex-wrap items-center gap-2.5 border-b border-border px-4 py-3">
-        <Button
-          type="button"
-          size="sm"
-          disabled={isRefreshing}
-          onClick={onRefresh}
-          className="h-8 shrink-0 gap-1.5 rounded-md px-3 text-sm"
-        >
-          <RefreshCw
-            size={14}
-            strokeWidth={2}
-            className={isRefreshing ? "animate-spin" : undefined}
-            aria-hidden
-          />
-          Refresh
-        </Button>
-
         <div className="min-w-[10rem] flex-1 [&_input]:h-8 [&_input]:rounded-md [&_input]:text-sm">
           <SearchInput
             ref={searchRef}
@@ -205,6 +188,24 @@ export function CompaniesFilterBar({
               </Surface>
             ) : null}
           </div>
+
+          <span className="mx-0.5 h-5 w-px shrink-0 bg-border" aria-hidden />
+
+          <ToolbarButton
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            aria-label="Refresh companies"
+            aria-busy={isRefreshing}
+            title="Refresh"
+            className="px-2"
+          >
+            <RefreshCw
+              size={14}
+              strokeWidth={1.75}
+              className={cn("opacity-80", isRefreshing && "animate-spin")}
+              aria-hidden
+            />
+          </ToolbarButton>
         </div>
       </div>
 

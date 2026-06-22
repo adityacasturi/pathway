@@ -6,7 +6,7 @@ import { errorMessage, logServerEvent } from "@/lib/observability";
 import { runAllScrapes } from "@/lib/scraping/run-all";
 
 export const runtime = "nodejs";
-/** Full Discover scrape runs parallel company fetches (see SCRAPE_COMPANY_CONCURRENCY) plus DB upserts. */
+/** Sharded scrape: parallel company fetches (see SCRAPE_COMPANY_CONCURRENCY) via runAllScrapes → upsert. */
 export const maxDuration = 300;
 
 export async function GET(request: Request) {

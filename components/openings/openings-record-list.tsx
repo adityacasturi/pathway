@@ -1,7 +1,8 @@
 "use client";
 
 import type { RefObject } from "react";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, Briefcase, Building2, CalendarRange, Clock, MapPin } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { OPENINGS_DESKTOP_GRID, PostingRecordRow } from "@/components/openings/posting-record-row";
 import { MotionStaggerList } from "@/components/design-system/motion-stagger";
 import { EmptyState } from "@/components/design-system/states";
@@ -16,6 +17,7 @@ const HEADER_CELL =
 
 function SortableHeaderCell({
   label,
+  icon: Icon,
   columnKey,
   sortKey,
   sortDirection,
@@ -23,6 +25,7 @@ function SortableHeaderCell({
   align = "left",
 }: {
   label: string;
+  icon: LucideIcon;
   columnKey: OpeningsSortKey;
   sortKey: OpeningsSortKey | null;
   sortDirection: OpeningsSortDirection;
@@ -46,14 +49,20 @@ function SortableHeaderCell({
             : "not sorted"
         }`}
         className={cn(
-          "flex h-full w-full items-center gap-1 py-2.5 text-xs font-medium transition-colors",
+          "flex h-full w-full items-center gap-1.5 py-2 text-[13px] font-medium transition-colors",
           align === "center" ? "justify-center" : "justify-start",
-          isActive ? "text-foreground" : "text-foreground/75 hover:text-foreground",
+          isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
         )}
       >
+        <Icon size={14} strokeWidth={1.75} className="shrink-0 text-muted-foreground/70" aria-hidden />
         <span>{label}</span>
         {isActive ? (
-          <SortIcon size={12} strokeWidth={2} className="shrink-0 text-foreground/70" aria-hidden />
+          <SortIcon
+            size={12}
+            strokeWidth={2}
+            className={cn("shrink-0 text-foreground/70", align === "center" ? "" : "ml-auto")}
+            aria-hidden
+          />
         ) : null}
       </button>
     </div>
@@ -114,6 +123,7 @@ export function OpeningsRecordList({
         <div className={cn(DESKTOP_GRID, "shrink-0 border-b border-border bg-muted/25")}>
           <SortableHeaderCell
             label="Company"
+            icon={Building2}
             columnKey="company"
             sortKey={sortKey}
             sortDirection={sortDirection}
@@ -121,6 +131,7 @@ export function OpeningsRecordList({
           />
           <SortableHeaderCell
             label="Role"
+            icon={Briefcase}
             columnKey="role"
             sortKey={sortKey}
             sortDirection={sortDirection}
@@ -128,6 +139,7 @@ export function OpeningsRecordList({
           />
           <SortableHeaderCell
             label="Location"
+            icon={MapPin}
             columnKey="location"
             sortKey={sortKey}
             sortDirection={sortDirection}
@@ -135,6 +147,7 @@ export function OpeningsRecordList({
           />
           <SortableHeaderCell
             label="Season"
+            icon={CalendarRange}
             columnKey="season"
             sortKey={sortKey}
             sortDirection={sortDirection}
@@ -143,6 +156,7 @@ export function OpeningsRecordList({
           />
           <SortableHeaderCell
             label="Posted"
+            icon={Clock}
             columnKey="posted"
             sortKey={sortKey}
             sortDirection={sortDirection}

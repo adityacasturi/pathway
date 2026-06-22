@@ -187,37 +187,3 @@ export function countActiveAlertFiltersView(value: AlertFiltersView): number {
   if (value.countries.length > 0) count += 1;
   return count;
 }
-
-export function summarizeAlertSeasonFiltersView(value: AlertFiltersView): string {
-  if (value.seasons.length === 0) {
-    return "All seasons";
-  }
-  return value.seasons.join(", ");
-}
-
-export function summarizeAlertLocationFiltersView(value: AlertFiltersView): string {
-  const parts: string[] = [];
-  if (value.countries.length > 0) {
-    parts.push(
-      value.countries
-        .map((code) => ALERT_COUNTRY_FILTER_OPTIONS.find((o) => o.code === code)?.label ?? code)
-        .join(", "),
-    );
-  } else {
-    parts.push("All locations");
-  }
-  return parts.join(" · ");
-}
-
-export function summarizeAlertFiltersView(value: AlertFiltersView): string | null {
-  const season = summarizeAlertSeasonFiltersView(value);
-  const location = summarizeAlertLocationFiltersView(value);
-  const parts: string[] = [];
-  if (value.seasons.length > 0) {
-    parts.push(season);
-  }
-  if (value.countries.length > 0) {
-    parts.push(location);
-  }
-  return parts.length > 0 ? parts.join(" · ") : null;
-}

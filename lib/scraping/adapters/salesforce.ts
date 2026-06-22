@@ -180,6 +180,9 @@ export function parseSalesforceJobs(
         companySlug: source.companySlug,
         classification,
         description: job.description ?? "",
+        atsDates: {
+          publishedAt: job.datePosted,
+        },
       }),
     );
   }

@@ -108,6 +108,9 @@ export function parseModularJobs(
         companySlug: source.companySlug,
         classification,
         description: job.content_plain?.trim() || "",
+        atsDates: {
+          publishedAt: job.first_published_at ?? null,
+        },
       }),
     );
   }

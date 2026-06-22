@@ -136,6 +136,10 @@ export function parseJaneStreetJobs(
           employmentType: employment.employmentType,
           commitment: employment.duration,
         },
+        atsDates: {
+          publishedAt: job.first_published ?? null,
+          updatedAt: job.updated_at ?? null,
+        },
       }),
     );
   }

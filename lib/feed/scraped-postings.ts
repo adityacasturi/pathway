@@ -28,6 +28,7 @@ export interface ScrapedPostingFeedRow {
   location_places: LocationPlaceJson[] | null;
   countries: string[] | null;
   first_seen_at: string;
+  posted_at: string;
   last_seen_at: string;
   updated_at: string;
   companies: {
@@ -171,6 +172,7 @@ export async function loadScrapedFeedPostings(supabase: SupabaseClient): Promise
       location_places,
       countries,
       first_seen_at,
+      posted_at,
       last_seen_at,
       updated_at,
       companies!inner (
@@ -201,6 +203,7 @@ export async function loadScrapedFeedPostings(supabase: SupabaseClient): Promise
       location_places: raw.location_places ?? null,
       countries: raw.countries ?? null,
       first_seen_at: raw.first_seen_at,
+      posted_at: raw.posted_at,
       last_seen_at: raw.last_seen_at,
       updated_at: raw.updated_at,
       companies: {
@@ -229,6 +232,7 @@ const FEED_POSTING_SELECT = `
   location_places,
   countries,
   first_seen_at,
+  posted_at,
   last_seen_at,
   updated_at,
   companies!inner (
@@ -261,6 +265,7 @@ function mapRawScrapedFeedRow(raw: Record<string, unknown>): ScrapedPostingFeedR
     location_places: (raw.location_places as LocationPlaceJson[] | null) ?? null,
     countries: (raw.countries as string[] | null) ?? null,
     first_seen_at: String(raw.first_seen_at),
+    posted_at: String(raw.posted_at ?? raw.first_seen_at),
     last_seen_at: String(raw.last_seen_at),
     updated_at: String(raw.updated_at),
     companies: {

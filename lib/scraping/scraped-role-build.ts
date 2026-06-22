@@ -6,7 +6,7 @@ import {
   type LocationInput,
 } from "../geo/server.ts";
 import { inferSeason, type InferSeasonHints } from "./season.ts";
-import type { ScrapedRole, ScrapedSeason } from "./types.ts";
+import type { AtsPostingDates, ScrapedRole, ScrapedSeason } from "./types.ts";
 
 const SCRAPED_DESCRIPTION_MAX_CHARS = 8192;
 const RAW_LOCATION_MAX_CHARS = 500;
@@ -50,6 +50,7 @@ export interface BuildScrapedRoleInput {
   description?: string | null;
   seasonHints?: InferSeasonHints;
   companySlug?: string | null;
+  atsDates?: AtsPostingDates;
   /** When set, skips {@link inferSeason} (employer-specific season rules). */
   season?: ScrapedSeason | null;
 }
@@ -87,5 +88,6 @@ export function buildScrapedRole(input: BuildScrapedRoleInput): ScrapedRole {
     locationConfidence: resolved.places.length > 0 ? resolved.minConfidence : null,
     countries: countriesFromPlaces(resolved.places),
     description: truncateScrapedDescription(description, SCRAPED_DESCRIPTION_MAX_CHARS),
+    atsDates: input.atsDates,
   };
 }

@@ -9,7 +9,6 @@ import {
 } from "@/components/home/home-postings-panel";
 import { useHomeDashboardLayout } from "@/components/home/use-home-dashboard-layout";
 import { HOME_PIPELINE_RAIL } from "@/components/home/home-section-styles";
-import { HomeFirstRunBanner } from "@/components/home/home-first-run-banner";
 import { PageShell } from "@/components/design-system/page";
 import type { HomeAlertActivityRow } from "@/lib/home/alert-activity";
 import type { FeedPosting } from "@/lib/feed/source";
@@ -24,7 +23,6 @@ export function HomePage({
   savedTotal,
   recentPostings,
   recentTotal,
-  showFirstRunBanner = false,
 }: {
   seasonSnapshot: SeasonSnapshot;
   hotCompanies: HotCompany[];
@@ -33,7 +31,6 @@ export function HomePage({
   savedTotal: number;
   recentPostings: FeedPosting[];
   recentTotal: number;
-  showFirstRunBanner?: boolean;
 }) {
   const hotCompaniesTotal = hotCompanies.length;
   const alertActivityTotal = alertActivity.length;
@@ -60,7 +57,6 @@ export function HomePage({
   return (
     <PageShell className="flex h-full min-h-0 flex-col overflow-hidden">
       <section className="flex h-full min-h-0 flex-col bg-card">
-        {showFirstRunBanner ? <HomeFirstRunBanner /> : null}
         <header className={HOME_PIPELINE_RAIL}>
           <HomeBriefingCard seasonSnapshot={seasonSnapshot} />
         </header>

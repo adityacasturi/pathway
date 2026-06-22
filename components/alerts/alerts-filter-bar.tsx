@@ -13,6 +13,7 @@ import type { AlertTypeFilter } from "@/components/alerts/types";
 import { FilterPill } from "@/components/design-system/toolbar";
 import { SectionStack } from "@/components/design-system/surface";
 import { SearchInput } from "@/components/search-input";
+import { Button } from "@/components/ui/button";
 import { ToolbarButton } from "@/components/ui/toolbar-button";
 import type { AlertFiltersView } from "@/lib/alerts/filters";
 import { UI_COUNT_BADGE } from "@/lib/ui/selection-styles";
@@ -67,77 +68,83 @@ export function AlertsFilterBar({
 
   return (
     <div className={cn("relative shrink-0 bg-card", searchFocused && "z-30")}>
-      <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
-        <div ref={defaultsRef} className="relative shrink-0">
-          <ToolbarButton
-            active={defaultsOpen || globalActive}
-            aria-expanded={defaultsOpen}
-            onClick={() => setDefaultsOpen((open) => !open)}
-          >
-            <Settings2 size={14} strokeWidth={1.75} className="opacity-80" />
-            Defaults
-            {activeDefaultCount > 0 ? (
-              <span className={UI_COUNT_BADGE}>{activeDefaultCount}</span>
-            ) : null}
-          </ToolbarButton>
-          {defaultsOpen ? (
-            <SectionStack className="absolute left-0 top-full z-40 mt-1.5 flex w-[min(24rem,calc(100vw-2.5rem))] max-h-[min(36rem,calc(100vh-5rem))] flex-col overflow-hidden shadow-sm">
-              <div className="shrink-0">
-                <AlertDefaultsActiveRail
-                  value={globalFilters}
-                  onChange={onGlobalFiltersChange}
-                />
-              </div>
-              <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:thin]">
-                <AlertFiltersEditor
-                  value={globalFilters}
-                  onChange={onGlobalFiltersChange}
-                  disabled={globalFiltersPending}
-                />
-              </div>
-            </SectionStack>
-          ) : null}
+      <div className="flex flex-wrap items-center gap-2.5 border-b border-border px-5 py-3 md:px-4">
+        <Button
+          type="button"
+          size="sm"
+          className="h-8 shrink-0 gap-1.5 rounded-md px-3 text-sm"
+          onClick={onOpenAddPanel}
+          aria-label="Add alert"
+        >
+          <Plus size={14} strokeWidth={2} />
+          Add alert
+        </Button>
+
+        <div className="min-w-[10rem] flex-1 [&_input]:h-8 [&_input]:rounded-md [&_input]:text-sm">
+          <SearchInput
+            ref={searchRef}
+            value={query}
+            onChange={onQueryChange}
+            placeholder="Search alerts…"
+            onFocusChange={onSearchFocusChange}
+          />
         </div>
 
-        <div className="flex min-w-[9rem] flex-1 items-center gap-2">
-          <div className="min-w-0 flex-1 [&_input]:h-8 [&_input]:rounded-md [&_input]:text-sm">
-            <SearchInput
-              ref={searchRef}
-              value={query}
-              onChange={onQueryChange}
-              placeholder="Search alerts…"
-              onFocusChange={onSearchFocusChange}
-            />
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5">
+            <FilterPill active={typeFilter === "all"} onClick={() => onTypeFilterChange("all")}>
+              All
+              <span className="tabular-nums text-muted-foreground">{totalCount}</span>
+            </FilterPill>
+            <FilterPill
+              active={typeFilter === "company"}
+              onClick={() => onTypeFilterChange("company")}
+              className={alertTypeFilterPillClass("company", typeFilter === "company")}
+            >
+              Companies
+              <span className="tabular-nums text-muted-foreground">{companyCount}</span>
+            </FilterPill>
+            <FilterPill
+              active={typeFilter === "sector"}
+              onClick={() => onTypeFilterChange("sector")}
+              className={alertTypeFilterPillClass("sector", typeFilter === "sector")}
+            >
+              Bundles
+              <span className="tabular-nums text-muted-foreground">{sectorCount}</span>
+            </FilterPill>
           </div>
-          <ToolbarButton onClick={onOpenAddPanel} aria-label="Add alert">
-            <Plus size={14} strokeWidth={1.75} className="text-foreground/70" />
-            Add alert
-          </ToolbarButton>
-        </div>
 
-        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
-          <FilterPill active={typeFilter === "all"} onClick={() => onTypeFilterChange("all")}>
-            All
-            <span className="tabular-nums text-muted-foreground">{totalCount}</span>
-          </FilterPill>
-          <FilterPill
-            active={typeFilter === "company"}
-            onClick={() => onTypeFilterChange("company")}
-            className={alertTypeFilterPillClass("company", typeFilter === "company")}
-          >
-            Companies
-            <span className="tabular-nums text-muted-foreground">{companyCount}</span>
-          </FilterPill>
-          <FilterPill
-            active={typeFilter === "sector"}
-            onClick={() => onTypeFilterChange("sector")}
-            className={alertTypeFilterPillClass("sector", typeFilter === "sector")}
-          >
-            Bundles
-            <span className="tabular-nums text-muted-foreground">{sectorCount}</span>
-          </FilterPill>
+          <div ref={defaultsRef} className="relative shrink-0">
+            <ToolbarButton
+              active={defaultsOpen || globalActive}
+              aria-expanded={defaultsOpen}
+              onClick={() => setDefaultsOpen((open) => !open)}
+            >
+              <Settings2 size={14} strokeWidth={1.75} className="opacity-80" />
+              Defaults
+              {activeDefaultCount > 0 ? (
+                <span className={UI_COUNT_BADGE}>{activeDefaultCount}</span>
+              ) : null}
+            </ToolbarButton>
+            {defaultsOpen ? (
+              <SectionStack className="absolute right-0 top-full z-40 mt-1.5 flex w-[min(24rem,calc(100vw-2.5rem))] max-h-[min(36rem,calc(100vh-5rem))] flex-col overflow-hidden shadow-sm">
+                <div className="shrink-0">
+                  <AlertDefaultsActiveRail
+                    value={globalFilters}
+                    onChange={onGlobalFiltersChange}
+                  />
+                </div>
+                <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:thin]">
+                  <AlertFiltersEditor
+                    value={globalFilters}
+                    onChange={onGlobalFiltersChange}
+                    disabled={globalFiltersPending}
+                  />
+                </div>
+              </SectionStack>
+            ) : null}
+          </div>
         </div>
-
       </div>
     </div>
   );

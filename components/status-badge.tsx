@@ -112,8 +112,3 @@ export function StatusDot({ status, size = 7 }: { status: Status; size?: number 
 export function EventDot({ type, size = 7 }: { type: EventType; size?: number }) {
   return <span style={dotStyle(size, EVENT_COLOR_VAR[type])} />;
 }
-
-/** Retained export for compatibility with the event timeline's "offer" treatment. */
-export function OfferDot({ size = 7 }: { size?: number; halo?: boolean }) {
-  return <StatusDot status="offer" size={size} />;
-}

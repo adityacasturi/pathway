@@ -107,29 +107,3 @@ export function SidebarSectionLabel({
     </p>
   );
 }
-
-export function SidebarActionButton({
-  children,
-  onClick,
-  className,
-  "aria-label": ariaLabel,
-}: {
-  children: ReactNode;
-  onClick?: () => void;
-  className?: string;
-  "aria-label"?: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={ariaLabel}
-      className={cn(
-        "inline-flex h-9 items-center justify-center rounded-md border border-border bg-background text-foreground transition-colors hover:bg-muted/50",
-        className,
-      )}
-    >
-      {children}
-    </button>
-  );
-}

@@ -21,6 +21,7 @@ function row(overrides: Partial<ScrapedPostingFeedRow> = {}): ScrapedPostingFeed
     ],
     countries: ["CU", "US"],
     first_seen_at: "2026-06-10T05:29:01.034Z",
+    posted_at: "2026-06-10T05:29:01.034Z",
     last_seen_at: "2026-06-10T05:29:01.034Z",
     updated_at: "2026-06-10T05:29:01.034Z",
     companies: {
@@ -41,3 +42,19 @@ test("mapScrapedRowToFeedPosting displays only enabled-country locations", () =>
   assert.equal(posting.canonicalPlaces.length, 2);
 });
 
+test("mapScrapedRowToFeedPosting uses posted_at for republished roles", () => {
+  const posting = mapScrapedRowToFeedPosting(
+    row({
+      role_name: "Summer 2027 Quantitative Research Internship",
+      first_seen_at: "2024-08-15T21:28:38.000Z",
+      posted_at: "2026-06-12T17:40:11.000Z",
+    }),
+  );
+
+  assert.ok(posting);
+  assert.equal(posting.datePosted, Math.floor(Date.parse("2026-06-12T17:40:11.000Z") / 1000));
+  assert.deepEqual(posting.postedDisplay, {
+    kind: "posted",
+    unixSeconds: Math.floor(Date.parse("2026-06-12T17:40:11.000Z") / 1000),
+  });
+});

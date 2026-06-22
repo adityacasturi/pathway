@@ -113,6 +113,8 @@ export default async function AlertsRoute() {
     slug: sector.slug,
     label: sector.label,
     description: sector.description,
+    groupLabel: sector.groupLabel,
+    groupSortOrder: sector.groupSortOrder,
     companies: resolveSectorCompanies(sector, companiesBySlug),
   }));
 

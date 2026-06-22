@@ -1,6 +1,5 @@
 "use client";
 
-import { Sparkles } from "lucide-react";
 import type { ComponentType, CSSProperties, ReactNode } from "react";
 import {
   useCallback,
@@ -12,20 +11,6 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
-
-export function SoonBadge({ className }: { className?: string }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--selection-border)] bg-[var(--selection-bg)] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--selection-fg)]",
-        className,
-      )}
-    >
-      <Sparkles size={9} strokeWidth={1.75} aria-hidden />
-      Soon
-    </span>
-  );
-}
 
 type CardSide = "right" | "left" | "top" | "bottom";
 

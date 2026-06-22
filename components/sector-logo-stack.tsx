@@ -9,15 +9,9 @@ export interface SectorLogoCompany {
 }
 
 /** Fixed icon column width for alert follows and bundle rows. */
-export const ALERT_FOLLOW_LOGO_SLOT = 36;
+const ALERT_FOLLOW_LOGO_SLOT = 36;
 
 const GRID_GAP = 2;
-
-/** Logo size inside a bundle grid cell. */
-export const ALERT_FOLLOW_BUNDLE_CELL_SIZE = Math.floor((ALERT_FOLLOW_LOGO_SLOT - GRID_GAP) / 2);
-
-/** Single-company logos fill the same slot as a quad bundle preview. */
-export const ALERT_FOLLOW_SINGLE_LOGO_SIZE = ALERT_FOLLOW_LOGO_SLOT;
 
 interface Props {
   companies: SectorLogoCompany[];
@@ -39,25 +33,6 @@ function BundleLogo({
       websiteUrl={company.websiteUrl}
       size={size}
     />
-  );
-}
-
-export function AlertFollowLogoSlot({
-  children,
-  slotSize = ALERT_FOLLOW_LOGO_SLOT,
-  className,
-}: {
-  children: ReactNode;
-  slotSize?: number;
-  className?: string;
-}) {
-  return (
-    <div
-      className={cn("flex shrink-0 items-center justify-center", className)}
-      style={{ width: slotSize, height: slotSize }}
-    >
-      {children}
-    </div>
   );
 }
 

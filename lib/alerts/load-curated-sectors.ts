@@ -6,6 +6,8 @@ interface SectorRow {
   label: string;
   description: string;
   sort_order: number;
+  group_label: string | null;
+  group_sort_order: number | null;
 }
 
 interface MemberRow {
@@ -20,7 +22,8 @@ export async function loadCuratedAlertSectors(
   const [sectorsRes, membersRes] = await Promise.all([
     supabase
       .from("alert_curated_sectors")
-      .select("slug, label, description, sort_order")
+      .select("slug, label, description, sort_order, group_label, group_sort_order")
+      .order("group_sort_order", { ascending: true })
       .order("sort_order", { ascending: true }),
     supabase.from("alert_curated_sector_companies").select("sector_slug, company_slug"),
   ]);
@@ -39,6 +42,8 @@ export async function loadCuratedAlertSectors(
     slug: sector.slug,
     label: sector.label,
     description: sector.description,
+    groupLabel: sector.group_label ?? "Industry bundles",
+    groupSortOrder: sector.group_sort_order ?? 10,
     companySlugs: companySlugsBySector.get(sector.slug) ?? [],
   }));
 }

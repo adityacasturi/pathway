@@ -22,7 +22,7 @@ const posting = enrichAlertPostingCandidate({
   postingUrl: "https://example.com/1",
   season: "Summer",
   location: "San Francisco, CA",
-  firstSeenAt: "2026-06-01T12:00:00.000Z",
+  postedAt: "2026-06-01T12:00:00.000Z",
 });
 
 const globalFiltersByUserId = new Map([["u1", DEFAULT_ALERT_FILTERS]]);

@@ -11,11 +11,11 @@ Start here if you are setting up the repo, onboarding companies, or debugging pr
 | [scraped-posted-dates.md](./scraped-posted-dates.md) | Engineers | Posted vs Discovered date provenance |
 | [alerts-filters.md](./alerts-filters.md) | Engineers | Alert season/country/remote matching rules |
 | [production-runbook.md](./production-runbook.md) | Release & on-call | Pre-deploy checks, env, incidents |
-| [audits/](./audits/) | Engineers | Historical audit notes (not a live backlog) |
 | [../supabase/README.md](../supabase/README.md) | Engineers & agents | Database change workflow (remote-first) |
 | [../discover-queue/README.md](../discover-queue/README.md) | Operators | SQLite queue for bulk company onboarding |
 | [../tests/README.md](../tests/README.md) | Engineers | Unit and e2e test layout |
 | [../AGENTS.md](../AGENTS.md) | Coding agents | Required checks, DB rules, UI conventions |
+| [llm-overview.md](./llm-overview.md) | LLMs & agents | Single-file project handoff: product, stack, data, subsystems |
 | [../CLAUDE.md](../CLAUDE.md) | Claude / agents | Command cheat sheet and architecture snapshot |
 
 ## Terminology

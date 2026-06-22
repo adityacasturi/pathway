@@ -21,7 +21,7 @@ export const HOME_SECTION_HEADER =
   "shrink-0 border-b border-border bg-card px-5 py-3";
 
 export const HOME_TABLE_COL_HEADER =
-  "h-[2.75rem] shrink-0 overflow-hidden border-b border-border bg-muted/25";
+  "h-[2.25rem] shrink-0 overflow-hidden border-b border-border bg-muted/25";
 
 export const HOME_ROW_HOVER = "transition-colors hover:bg-muted/30";
 

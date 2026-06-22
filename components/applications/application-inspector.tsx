@@ -576,7 +576,7 @@ export function ApplicationInspector({
     <>
       {createPortal(
         <div
-          className="fixed inset-0 z-50 flex justify-end bg-[color-mix(in_oklab,var(--ink)_25%,transparent)] xl:hidden"
+          className="ds-overlay-enter fixed inset-0 z-50 flex justify-end bg-[color-mix(in_oklab,var(--ink)_25%,transparent)] xl:hidden"
           role="dialog"
           aria-modal="true"
         >
@@ -586,7 +586,7 @@ export function ApplicationInspector({
             className="absolute inset-0"
             onClick={onClose}
           />
-          <div className="relative z-10 h-full w-full max-w-[var(--app-inspector-width)] shadow-[-16px_0_48px_-20px_color-mix(in_oklab,var(--ink)_22%,transparent)]">
+          <div className="ds-drawer-enter relative z-10 h-full w-full max-w-[var(--app-inspector-width)] shadow-[-16px_0_48px_-20px_color-mix(in_oklab,var(--ink)_22%,transparent)]">
             {panel}
           </div>
         </div>,

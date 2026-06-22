@@ -1,7 +1,8 @@
 "use client";
 
 import type { RefObject } from "react";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, Briefcase, Building2, Clock, Layers } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { MotionStaggerList } from "@/components/design-system/motion-stagger";
 import { EmptyState } from "@/components/design-system/states";
 import {
@@ -15,12 +16,14 @@ import { cn } from "@/lib/utils";
 
 function SortableHeaderCell({
   label,
+  icon: Icon,
   columnKey,
   sortKey,
   sortDirection,
   onSortChange,
 }: {
   label: string;
+  icon: LucideIcon;
   columnKey: CompanySortKey;
   sortKey: CompanySortKey | null;
   sortDirection: CompanySortDirection;
@@ -36,16 +39,17 @@ function SortableHeaderCell({
         type="button"
         onClick={() => onSortChange(columnKey)}
         className={cn(
-          "flex h-full w-full items-center gap-1 py-2.5 text-xs font-medium transition-colors",
-          isActive ? "text-foreground" : "text-foreground/75 hover:text-foreground",
+          "flex h-full w-full items-center gap-1.5 py-2 text-[13px] font-medium transition-colors",
+          isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
         )}
       >
+        <Icon size={14} strokeWidth={1.75} className="shrink-0 text-muted-foreground/70" aria-hidden />
         <span>{label}</span>
         {isActive ? (
           activeDirection === "asc" ? (
-            <ArrowUp size={12} strokeWidth={2} className="shrink-0 opacity-70" aria-hidden />
+            <ArrowUp size={12} strokeWidth={2} className="ml-auto shrink-0 text-foreground/70" aria-hidden />
           ) : (
-            <ArrowDown size={12} strokeWidth={2} className="shrink-0 opacity-70" aria-hidden />
+            <ArrowDown size={12} strokeWidth={2} className="ml-auto shrink-0 text-foreground/70" aria-hidden />
           )
         ) : null}
       </button>
@@ -109,6 +113,7 @@ export function CompaniesRecordList({
         >
           <SortableHeaderCell
             label="Company"
+            icon={Building2}
             columnKey="name"
             sortKey={sortKey}
             sortDirection={sortDirection}
@@ -117,13 +122,15 @@ export function CompaniesRecordList({
           <div
             className={cn(
               COMPANY_ROW_HEADER_CELL,
-              "flex items-center py-2.5 text-xs font-medium text-foreground/75",
+              "flex items-center gap-1.5 py-2 text-[13px] font-medium text-muted-foreground",
             )}
           >
+            <Layers size={14} strokeWidth={1.75} className="shrink-0 text-muted-foreground/70" aria-hidden />
             Industry
           </div>
           <SortableHeaderCell
             label="Openings"
+            icon={Briefcase}
             columnKey="openings"
             sortKey={sortKey}
             sortDirection={sortDirection}
@@ -131,6 +138,7 @@ export function CompaniesRecordList({
           />
           <SortableHeaderCell
             label="Updated"
+            icon={Clock}
             columnKey="updated"
             sortKey={sortKey}
             sortDirection={sortDirection}

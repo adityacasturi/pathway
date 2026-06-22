@@ -1,7 +1,18 @@
 "use client";
 
 import { useEffect, type RefObject } from "react";
-import { ArrowDown, ArrowUp, Plus } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Briefcase,
+  Building2,
+  CalendarRange,
+  CircleDot,
+  Clock,
+  MapPin,
+  Plus,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type { Application } from "@/types/application";
 import type {
   CompanyLogoAssetByName,
@@ -31,6 +42,7 @@ const DESKTOP_GRID =
 
 function SortableHeaderCell({
   label,
+  icon: Icon,
   columnKey,
   sortKey,
   sortDirection,
@@ -38,6 +50,7 @@ function SortableHeaderCell({
   align = "left",
 }: {
   label: string;
+  icon: LucideIcon;
   columnKey: SortKey;
   sortKey: SortKey | null;
   sortDirection: SortDirection;
@@ -60,17 +73,28 @@ function SortableHeaderCell({
             : "not sorted"
         }`}
         className={cn(
-          "flex h-full w-full items-center gap-1 px-2 py-2.5 text-xs font-medium transition-colors",
+          "flex h-full w-full items-center gap-1.5 px-2 py-2 text-[13px] font-medium transition-colors",
           align === "center" ? "justify-center" : "justify-start",
-          isActive ? "text-foreground" : "text-foreground/75 hover:text-foreground",
+          isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
         )}
       >
+        <Icon size={14} strokeWidth={1.75} className="shrink-0 text-muted-foreground/70" aria-hidden />
         <span>{label}</span>
         {isActive ? (
           activeDirection === "asc" ? (
-            <ArrowUp size={12} strokeWidth={2} className="shrink-0 opacity-70" aria-hidden />
+            <ArrowUp
+              size={12}
+              strokeWidth={2}
+              className={cn("shrink-0 text-foreground/70", align === "center" ? "" : "ml-auto")}
+              aria-hidden
+            />
           ) : (
-            <ArrowDown size={12} strokeWidth={2} className="shrink-0 opacity-70" aria-hidden />
+            <ArrowDown
+              size={12}
+              strokeWidth={2}
+              className={cn("shrink-0 text-foreground/70", align === "center" ? "" : "ml-auto")}
+              aria-hidden
+            />
           )
         ) : null}
       </button>
@@ -210,6 +234,7 @@ export function ApplicationsRecordList({
         >
           <SortableHeaderCell
             label="Company"
+            icon={Building2}
             columnKey="company"
             sortKey={sortKey}
             sortDirection={sortDirection}
@@ -217,6 +242,7 @@ export function ApplicationsRecordList({
           />
           <SortableHeaderCell
             label="Role"
+            icon={Briefcase}
             columnKey="role"
             sortKey={sortKey}
             sortDirection={sortDirection}
@@ -224,6 +250,7 @@ export function ApplicationsRecordList({
           />
           <SortableHeaderCell
             label="Location"
+            icon={MapPin}
             columnKey="location"
             sortKey={sortKey}
             sortDirection={sortDirection}
@@ -231,6 +258,7 @@ export function ApplicationsRecordList({
           />
           <SortableHeaderCell
             label="Season"
+            icon={CalendarRange}
             columnKey="season"
             sortKey={sortKey}
             sortDirection={sortDirection}
@@ -239,6 +267,7 @@ export function ApplicationsRecordList({
           />
           <SortableHeaderCell
             label="Status"
+            icon={CircleDot}
             columnKey="status"
             sortKey={sortKey}
             sortDirection={sortDirection}
@@ -247,6 +276,7 @@ export function ApplicationsRecordList({
           />
           <SortableHeaderCell
             label="Updated"
+            icon={Clock}
             columnKey="last_activity"
             sortKey={sortKey}
             sortDirection={sortDirection}
@@ -356,7 +386,7 @@ function RecordRow({
           {application.season ? (
             <SeasonBadge season={application.season} variant="plain" />
           ) : null}
-          <StatusBadge status={application.status} variant="plain" />
+          <StatusBadge status={application.status} variant="compact" />
         </button>
       </MotionStaggerItem>
     );
@@ -371,13 +401,13 @@ function RecordRow({
         onClick={onOpen}
         className={cn(
           DESKTOP_GRID,
-          "w-full min-h-[2.75rem] border-b border-border/60 text-left transition-colors hover:bg-muted/30",
+          "w-full min-h-[2.25rem] border-b border-border/60 text-left transition-colors hover:bg-muted/30",
           selected && "bg-muted/50",
           archived && "opacity-55",
         )}
       >
         <TableCell>
-          <span className="flex min-w-0 items-center gap-2.5 py-2.5">
+          <span className="flex min-w-0 items-center gap-2.5 py-1.5">
             <CompanyLogo
               company={application.company}
               companySlug={lookupCompanySlug(application.company, companySlugByName)}
@@ -395,36 +425,36 @@ function RecordRow({
               target="_blank"
               rel="noopener noreferrer"
               onClick={(event) => event.stopPropagation()}
-              className={cn("block truncate py-2.5 text-sm", LINK_MUTED_CLASS)}
+              className={cn("block truncate py-1.5 text-sm", LINK_MUTED_CLASS)}
             >
               {application.role}
             </a>
           ) : (
-            <span className="block truncate py-2.5 text-sm text-foreground/90">{application.role}</span>
+            <span className="block truncate py-1.5 text-sm text-foreground/90">{application.role}</span>
           )}
         </TableCell>
         <TableCell>
           <span
-            className="block truncate py-2.5 text-sm text-foreground/80"
+            className="block truncate py-1.5 text-sm text-foreground/80"
             title={locationRaw || undefined}
           >
             {locationLabel}
           </span>
         </TableCell>
         <TableCell className="flex justify-center">
-          <span className="flex py-2.5">
+          <span className="flex py-1.5">
             {application.season ? (
               <SeasonBadge season={application.season} variant="plain" />
             ) : null}
           </span>
         </TableCell>
         <TableCell className="flex justify-center">
-          <span className="flex py-2.5">
-            <StatusBadge status={application.status} variant="plain" />
+          <span className="flex py-1.5">
+            <StatusBadge status={application.status} variant="compact" />
           </span>
         </TableCell>
         <TableCell>
-          <span className="block truncate py-2.5 text-sm tabular-nums text-foreground/80">
+          <span className="block truncate py-1.5 text-sm tabular-nums text-foreground/80">
             {formatDate(application.last_activity_date)}
           </span>
         </TableCell>

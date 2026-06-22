@@ -1,8 +1,8 @@
 # Pathway
 
-Internship search and application tracking for students. **Home** briefing, **Applications** tracker, **Openings** feed, **Companies** catalog, and **Alerts** for new roles. **Scout** AI chat is present in the codebase but locked while it is in progress.
+Internship search and application tracking for students. **Home** briefing, **Applications** tracker, **Openings** feed, **Companies** catalog, **Alerts** for new roles, and a marketing landing at `/`. **Scout** AI chat is present in the codebase but locked while it is in progress.
 
-**Stack:** Next.js 16 · React 19 · Supabase · Tailwind v4 · Playwright
+**Stack:** Next.js 16 · React 19 · Supabase · Tailwind v4 · Playwright (e2e)
 
 ## Documentation
 
@@ -91,7 +91,8 @@ You do **not** need to run SQL files from git — the hosted database is already
 | `npm run test:e2e:ui` | Playwright UI mode |
 | `npm run test:preprod:full` | lint + verify + e2e |
 | `npm run verify` | lint + typecheck + audit + unit + build |
-| `npm run scrape` | Scrape boards → `scraped_postings` |
+| `npm run scrape` | Scrape boards → `scraped_postings` (same pipeline as production cron) |
+| `npm run scrape:audit-posted-dates` | Audit `posted_at` / republish semantics |
 | `npm run alerts:instant` | Send instant alert email for new matching postings |
 | `npm run discover-company` | Onboard one company (dry-run or `--apply --scrape`) |
 | `npm run discover-queue` | Bulk Discover onboarding queue CLI |
@@ -106,8 +107,8 @@ You do **not** need to run SQL files from git — the hosted database is already
 
 ```text
 app/                    Routes, layouts, cron + chat + logo API
-components/             Product UI (app-shell/, home/, openings/, companies/, …)
-components/ui/          Design-system primitives
+components/             Product UI (app-shell/, home/, openings/, companies/, landing/, …)
+components/ui/          Shared UI primitives
 lib/actions/            Server Actions
 lib/alerts/             Email alert matching, digest/instant send
 lib/auth/               Signup / login validation helpers

@@ -72,6 +72,8 @@ export const SOURCE_TYPES = [
   "x_corp",
   "pinpoint",
   "rippling",
+  "clearcompany",
+  "icims",
 ] as const;
 
 export type SourceType = (typeof SOURCE_TYPES)[number];
@@ -84,6 +86,11 @@ export type ScrapedSeason = "Summer" | "Fall" | "Spring" | "Winter";
 
 import type { CanonicalPlace } from "../geo/types.ts";
 import type { ScrapeRoleType } from "./classify-role.ts";
+
+export interface AtsPostingDates {
+  publishedAt?: string | null;
+  updatedAt?: string | null;
+}
 
 /**
  * A fully normalized posting, ready for persistence. Construct only via
@@ -109,6 +116,8 @@ export interface ScrapedRole {
   countries: string[];
   /** Truncated plain-text description for classification/search. */
   description?: string | null;
+  /** Raw ATS timestamps used to infer user-facing posted/reposted time. */
+  atsDates?: AtsPostingDates;
 }
 
 export interface CompanySourceConfig {

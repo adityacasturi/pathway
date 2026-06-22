@@ -22,7 +22,7 @@ const posting: AlertPostingCandidate = {
   location: "San Francisco, CA",
   countries: ["US"],
   hasRemote: false,
-  firstSeenAt: "2026-06-01T12:00:00.000Z",
+  postedAt: "2026-06-01T12:00:00.000Z",
 };
 
 const secondPosting: AlertPostingCandidate = {

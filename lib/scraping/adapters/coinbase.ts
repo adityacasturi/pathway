@@ -244,6 +244,9 @@ export function parseCoinbaseJobs(
           commitment: employment.commitment,
           departments: departmentName ? [departmentName] : [],
         },
+        atsDates: {
+          updatedAt: job.updated_at ?? null,
+        },
       }),
     );
   }

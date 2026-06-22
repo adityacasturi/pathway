@@ -37,11 +37,11 @@ export function Switch({
       <span
         aria-hidden
         className={cn(
-          "pointer-events-none block size-5 rounded-full bg-[var(--switch-thumb)]",
+          "pointer-events-none size-4 shrink-0 rounded-full bg-[var(--switch-thumb)]",
           "shadow-[0_1px_3px_color-mix(in_oklab,var(--foreground)_22%,transparent)]",
           "ring-1 ring-[var(--switch-thumb-border)]",
-          "transition-transform duration-200 ease-[var(--motion-ease-smooth)]",
-          checked ? "translate-x-5" : "translate-x-0",
+          "transition-[margin] duration-200 ease-[var(--motion-ease-smooth)]",
+          checked ? "ms-[calc(100%-1.125rem)]" : "ms-0.5",
         )}
       />
     </button>

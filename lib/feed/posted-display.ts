@@ -9,6 +9,7 @@ export interface PostedDisplay {
 
 export interface PostedDateRowFields {
   first_seen_at: string;
+  posted_at?: string | null;
 }
 
 /** Parse an ISO timestamp to whole Unix seconds, returning 0 when invalid. */
@@ -18,16 +19,24 @@ export function toUnixSeconds(iso: string | null | undefined): number {
   return Number.isFinite(ms) ? Math.floor(ms / 1000) : 0;
 }
 
-export function resolvePathwayNewUnix(row: { first_seen_at: string }): number {
-  return toUnixSeconds(row.first_seen_at);
+export function resolvePathwayNewUnix(row: PostedDateRowFields): number {
+  return resolveEffectivePostedUnix(row);
 }
 
-/** Sort order — always `first_seen_at` (Pathway first-scrape time). */
+/** Sort order — user-facing posted/reposted time, falling back to first scrape. */
 export function resolveEffectivePostedUnix(row: PostedDateRowFields): number {
-  return toUnixSeconds(row.first_seen_at);
+  return toUnixSeconds(row.posted_at) || toUnixSeconds(row.first_seen_at);
 }
 
 export function resolvePostedDisplay(row: PostedDateRowFields): PostedDisplay {
+  const postedUnix = toUnixSeconds(row.posted_at);
+  if (postedUnix > 0) {
+    return {
+      kind: "posted",
+      unixSeconds: postedUnix,
+    };
+  }
+
   const firstSeenUnix = toUnixSeconds(row.first_seen_at);
   if (firstSeenUnix > 0) {
     return {

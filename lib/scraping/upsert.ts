@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { canonicalPlacesToJson } from "../geo/server.ts";
 import { CountryAllowlist } from "./country-allowlist.ts";
 import { canonicalizePostingUrl } from "./posting-url.ts";
+import { resolvePostedAt, type ExistingPostingSnapshot } from "./posted-at.ts";
 import {
   isSourceType,
   type CompanySourceConfig,
@@ -140,11 +141,16 @@ interface ScrapedPostingUpsertRow {
   source_id: string;
   status: "open" | "country_blocked" | "country_unknown";
   first_seen_at: string;
+  posted_at: string;
   last_seen_at: string;
 }
 
-interface ExistingPostingState {
-  first_seen_at: string;
+type ExistingPostingState = ExistingPostingSnapshot;
+
+interface ScrapedPostingBuildResult {
+  rows: ScrapedPostingUpsertRow[];
+  republishedPostingIds: string[];
+  movedPostingUrls: Array<{ id: string; postingUrl: string }>;
 }
 
 async function upsertScrapedRoles(
@@ -168,10 +174,19 @@ async function upsertScrapedRoles(
   const existingByUrl = await loadExistingPostingState(
     supabase,
     roles.map((role) => canonicalizePostingUrl(role.postingUrl)),
+    companyId,
   );
-  const rows = buildScrapedPostingUpsertRows(roles, adapter.source, now, existingByUrl, allowlist);
+  const { rows, republishedPostingIds, movedPostingUrls } = buildScrapedPostingUpsertResult(
+    roles,
+    adapter.source,
+    now,
+    existingByUrl,
+    allowlist,
+  );
   const openCount = rows.filter((row) => row.status === "open").length;
   const seenUrls = new Set(rows.map((row) => row.posting_url));
+
+  await movePostingUrls(supabase, movedPostingUrls);
 
   for (const chunk of chunkArray(rows, UPSERT_CHUNK_SIZE)) {
     const { error } = await supabase.from("scraped_postings").upsert(chunk, {
@@ -181,6 +196,8 @@ async function upsertScrapedRoles(
       throw error;
     }
   }
+
+  await clearRepublishedAlertSentPostings(supabase, republishedPostingIds);
 
   if (closeStale) {
     await closeStaleScrapedPostings(supabase, companyId, seenUrls, now);
@@ -195,8 +212,22 @@ export function buildScrapedPostingUpsertRows(
   existingByUrl: ReadonlyMap<string, ExistingPostingState>,
   allowlist?: CountryAllowlist,
 ): ScrapedPostingUpsertRow[] {
+  return buildScrapedPostingUpsertResult(roles, source, now, existingByUrl, allowlist).rows;
+}
+
+function buildScrapedPostingUpsertResult(
+  roles: ScrapedRole[],
+  source: Pick<CompanySourceConfig, "id" | "companyId">,
+  now: string,
+  existingByUrl: ReadonlyMap<string, ExistingPostingState>,
+  allowlist?: CountryAllowlist,
+): ScrapedPostingBuildResult {
   const rows: ScrapedPostingUpsertRow[] = [];
+  const republishedPostingIds: string[] = [];
+  const movedPostingUrls: ScrapedPostingBuildResult["movedPostingUrls"] = [];
+  const incomingUrls = new Set(roles.map((role) => canonicalizePostingUrl(role.postingUrl)));
   const seen = new Set<string>();
+  const usedExistingIds = new Set<string>();
 
   for (const role of roles) {
     const postingUrl = canonicalizePostingUrl(role.postingUrl);
@@ -205,7 +236,26 @@ export function buildScrapedPostingUpsertRows(
     }
     seen.add(postingUrl);
 
-    const existing = existingByUrl.get(postingUrl);
+    const existing = resolveExistingPostingForRole(postingUrl, role, existingByUrl, usedExistingIds, incomingUrls);
+    const movedUrl = isMovedPostingUrl(existing, postingUrl);
+    const postedAt = movedUrl
+      ? {
+          postedAt:
+            normalizeStoredDate(existing?.posted_at) ??
+            normalizeStoredDate(existing?.first_seen_at) ??
+            now,
+          republished: false,
+        }
+      : resolvePostedAt(existing, role, now);
+    if (postedAt.republished && existing?.id) {
+      republishedPostingIds.push(existing.id);
+    }
+    if (existing?.id) {
+      usedExistingIds.add(existing.id);
+    }
+    if (movedUrl && existing?.id) {
+      movedPostingUrls.push({ id: existing.id, postingUrl });
+    }
 
     const decision = allowlist?.check(role.countries) ?? { allowed: true as const };
     const status: ScrapedPostingUpsertRow["status"] = decision.allowed
@@ -229,23 +279,25 @@ export function buildScrapedPostingUpsertRows(
       source_id: source.id,
       status,
       first_seen_at: existing?.first_seen_at ?? now,
+      posted_at: postedAt.postedAt,
       last_seen_at: now,
     });
   }
 
-  return rows;
+  return { rows, republishedPostingIds, movedPostingUrls };
 }
 
 async function loadExistingPostingState(
   supabase: SupabaseClient,
   postingUrls: string[],
+  companyId: string,
 ): Promise<Map<string, ExistingPostingState>> {
   const byUrl = new Map<string, ExistingPostingState>();
 
   for (const chunk of chunkArray(postingUrls, UPSERT_CHUNK_SIZE)) {
     const { data, error } = await supabase
       .from("scraped_postings")
-      .select("posting_url, first_seen_at")
+      .select("id, posting_url, first_seen_at, posted_at, role_name, season, status, last_seen_at")
       .in("posting_url", chunk);
 
     if (error) {
@@ -257,12 +309,139 @@ async function loadExistingPostingState(
         continue;
       }
       byUrl.set(row.posting_url, {
+        id: row.id,
+        posting_url: row.posting_url,
         first_seen_at: row.first_seen_at,
+        posted_at: row.posted_at,
+        role_name: row.role_name,
+        season: row.season,
+        status: row.status,
+        last_seen_at: row.last_seen_at,
       });
     }
   }
 
+  for (let from = 0; ; from += UPSERT_CHUNK_SIZE) {
+    const { data, error } = await supabase
+      .from("scraped_postings")
+      .select("id, posting_url, first_seen_at, posted_at, role_name, season, status, last_seen_at")
+      .eq("company_id", companyId)
+      .in("status", ["open", "country_blocked", "country_unknown"])
+      .order("id")
+      .range(from, from + UPSERT_CHUNK_SIZE - 1);
+
+    if (error) {
+      throw error;
+    }
+
+    for (const row of data ?? []) {
+      if (!row.posting_url || !row.first_seen_at || byUrl.has(row.posting_url)) {
+        continue;
+      }
+      byUrl.set(row.posting_url, {
+        id: row.id,
+        posting_url: row.posting_url,
+        first_seen_at: row.first_seen_at,
+        posted_at: row.posted_at,
+        role_name: row.role_name,
+        season: row.season,
+        status: row.status,
+        last_seen_at: row.last_seen_at,
+      });
+    }
+
+    if ((data ?? []).length < UPSERT_CHUNK_SIZE) {
+      break;
+    }
+  }
+
   return byUrl;
+}
+
+function resolveExistingPostingForRole(
+  postingUrl: string,
+  role: ScrapedRole,
+  existingByUrl: ReadonlyMap<string, ExistingPostingState>,
+  usedExistingIds: ReadonlySet<string>,
+  incomingUrls: ReadonlySet<string>,
+): ExistingPostingState | undefined {
+  const exact = existingByUrl.get(postingUrl);
+  if (exact) {
+    return exact;
+  }
+
+  const roleTitle = normalizePostingTitle(role.roleName);
+  if (!roleTitle) {
+    return undefined;
+  }
+
+  const matches: ExistingPostingState[] = [];
+  for (const existing of existingByUrl.values()) {
+    if (existing.id && usedExistingIds.has(existing.id)) {
+      continue;
+    }
+    if (existing.status === "closed") {
+      continue;
+    }
+    if (existing.posting_url && incomingUrls.has(existing.posting_url)) {
+      continue;
+    }
+    if (normalizePostingTitle(existing.role_name) === roleTitle) {
+      matches.push(existing);
+    }
+  }
+
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
+function isMovedPostingUrl(existing: ExistingPostingState | undefined, postingUrl: string): existing is ExistingPostingState {
+  return Boolean(existing?.posting_url && existing.posting_url !== postingUrl);
+}
+
+function normalizePostingTitle(value: string | null | undefined): string {
+  return (value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function normalizeStoredDate(value: string | null | undefined): string | null {
+  if (!value) {
+    return null;
+  }
+  const ms = Date.parse(value);
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+}
+
+async function movePostingUrls(
+  supabase: SupabaseClient,
+  moves: ScrapedPostingBuildResult["movedPostingUrls"],
+): Promise<void> {
+  for (const move of moves) {
+    const { error } = await supabase
+      .from("scraped_postings")
+      .update({ posting_url: move.postingUrl })
+      .eq("id", move.id);
+    if (error) {
+      throw error;
+    }
+  }
+}
+
+async function clearRepublishedAlertSentPostings(
+  supabase: SupabaseClient,
+  postingIds: string[],
+): Promise<void> {
+  if (postingIds.length === 0) {
+    return;
+  }
+
+  for (const idChunk of chunkArray([...new Set(postingIds)], UPSERT_CHUNK_SIZE)) {
+    const { error } = await supabase
+      .from("alert_sent_postings")
+      .delete()
+      .in("posting_id", idChunk);
+    if (error) {
+      throw error;
+    }
+  }
 }
 
 async function closeStaleScrapedPostings(

@@ -28,9 +28,16 @@ const companyMeta = new Map<string, { sourceType: SourceType }>();
 const results = await runAllScrapes({
   filterSlug,
   dryRun: true,
+  companyConcurrency: readAuditCompanyConcurrency(),
   onProgress: (event) => {
     if (event.type === "begin") {
       companyMeta.set(event.slug, { sourceType: event.sourceType });
+      logAuditProgress(`[${event.index}/${event.total}] ${event.slug} (${event.sourceType})`);
+    }
+    if (event.type === "done") {
+      logAuditProgress(
+        `[${event.index}/${event.total}] ${event.result.slug}: ${event.result.status} (${event.durationMs}ms)`,
+      );
     }
   },
 });
@@ -127,4 +134,23 @@ function loadDotEnvLocal() {
   } catch {
     // optional local env
   }
+}
+
+function readAuditCompanyConcurrency(): number {
+  const raw = process.env.SCRAPE_AUDIT_COMPANY_CONCURRENCY;
+  if (!raw?.trim()) {
+    return 1;
+  }
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return 1;
+  }
+  return Math.min(parsed, 8);
+}
+
+function logAuditProgress(message: string): void {
+  if (process.env.SCRAPE_AUDIT_PROGRESS === "0") {
+    return;
+  }
+  process.stderr.write(`${message}\n`);
 }

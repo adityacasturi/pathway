@@ -435,7 +435,7 @@ export function ApplicationsPage({
             {detail ? (
               <div
                 role="presentation"
-                className="absolute inset-0 z-10 hidden bg-background/20 backdrop-blur-[3px] xl:block"
+                className="ds-overlay-enter absolute inset-0 z-10 hidden bg-background/20 backdrop-blur-[3px] xl:block"
                 onClick={() => setDetailId(null)}
               />
             ) : null}
@@ -467,7 +467,7 @@ export function ApplicationsPage({
             />
 
             {detail ? (
-              <aside className="absolute inset-y-0 right-0 z-20 hidden w-[var(--app-inspector-width)] border-l border-border/80 shadow-[-16px_0_48px_-20px_color-mix(in_oklab,var(--ink)_22%,transparent)] xl:block">
+              <aside className="ds-drawer-enter absolute inset-y-0 right-0 z-20 hidden w-[var(--app-inspector-width)] border-l border-border/80 shadow-[-16px_0_48px_-20px_color-mix(in_oklab,var(--ink)_22%,transparent)] xl:block">
                 <ApplicationInspector
                   variant="panel"
                   application={detail}

@@ -26,24 +26,9 @@ export interface CuratedSectorView {
   slug: string;
   label: string;
   description: string;
+  groupLabel: string;
+  groupSortOrder: number;
   companies: SectorLogoCompany[];
-}
-
-/** @deprecated Use AlertSubscriptionView */
-export interface SectorAlertView {
-  id: string;
-  slug: string;
-  filterOverride: Partial<AlertFilters> | null;
-}
-
-/** @deprecated Use AlertSubscriptionView */
-export interface CompanyAlertView {
-  id: string;
-  companyId: string;
-  companySlug: string | null;
-  name: string;
-  websiteUrl: string | null;
-  filterOverride: Partial<AlertFilters> | null;
 }
 
 export type AlertTypeFilter = "all" | "company" | "sector";

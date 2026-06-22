@@ -78,6 +78,16 @@ test("includes working student / industrial placement titles", () => {
   assert.equal(result.include, true);
 });
 
+test("includes programming-language rendering internships", () => {
+  const result = classifyScrapeRole({
+    title: "Rendering SE Intern - C++",
+    locations: ["Vancouver, Canada"],
+  });
+
+  assert.equal(result.include, true);
+  assert.equal(result.reason, "included");
+});
+
 // --- False positives that must be rejected -------------------------------------
 
 test("rejects leveled full-time roles even when the description mentions interns", () => {

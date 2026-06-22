@@ -1,5 +1,6 @@
 "use client";
 
+import { Briefcase, Building2, CalendarRange, MapPin, type LucideIcon } from "lucide-react";
 import { CompanyLogo } from "@/components/company-logo";
 import { SeasonBadge } from "@/components/season-badge";
 import { parseCompanySlugFromSourceId } from "@/lib/feed/company-slug";
@@ -9,11 +10,11 @@ import { safeExternalHref } from "@/lib/url";
 import { cn } from "@/lib/utils";
 import { HOME_ROW_BORDER, HOME_ROW_HOVER } from "@/components/home/home-section-styles";
 
-export const HOME_POSTING_ROW_CLASS = "h-[2.75rem] overflow-hidden";
+export const HOME_POSTING_ROW_CLASS = "h-[2.25rem] overflow-hidden";
 export const HOME_POSTING_ROW_FLEX_CLASS = "h-full min-h-0 overflow-hidden";
 
 /** Fixed row height — panels size from slot count × this value, not flex ratios. */
-export const HOME_POSTING_ROW_HEIGHT = "2.75rem";
+export const HOME_POSTING_ROW_HEIGHT = "2.25rem";
 
 export function homePostingsTableBodyHeight(slotCount: number): string {
   return `calc(${slotCount} * ${HOME_POSTING_ROW_HEIGHT})`;
@@ -26,12 +27,31 @@ const HEADER_CELL =
   "flex min-h-full items-center border-r border-border/70 px-4 py-0 last:border-r-0";
 
 const BODY_CELL =
-  "flex min-h-full min-w-0 items-center border-r border-border/50 px-4 py-2.5 last:border-r-0";
+  "flex min-h-full min-w-0 items-center border-r border-border/50 px-4 py-1.5 last:border-r-0";
+
+const HOME_HEADER_ICONS: Record<string, LucideIcon> = {
+  Company: Building2,
+  Role: Briefcase,
+  Location: MapPin,
+  Season: CalendarRange,
+};
 
 export function HomeTableHeaderCell({ label, className }: { label: string; className?: string }) {
+  const Icon = HOME_HEADER_ICONS[label];
+  const centered = label === "Season";
   return (
-    <div className={cn(HEADER_CELL, className)}>
-      <span className="py-2.5 text-xs font-medium text-muted-foreground">{label}</span>
+    <div className={cn(HEADER_CELL, centered && "justify-center", className)}>
+      <span
+        className={cn(
+          "flex items-center gap-1.5 py-1.5 text-[13px] font-medium text-muted-foreground",
+          centered && "justify-center",
+        )}
+      >
+        {Icon ? (
+          <Icon size={14} strokeWidth={1.75} className="shrink-0 text-muted-foreground/70" aria-hidden />
+        ) : null}
+        {label}
+      </span>
     </div>
   );
 }
@@ -83,7 +103,7 @@ function LocationCell({ posting }: { posting: FeedPosting }) {
 
 function SeasonCell({ posting }: { posting: FeedPosting }) {
   return (
-    <HomeTableBodyCell>
+    <HomeTableBodyCell className="justify-center">
       {posting.season ? (
         <SeasonBadge season={posting.season} variant="plain" className="shrink-0" />
       ) : (

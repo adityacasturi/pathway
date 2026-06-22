@@ -12,6 +12,9 @@ export interface HiringThingBoardConfig {
   listUrl: string;
 }
 
+export const VOLORIDGE_CAREERS_URL = "https://voloridge.com/join-our-team";
+const VOLORIDGE_JOBS_ORIGIN = "https://voloridge.com";
+
 export interface HiringThingListJob {
   jobId: string;
   slug: string;
@@ -20,6 +23,21 @@ export interface HiringThingListJob {
 }
 
 export function createHiringThingAdapter(source: CompanySourceConfig): ScrapeAdapter {
+  if (isVoloridgeSource(source)) {
+    const resolvedSource =
+      source.sourceUrl === VOLORIDGE_CAREERS_URL ? source : { ...source, sourceUrl: VOLORIDGE_CAREERS_URL };
+
+    return {
+      source: resolvedSource,
+      async fetchRoles() {
+        const listHtml = await fetchHiringThingHtml(VOLORIDGE_CAREERS_URL);
+        const listings = parseVoloridgeListHtml(listHtml);
+        const candidates = listings.filter((job) => isHiringThingListCandidate(job));
+        return parseVoloridgeJobs(candidates, resolvedSource, listings.length);
+      },
+    };
+  }
+
   const board = resolveHiringThingBoard(source);
   const resolvedSource =
     source.sourceUrl === board.listUrl ? source : { ...source, sourceUrl: board.listUrl };
@@ -33,6 +51,22 @@ export function createHiringThingAdapter(source: CompanySourceConfig): ScrapeAda
       return parseHiringThingJobs(candidates, resolvedSource, board, listings.length);
     },
   };
+}
+
+function isVoloridgeSource(source: CompanySourceConfig): boolean {
+  return source.companySlug === "voloridge" || isVoloridgeCareersUrl(source.sourceUrl);
+}
+
+export function isVoloridgeCareersUrl(sourceUrl: string): boolean {
+  try {
+    const parsed = new URL(sourceUrl);
+    return (
+      parsed.hostname.toLowerCase() === "voloridge.com" &&
+      parsed.pathname.replace(/\/$/, "") === "/join-our-team"
+    );
+  } catch {
+    return false;
+  }
 }
 
 export function resolveHiringThingBoard(source: CompanySourceConfig): HiringThingBoardConfig {
@@ -81,6 +115,33 @@ export function parseHiringThingListHtml(html: string, board: HiringThingBoardCo
   return jobs;
 }
 
+export function parseVoloridgeListHtml(html: string): HiringThingListJob[] {
+  const jobs: HiringThingListJob[] = [];
+  const seen = new Set<string>();
+  const internshipSection = html.match(/Internship Opportunities([\s\S]*?)(?:Career Opportunities|Health Career Opportunities)/i)?.[1] ?? html;
+
+  for (const match of internshipSection.matchAll(
+    /href=["']([^"']*\/jobs\/voloridgeinvestmentmanagement\/(\d+)[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi,
+  )) {
+    const rawUrl = match[1]?.trim() ?? "";
+    const jobId = match[2]?.trim() ?? "";
+    const title = htmlToPlainText(match[3] ?? "").trim();
+    if (!rawUrl || !jobId || !title || seen.has(jobId)) {
+      continue;
+    }
+
+    seen.add(jobId);
+    jobs.push({
+      jobId,
+      slug: titleToSlug(title),
+      title,
+      listUrl: new URL(rawUrl, VOLORIDGE_JOBS_ORIGIN).toString(),
+    });
+  }
+
+  return jobs;
+}
+
 export function isHiringThingListCandidate(job: HiringThingListJob): boolean {
   const title = job.title.trim();
   if (!title) {
@@ -121,6 +182,29 @@ export function parseHiringThingJobDetailHtml(
   };
 }
 
+export function parseVoloridgeJobDetailHtml(
+  html: string,
+  fallbackTitle: string,
+): {
+  title: string;
+  description: string;
+  location: string | null;
+} {
+  const description = htmlToPlainText(html);
+  const location = extractVoloridgeLocation(description);
+
+  return {
+    title: fallbackTitle.trim(),
+    description: description.trim(),
+    location,
+  };
+}
+
+function extractVoloridgeLocation(description: string): string | null {
+  const match = description.match(/Voloridge Investment Management\s+[—-]\s+([A-Z][A-Za-z .'-]+,\s*[A-Z]{2})/);
+  return match?.[1]?.trim() ?? null;
+}
+
 export function extractHiringThingLocation(
   html: string,
   description: string,
@@ -148,6 +232,59 @@ export function extractHiringThingLocation(
   }
 
   return extractLocationFromPlainText(description);
+}
+
+export async function parseVoloridgeJobs(
+  listings: HiringThingListJob[],
+  source: CompanySourceConfig,
+  fetchedTotal: number,
+): Promise<RoleParseResult> {
+  const roles: ReturnType<typeof buildScrapedRole>[] = [];
+  const rejected: RoleParseResult["stats"]["rejected"] = [];
+
+  for (const listing of listings) {
+    let detail: ReturnType<typeof parseVoloridgeJobDetailHtml> = {
+      title: listing.title,
+      description: "",
+      location: null,
+    };
+
+    try {
+      const detailHtml = await fetchHiringThingHtml(listing.listUrl);
+      detail = parseVoloridgeJobDetailHtml(detailHtml, listing.title);
+    } catch {
+      // List metadata is enough for classification when detail fetch fails.
+    }
+
+    const classification = classifyForSource(source, {
+      title: detail.title,
+      description: detail.description,
+      locations: detail.location ? [detail.location] : [],
+    });
+
+    if (!classification.include) {
+      rejected.push({ title: detail.title, reason: classification.reason });
+      continue;
+    }
+
+    if (!isHttpUrl(listing.listUrl)) {
+      rejected.push({ title: detail.title, reason: "invalid_url" });
+      continue;
+    }
+
+    roles.push(
+      buildScrapedRole({
+        postingUrl: listing.listUrl,
+        roleName: detail.title,
+        companyName: source.companyName,
+        companySlug: source.companySlug,
+        classification,
+        description: detail.description,
+      }),
+    );
+  }
+
+  return buildRoleParseResult(fetchedTotal, roles, rejected);
 }
 
 export async function parseHiringThingJobs(
@@ -219,6 +356,14 @@ function slugToTitle(slug: string): string {
     .filter(Boolean)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
+}
+
+function titleToSlug(title: string): string {
+  return title
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 function readHiringThingMeta(html: string, property: string): string | null {

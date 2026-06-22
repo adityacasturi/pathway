@@ -74,7 +74,7 @@ Do **not** search `supabase/migrations_archive/` for current schema or whether a
 ## UI
 
 - Prefer `components/ui/` primitives.
-- Page shell: `PageShell`, `PageMain`, `PageHeader`, `PageSection` from `components/ui/page.tsx`.
+- Page shell: `PageShell` from `components/design-system/page.tsx`.
 - No new broad UI libraries (MUI, etc.) unless product asks.
 
 ## Docs maintenance

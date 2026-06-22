@@ -36,6 +36,7 @@ import {
   type AlertFilters,
   type AlertFiltersView,
 } from "@/lib/alerts/filters";
+import { sortAlertSubscriptions } from "@/lib/alerts/subscription-sort";
 import { useFocusSearchShortcut } from "@/lib/ui/focus-search-shortcut";
 import { getSearchTerms } from "@/lib/search-terms";
 
@@ -159,7 +160,7 @@ export function AlertsPage({
 
   const filteredSubscriptions = useMemo(() => {
     const terms = getSearchTerms(query);
-    return subscriptions.filter((sub) => {
+    const filtered = subscriptions.filter((sub) => {
       if (typeFilter !== "all" && sub.type !== typeFilter) {
         return false;
       }
@@ -169,6 +170,7 @@ export function AlertsPage({
       const haystack = sub.label.toLowerCase();
       return terms.every((term) => haystack.includes(term));
     });
+    return sortAlertSubscriptions(filtered);
   }, [query, subscriptions, typeFilter]);
 
   const bundleSectors = useMemo(
@@ -377,6 +379,7 @@ export function AlertsPage({
                   onTogglePaused={toggleSubscriptionPaused}
                   onRemove={requestRemoveSubscription}
                   onSubscriptionUpdated={() => router.refresh()}
+                  onAddAlert={() => setAddPanelOpen(true)}
                 />
               </div>
             </div>

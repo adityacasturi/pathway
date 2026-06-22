@@ -173,6 +173,9 @@ export function parseIntuitJobs(listings: IntuitListing[], source: CompanySource
         companySlug: source.companySlug,
         classification,
         description: buildIntuitClassificationDescription(listing),
+        atsDates: {
+          publishedAt: listing.datePosted ?? null,
+        },
       }),
     );
   }

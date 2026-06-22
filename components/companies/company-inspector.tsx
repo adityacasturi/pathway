@@ -62,10 +62,12 @@ function CompanyInspectorMetadata({ company }: { company: DiscoverCompanyCard })
 
 function CompanyInspectorPostingRow({
   posting,
+  company,
   onOpen,
   index,
 }: {
   posting: ScrapedPostingRow;
+  company: DiscoverCompanyCard;
   onOpen: () => void;
   index: number;
 }) {
@@ -82,8 +84,16 @@ function CompanyInspectorPostingRow({
         data-testid="posting-row"
         data-posting-id={posting.feedId}
         onClick={onOpen}
-        className="flex w-full cursor-pointer items-start gap-3 px-5 py-3.5 text-left transition-colors hover:bg-muted/30"
+        className="flex w-full cursor-pointer items-center gap-3 px-5 py-2.5 text-left transition-colors hover:bg-muted/30"
       >
+        <CompanyLogo
+          company={company.name}
+          companySlug={company.slug}
+          logoAssetKey={company.logoAssetKey}
+          websiteUrl={company.websiteUrl}
+          size={40}
+          lazy
+        />
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-2">
             {postingHref ? (
@@ -110,7 +120,7 @@ function CompanyInspectorPostingRow({
           ) : null}
         </div>
         {ageLabel ? (
-          <span className="shrink-0 pt-0.5 text-xs tabular-nums text-muted-foreground">
+          <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
             {ageLabel}
           </span>
         ) : null}
@@ -358,6 +368,7 @@ export function CompanyInspector({
                 key={posting.id}
                 index={index}
                 posting={posting}
+                company={company}
                 onOpen={() => onOpenPosting(posting)}
               />
             ))}
@@ -376,12 +387,12 @@ export function CompanyInspector({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex justify-end bg-[color-mix(in_oklab,var(--ink)_25%,transparent)] xl:hidden"
+      className="ds-overlay-enter fixed inset-0 z-50 flex justify-end bg-[color-mix(in_oklab,var(--ink)_25%,transparent)] xl:hidden"
       role="dialog"
       aria-modal="true"
     >
       <button type="button" aria-label="Close" className="absolute inset-0" onClick={onClose} />
-      <div className="relative z-10 h-full w-full max-w-[var(--app-company-inspector-width)] shadow-[-16px_0_48px_-20px_color-mix(in_oklab,var(--ink)_22%,transparent)]">
+      <div className="ds-drawer-enter relative z-10 h-full w-full max-w-[var(--app-company-inspector-width)] shadow-[-16px_0_48px_-20px_color-mix(in_oklab,var(--ink)_22%,transparent)]">
         {panel}
       </div>
     </div>,

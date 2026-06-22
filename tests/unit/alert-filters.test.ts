@@ -19,7 +19,7 @@ const basePosting = enrichAlertPostingCandidate({
   postingUrl: "https://example.com/1",
   season: "Fall",
   location: "San Francisco, CA",
-  firstSeenAt: "2026-06-01T12:00:00.000Z",
+  postedAt: "2026-06-01T12:00:00.000Z",
 });
 
 test("postingMatchesAlertFilters allows all by default", () => {

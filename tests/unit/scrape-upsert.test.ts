@@ -32,7 +32,16 @@ function buildRole(overrides: Partial<Parameters<typeof buildScrapedRole>[0]> & 
 test("upsert rows preserve first_seen_at for existing posting URLs", () => {
   const now = "2026-05-30T12:00:00.000Z";
   const existing = new Map([
-    ["https://boards.example/jobs/1", { first_seen_at: "2026-01-01T00:00:00.000Z" }],
+    [
+      "https://boards.example/jobs/1",
+      {
+        id: "posting-1",
+        first_seen_at: "2026-01-01T00:00:00.000Z",
+        posted_at: "2026-02-01T00:00:00.000Z",
+        role_name: "Software Engineer Intern",
+        season: "Summer",
+      },
+    ],
   ]);
 
   const rows = buildScrapedPostingUpsertRows(
@@ -47,11 +56,185 @@ test("upsert rows preserve first_seen_at for existing posting URLs", () => {
 
   assert.equal(rows.length, 2);
   assert.equal(rows[0].first_seen_at, "2026-01-01T00:00:00.000Z");
+  assert.equal(rows[0].posted_at, "2026-02-01T00:00:00.000Z");
   assert.equal(rows[0].last_seen_at, now);
   assert.equal(rows[0].status, "open");
   assert.equal(rows[0].source_id, "source-uuid");
   assert.equal(rows[1].first_seen_at, now);
+  assert.equal(rows[1].posted_at, now);
   assert.equal(rows[1].season, "Fall");
+});
+
+test("upsert rows carry dates across same-title posting URL moves", () => {
+  const now = "2026-06-19T06:44:54.424Z";
+  const existing = new Map([
+    [
+      "https://voloridge-investment-management.hiringthing.com/job/1013126/quantitative-developer-intern-2027",
+      {
+        id: "posting-1",
+        posting_url: "https://voloridge-investment-management.hiringthing.com/job/1013126/quantitative-developer-intern-2027",
+        first_seen_at: "2026-04-07T20:40:53.000Z",
+        posted_at: "2026-04-07T20:40:53.000Z",
+        role_name: "Quantitative Developer Intern 2027",
+        season: "Summer",
+        status: "open",
+      },
+    ],
+  ]);
+
+  const rows = buildScrapedPostingUpsertRows(
+    [
+      buildRole({
+        title: "Quantitative Developer Intern 2027",
+        url: "https://voloridge.com/jobs/voloridgeinvestmentmanagement/4224862009",
+        locations: ["Jupiter, FL"],
+      }),
+    ],
+    SOURCE,
+    now,
+    existing,
+  );
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].posting_url, "https://voloridge.com/jobs/voloridgeinvestmentmanagement/4224862009");
+  assert.equal(rows[0].first_seen_at, "2026-04-07T20:40:53.000Z");
+  assert.equal(rows[0].posted_at, "2026-04-07T20:40:53.000Z");
+  assert.equal(rows[0].last_seen_at, now);
+});
+
+test("upsert rows do not merge same-title roles when the predecessor URL is still present", () => {
+  const now = "2026-06-19T06:44:54.424Z";
+  const existing = new Map([
+    [
+      "https://boards.example/jobs/old",
+      {
+        id: "posting-1",
+        posting_url: "https://boards.example/jobs/old",
+        first_seen_at: "2026-04-07T20:40:53.000Z",
+        posted_at: "2026-04-07T20:40:53.000Z",
+        role_name: "Software Engineer Intern",
+        season: "Summer",
+        status: "open",
+      },
+    ],
+  ]);
+
+  const rows = buildScrapedPostingUpsertRows(
+    [
+      buildRole({
+        title: "Software Engineer Intern",
+        url: "https://boards.example/jobs/new-location",
+        locations: ["San Francisco, CA"],
+      }),
+      buildRole({
+        title: "Software Engineer Intern",
+        url: "https://boards.example/jobs/old",
+        locations: ["New York, NY"],
+      }),
+    ],
+    SOURCE,
+    now,
+    existing,
+  );
+
+  const byUrl = new Map(rows.map((row) => [row.posting_url, row]));
+  assert.equal(byUrl.get("https://boards.example/jobs/new-location")?.first_seen_at, now);
+  assert.equal(byUrl.get("https://boards.example/jobs/new-location")?.posted_at, now);
+  assert.equal(byUrl.get("https://boards.example/jobs/old")?.first_seen_at, "2026-04-07T20:40:53.000Z");
+});
+
+test("upsert rows preserve posted_at when only the ATS updated date is newer", () => {
+  const now = "2026-06-10T12:00:00.000Z";
+  const existing = new Map([
+    [
+      "https://boards.example/jobs/1",
+      {
+        id: "posting-1",
+        first_seen_at: "2025-08-07T20:49:38.961Z",
+        posted_at: "2025-08-07T20:49:38.961Z",
+        role_name: "Software Engineer Internship, Android - Summer 2026",
+        season: "Summer",
+      },
+    ],
+  ]);
+  const role = buildRole({
+    title: "Software Engineer Internship, Android",
+    url: "https://boards.example/jobs/1",
+    description: "Summer Program (May/June 2026 - August 2026)",
+    locations: ["New York, NY"],
+  });
+  role.atsDates = {
+    publishedAt: "2025-08-07T20:49:38.961Z",
+    updatedAt: "2026-06-04T16:57:38.597Z",
+  };
+
+  const rows = buildScrapedPostingUpsertRows([role], SOURCE, now, existing);
+
+  assert.equal(rows[0].first_seen_at, "2025-08-07T20:49:38.961Z");
+  assert.equal(rows[0].posted_at, "2025-08-07T20:49:38.961Z");
+});
+
+test("upsert rows bump posted_at to ATS updatedAt when the season changes", () => {
+  const now = "2026-06-10T12:00:00.000Z";
+  const existing = new Map([
+    [
+      "https://boards.example/jobs/1",
+      {
+        id: "posting-1",
+        first_seen_at: "2025-08-07T20:49:38.961Z",
+        posted_at: "2025-08-07T20:49:38.961Z",
+        role_name: "Software Engineer Internship, Android - Summer 2026",
+        season: "Summer",
+      },
+    ],
+  ]);
+  const role = buildRole({
+    title: "Software Engineer Internship, Android",
+    url: "https://boards.example/jobs/1",
+    description: "Fall Program (August/September 2026 - December 2026)",
+    locations: ["New York, NY"],
+  });
+  role.atsDates = {
+    publishedAt: "2025-08-07T20:49:38.961Z",
+    updatedAt: "2026-06-04T16:57:38.597Z",
+  };
+
+  const rows = buildScrapedPostingUpsertRows([role], SOURCE, now, existing);
+
+  assert.equal(rows[0].first_seen_at, "2025-08-07T20:49:38.961Z");
+  assert.equal(rows[0].posted_at, "2026-06-04T16:57:38.597Z");
+});
+
+test("upsert rows bump posted_at when season changes without an ATS updated date", () => {
+  const now = "2026-06-10T12:00:00.000Z";
+  const existing = new Map([
+    [
+      "https://boards.example/jobs/1",
+      {
+        id: "posting-1",
+        first_seen_at: "2026-01-01T00:00:00.000Z",
+        posted_at: "2026-01-01T00:00:00.000Z",
+        role_name: "Software Engineer Intern - Summer 2026",
+        season: "Summer",
+      },
+    ],
+  ]);
+
+  const rows = buildScrapedPostingUpsertRows(
+    [
+      buildRole({
+        title: "Software Engineer Intern, Fall 2026",
+        url: "https://boards.example/jobs/1",
+        locations: ["San Francisco, CA"],
+      }),
+    ],
+    SOURCE,
+    now,
+    existing,
+  );
+
+  assert.equal(rows[0].first_seen_at, "2026-01-01T00:00:00.000Z");
+  assert.equal(rows[0].posted_at, now);
 });
 
 test("global locations are persisted, not trimmed to the US", () => {

@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
-import { TerminalLandingPage } from "@/components/landing/terminal-landing-page";
-import { loadLandingTerminalSnapshot } from "@/lib/landing/terminal-data";
+import { MarketingLanding } from "@/components/landing/marketing/marketing-landing";
 import { createClient } from "@/lib/supabase/server";
 import { pageMetadata } from "@/lib/metadata/page";
+import { loadLandingOpeningPreview } from "@/lib/landing/openings-preview-data";
 
 export const dynamic = "force-dynamic";
 
@@ -16,13 +16,11 @@ export const metadata = {
 
 export default async function LandingRoute() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const userResult = await supabase.auth.getUser();
 
-  if (user) redirect("/home");
+  if (userResult.data.user) redirect("/home");
 
-  const snapshot = await loadLandingTerminalSnapshot();
+  const openingsPreview = await loadLandingOpeningPreview();
 
-  return <TerminalLandingPage snapshot={snapshot} />;
+  return <MarketingLanding openingsPreview={openingsPreview} />;
 }

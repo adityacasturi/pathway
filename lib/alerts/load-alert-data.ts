@@ -36,7 +36,7 @@ interface PostingRow {
   location: string | null;
   location_places: import("@/lib/geo/types.ts").LocationPlaceJson[] | null;
   countries: string[] | null;
-  first_seen_at: string;
+  posted_at: string;
   companies:
     | { industry: string | null; slug: string }
     | Array<{ industry: string | null; slug: string }>
@@ -88,7 +88,7 @@ function mapPosting(row: PostingRow): AlertPostingCandidate | null {
     location: row.location,
     locationPlaces: row.location_places,
     countries: row.countries,
-    firstSeenAt: row.first_seen_at,
+    postedAt: row.posted_at,
   });
 }
 
@@ -172,12 +172,12 @@ export async function loadAlertPostingCandidates(
       location,
       location_places,
       countries,
-      first_seen_at,
+      posted_at,
       companies!inner ( industry, slug )
     `,
     )
     .eq("status", "open")
-    .gte("first_seen_at", since.toISOString());
+    .gte("posted_at", since.toISOString());
 
   if (error) {
     throw error;

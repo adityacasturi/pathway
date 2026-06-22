@@ -344,34 +344,6 @@ export function OpeningsPage({
     filterNowUnix,
   ]);
 
-  const isPostingNew = useCallback(
-    (p: FeedPosting): boolean =>
-      lastSeen != null && lastSeen > 0 && p.pathwayNewUnix > lastSeen,
-    [lastSeen],
-  );
-
-  const newCount = useMemo(() => {
-    if (lastSeen == null) return 0;
-    let count = 0;
-    for (const p of postings) {
-      if (p.pathwayNewUnix > lastSeen && isFeedPostingVisibleByState(p, visibilityState)) {
-        count++;
-      }
-    }
-    return count;
-  }, [postings, lastSeen, visibilityState]);
-
-  const listResetKey = `${deferredQuery}|${[...selectedSeasons].sort().join(",")}|${[...selectedCountries].sort().join(",")}|${showSavedOnly}|${recentDays ?? ""}|${sortKey ?? ""}|${sortDirection}`;
-  const [visibleState, setVisibleState] = useState({
-    key: listResetKey,
-    count: INITIAL_VISIBLE,
-  });
-  const effectiveVisibleCount =
-    visibleState.key === listResetKey ? visibleState.count : INITIAL_VISIBLE;
-
-  const activeFilterCount =
-    selectedSeasons.size + selectedCountries.size + (showSavedOnly ? 1 : 0) + (recentDays != null ? 1 : 0);
-
   const sorted = useMemo(() => {
     const activeSortKey = sortKey ?? "posted";
     const activeSortDirection = sortKey ? sortDirection : "desc";
@@ -398,6 +370,50 @@ export function OpeningsPage({
       return activeSortDirection === "asc" ? comparison : -comparison;
     });
   }, [filtered, sortKey, sortDirection]);
+
+  const previewNewBadge =
+    process.env.NODE_ENV === "development" && searchParams.get("previewNew") === "1";
+
+  const previewNewIds = useMemo(() => {
+    if (!previewNewBadge) return null;
+    const ids = new Set<string>();
+    for (const posting of sorted) {
+      if (trackedIdSet.has(posting.id)) continue;
+      ids.add(posting.id);
+      if (ids.size >= 5) break;
+    }
+    return ids;
+  }, [previewNewBadge, sorted, trackedIdSet]);
+
+  const isPostingNew = useCallback(
+    (p: FeedPosting): boolean =>
+      previewNewIds?.has(p.id) === true ||
+      (lastSeen != null && lastSeen > 0 && p.pathwayNewUnix > lastSeen),
+    [lastSeen, previewNewIds],
+  );
+
+  const newCount = useMemo(() => {
+    if (previewNewIds) return previewNewIds.size;
+    if (lastSeen == null) return 0;
+    let count = 0;
+    for (const p of postings) {
+      if (p.pathwayNewUnix > lastSeen && isFeedPostingVisibleByState(p, visibilityState)) {
+        count++;
+      }
+    }
+    return count;
+  }, [postings, lastSeen, previewNewIds, visibilityState]);
+
+  const listResetKey = `${deferredQuery}|${[...selectedSeasons].sort().join(",")}|${[...selectedCountries].sort().join(",")}|${showSavedOnly}|${recentDays ?? ""}|${sortKey ?? ""}|${sortDirection}`;
+  const [visibleState, setVisibleState] = useState({
+    key: listResetKey,
+    count: INITIAL_VISIBLE,
+  });
+  const effectiveVisibleCount =
+    visibleState.key === listResetKey ? visibleState.count : INITIAL_VISIBLE;
+
+  const activeFilterCount =
+    selectedSeasons.size + selectedCountries.size + (showSavedOnly ? 1 : 0) + (recentDays != null ? 1 : 0);
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -578,7 +594,7 @@ export function OpeningsPage({
             {selectedPosting ? (
               <div
                 role="presentation"
-                className="absolute inset-0 z-10 hidden bg-background/20 backdrop-blur-[3px] xl:block"
+                className="ds-overlay-enter absolute inset-0 z-10 hidden bg-background/20 backdrop-blur-[3px] xl:block"
                 onClick={closeInspector}
               />
             ) : null}
@@ -602,7 +618,7 @@ export function OpeningsPage({
             />
 
             {selectedPosting ? (
-              <aside className="absolute inset-y-0 right-0 z-20 hidden w-[var(--app-inspector-width)] border-l border-border/80 shadow-[-16px_0_48px_-20px_color-mix(in_oklab,var(--ink)_22%,transparent)] xl:block">
+              <aside className="ds-drawer-enter absolute inset-y-0 right-0 z-20 hidden w-[var(--app-inspector-width)] border-l border-border/80 shadow-[-16px_0_48px_-20px_color-mix(in_oklab,var(--ink)_22%,transparent)] xl:block">
                 <PostingInspector
                   variant="panel"
                   posting={selectedPosting}

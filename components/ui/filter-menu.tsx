@@ -3,7 +3,6 @@
 import type { ReactNode } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { SegmentedTabs } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 export function FilterSection({
@@ -46,22 +45,6 @@ export function FilterSection({
   );
 }
 
-export function SegmentedControl<T extends string>({
-  value,
-  options,
-  onChange,
-  className,
-}: {
-  value: T;
-  options: { value: T; label: string }[];
-  onChange: (next: T) => void;
-  className?: string;
-}) {
-  return (
-    <SegmentedTabs value={value} options={options} onChange={onChange} className={className} />
-  );
-}
-
 export function FilterToggle({
   label,
   checked,
@@ -74,14 +57,27 @@ export function FilterToggle({
   compact?: boolean;
 }) {
   return (
-    <label
+    <div
       className={cn(
-        "flex cursor-pointer select-none items-center justify-between gap-3 rounded-md text-foreground transition-colors hover:bg-[color-mix(in_oklab,var(--ink)_5%,transparent)]",
+        "flex select-none items-center justify-between gap-3 rounded-md text-foreground transition-colors hover:bg-[color-mix(in_oklab,var(--ink)_5%,transparent)]",
         compact ? "px-0 py-1.5 text-[13px]" : "gap-4 rounded-lg px-1.5 py-1.5 text-[12px]",
       )}
     >
-      <span>{label}</span>
+      <span
+        className="flex-1 cursor-pointer"
+        onClick={() => onChange(!checked)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onChange(!checked);
+          }
+        }}
+        role="button"
+        tabIndex={0}
+      >
+        {label}
+      </span>
       <Switch checked={checked} onCheckedChange={onChange} aria-label={label} />
-    </label>
+    </div>
   );
 }

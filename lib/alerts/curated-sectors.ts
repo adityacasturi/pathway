@@ -2,6 +2,8 @@ export interface CuratedAlertSector {
   slug: string;
   label: string;
   description: string;
+  groupLabel: string;
+  groupSortOrder: number;
   companySlugs: string[];
 }
 

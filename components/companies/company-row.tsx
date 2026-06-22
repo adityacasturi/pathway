@@ -140,13 +140,13 @@ export function CompanyRow({
           selected && "bg-muted/35",
         )}
       >
-        <div className={cn(COMPANY_ROW_DESKTOP_GRID, "min-h-[3.25rem]")}>
+        <div className={cn(COMPANY_ROW_DESKTOP_GRID, "min-h-[2.25rem]")}>
           <div className={COMPANY_ROW_BODY_CELL}>
-            <div className="flex h-full min-h-[3.25rem] items-center gap-1 py-2.5 pr-1">
+            <div className="flex h-full min-h-[2.25rem] items-center gap-1 py-1.5 pr-1">
               <button
                 type="button"
                 onClick={onOpen}
-                className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
                 aria-label={`${company.name} on Companies`}
                 aria-current={selected ? "true" : undefined}
               >
@@ -155,7 +155,7 @@ export function CompanyRow({
                   companySlug={company.slug}
                   logoAssetKey={company.logoAssetKey}
                   websiteUrl={company.websiteUrl}
-                  size={32}
+                  size={24}
                   lazy={lazyLogo}
                 />
                 <span className="truncate text-sm font-medium text-foreground">{company.name}</span>
@@ -169,14 +169,14 @@ export function CompanyRow({
             </div>
           </div>
 
-          <div className={cn(COMPANY_ROW_BODY_CELL, "flex items-center py-2.5")}>
+          <div className={cn(COMPANY_ROW_BODY_CELL, "flex items-center py-1.5")}>
             <span className="flex min-w-0 items-center gap-2 truncate text-sm text-muted-foreground">
               <IndustryIcon slug={company.industry} />
               <span className="truncate">{company.industryLabel}</span>
             </span>
           </div>
 
-          <div className={cn(COMPANY_ROW_BODY_CELL, "flex items-center py-2.5")}>
+          <div className={cn(COMPANY_ROW_BODY_CELL, "flex items-center py-1.5")}>
             <span
               className={cn(
                 "text-sm tabular-nums",
@@ -187,7 +187,7 @@ export function CompanyRow({
             </span>
           </div>
 
-          <div className={cn(COMPANY_ROW_BODY_CELL, "flex items-center py-2.5")}>
+          <div className={cn(COMPANY_ROW_BODY_CELL, "flex items-center py-1.5")}>
             <span className="truncate text-sm text-muted-foreground">{updatedLabel}</span>
           </div>
         </div>

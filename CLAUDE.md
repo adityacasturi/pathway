@@ -29,7 +29,7 @@ npm run test:unit:coverage
 npm run test:e2e         # Playwright public smoke (no credentials)
 npm run test:preprod     # typecheck + audit + unit + build
 npm run test:preprod:full # lint + test:preprod + e2e
-npm run scrape           # scrape → scraped_postings (service role)
+npm run scrape           # scrape → scraped_postings (same runAllScrapes path as cron; native fetch adapters)
 npm run alerts:instant   # send instant alert email for new matching postings
 npm run company-logos    # static PNGs in public/company-logos + manifest
 npm run discover-company # one-off company onboarding CLI

@@ -41,6 +41,7 @@ export const TARGET_ROLE_PATTERNS = [
   /\bfirmware\b/i,
   /\bembedded\b/i,
   /\brobotics\b/i,
+  /(?:^|[^A-Za-z0-9])c\+\+(?:$|[^A-Za-z0-9])/i,
   /\bforward deployed\b/i,
 ];
 

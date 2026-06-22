@@ -9,7 +9,6 @@ export type AlertChannel = (typeof ALERT_CHANNELS)[number];
 
 export const INSTANT_ALERT_LOOKBACK_MS = 90 * 60 * 1000;
 export const DIGEST_MAX_POSTINGS = 20;
-export const DIGEST_CRON_UTC_HOUR = 14;
 
 export function isAlertTargetType(value: string): value is AlertTargetType {
   return (ALERT_TARGET_TYPES as readonly string[]).includes(value);

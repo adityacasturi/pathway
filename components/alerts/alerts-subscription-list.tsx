@@ -1,7 +1,18 @@
 "use client";
 
 import { forwardRef, useRef, useState } from "react";
-import { ChevronDown, Loader2, Trash2 } from "lucide-react";
+import {
+  Bell,
+  Building2,
+  CalendarRange,
+  ChevronDown,
+  Loader2,
+  MapPin,
+  Plus,
+  Tag,
+  Trash2,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { AlertMatchFieldPopover } from "@/components/alerts/alert-match-field-popover";
 import type { AlertSubscriptionView } from "@/components/alerts/types";
 import { CountryFlag } from "@/components/country-flag";
@@ -29,7 +40,7 @@ const DESKTOP_GRID =
   "grid grid-cols-[minmax(0,0.82fr)_minmax(0,0.88fr)_minmax(0,1.14fr)_minmax(0,0.42fr)_minmax(0,0.48fr)] items-stretch";
 
 const TABLE_TEXT = "text-sm leading-snug";
-const ROW_HEIGHT = "min-h-14";
+const ROW_HEIGHT = "min-h-11";
 
 const HEADER_CELL =
   "flex min-h-full items-center border-r border-border/70 px-4 last:border-r-0";
@@ -59,6 +70,7 @@ export function AlertsSubscriptionList({
   onTogglePaused,
   onRemove,
   onSubscriptionUpdated,
+  onAddAlert,
 }: {
   subscriptions: AlertSubscriptionView[];
   activeCount: number;
@@ -70,6 +82,7 @@ export function AlertsSubscriptionList({
   onTogglePaused: (subscriptionId: string, paused: boolean) => void;
   onRemove: (subscription: AlertSubscriptionView) => void;
   onSubscriptionUpdated: () => void;
+  onAddAlert?: () => void;
 }) {
   const [openField, setOpenField] = useState<OpenFieldState>(null);
   const fieldAnchorRef = useRef<HTMLElement | null>(null);
@@ -102,7 +115,15 @@ export function AlertsSubscriptionList({
           description={
             trimmedQuery
               ? `Nothing matches "${trimmedQuery}". Clear your search or try another term.`
-              : "Use Add alert to add a company or bundle."
+              : "Follow a company or bundle to get an email the moment a matching internship is posted."
+          }
+          primaryAction={
+            !trimmedQuery && onAddAlert
+              ? { label: "Add alert", onClick: onAddAlert, icon: <Plus size={14} /> }
+              : undefined
+          }
+          secondaryAction={
+            !trimmedQuery ? { label: "Browse companies", href: "/companies" } : undefined
           }
           className="max-w-md border-none bg-transparent py-8"
         />
@@ -118,11 +139,11 @@ export function AlertsSubscriptionList({
             <div
               className={cn(DESKTOP_GRID, ROW_HEIGHT, "border-b border-border bg-muted/25")}
             >
-              <HeaderCell label="Following" />
-              <HeaderCell label="Seasons" />
-              <HeaderCell label="Location" />
-              <HeaderCell label="Type" />
-              <HeaderCell label="Email alerts" />
+              <HeaderCell label="Following" icon={Building2} />
+              <HeaderCell label="Seasons" icon={CalendarRange} />
+              <HeaderCell label="Location" icon={MapPin} />
+              <HeaderCell label="Type" icon={Tag} />
+              <HeaderCell label="Email alerts" icon={Bell} />
             </div>
             <MotionStaggerList as="ul">
               {subscriptions.map((subscription, index) => (
@@ -197,10 +218,23 @@ export function AlertsSubscriptionList({
   );
 }
 
-function HeaderCell({ label, className }: { label: string; className?: string }) {
+function HeaderCell({
+  label,
+  icon: Icon,
+  className,
+}: {
+  label: string;
+  icon?: LucideIcon;
+  className?: string;
+}) {
   return (
     <div className={HEADER_CELL}>
-      <span className={cn(TABLE_TEXT, "font-medium text-foreground/75", className)}>{label}</span>
+      <span className={cn("flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground", className)}>
+        {Icon ? (
+          <Icon size={14} strokeWidth={1.75} className="shrink-0 text-muted-foreground/70" aria-hidden />
+        ) : null}
+        {label}
+      </span>
     </div>
   );
 }

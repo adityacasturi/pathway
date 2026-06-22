@@ -105,7 +105,6 @@ export default async function HomeRoute() {
       savedTotal={savedTotal}
       recentPostings={recentPool}
       recentTotal={recentTotal}
-      showFirstRunBanner={activeApplications.length === 0}
     />
   );
 }

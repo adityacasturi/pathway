@@ -3,13 +3,14 @@ import { expect, test } from "@playwright/test";
 test("landing page renders for anonymous users", async ({ page }) => {
   await page.goto("/");
 
-  await expect(page.getByRole("application", { name: "Pathway recruiting terminal" })).toBeVisible();
-  await expect(page.getByText(/PATHWAY v2\.1/)).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText(/roles in the last 7 days:/)).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByRole("button", { name: /pathway > login/i })).toBeVisible({ timeout: 25_000 });
-  await expect(page.getByRole("button", { name: /pathway > register/i })).toBeVisible({ timeout: 25_000 });
+  await expect(
+    page.getByRole("heading", { name: "Land your dream internship at top companies." }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Recent internship openings")).toBeVisible();
+  await expect(page.getByText(/last 7 days/i)).toBeVisible();
+  await expect(page.getByText(/unlock the full list/i)).toBeVisible();
   await expect(page.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/login");
-  await expect(page.getByRole("link", { name: "Create account" })).toHaveAttribute("href", "/register");
+  await expect(page.getByRole("link", { name: "Register" })).toHaveAttribute("href", "/register");
 });
 
 test("login and signup are public", async ({ page }) => {

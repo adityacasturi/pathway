@@ -31,6 +31,7 @@
 .DS_Store
 *.pem
 .claude/
+.scrape-crawlee/
 
 # macOS Finder duplicates (e.g. "file 2.tsx" after "Copy")
 **/* 2.*

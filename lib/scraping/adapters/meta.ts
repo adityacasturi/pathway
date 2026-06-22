@@ -261,6 +261,9 @@ export function parseMetaJobs(
         ]
           .filter(Boolean)
           .join("\n"),
+        atsDates: {
+          publishedAt: detail?.datePosted ?? null,
+        },
       }),
     );
   }

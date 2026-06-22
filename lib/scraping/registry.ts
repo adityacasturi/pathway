@@ -71,6 +71,8 @@ import { createWayfairAdapter } from "./adapters/wayfair.ts";
 import { createWorkdayAdapter } from "./adapters/workday.ts";
 import { createPinpointAdapter } from "./adapters/pinpoint.ts";
 import { createRipplingAdapter } from "./adapters/rippling.ts";
+import { createClearCompanyAdapter } from "./adapters/clearcompany.ts";
+import { createIcimsAdapter } from "./adapters/icims.ts";
 import type { CompanySourceConfig, ScrapeAdapter, SourceType } from "./types.ts";
 
 type AdapterFactory = (source: CompanySourceConfig) => ScrapeAdapter;
@@ -149,6 +151,8 @@ const ADAPTER_FACTORIES = {
   x_corp: createXCorpAdapter,
   pinpoint: createPinpointAdapter,
   rippling: createRipplingAdapter,
+  clearcompany: createClearCompanyAdapter,
+  icims: createIcimsAdapter,
 } satisfies Record<SourceType, AdapterFactory>;
 
 export const REGISTERED_SOURCE_TYPES = Object.keys(ADAPTER_FACTORIES) as SourceType[];

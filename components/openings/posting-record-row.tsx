@@ -17,7 +17,7 @@ const DESKTOP_GRID =
   "grid grid-cols-[minmax(0,1.1fr)_minmax(0,1.45fr)_minmax(0,0.92fr)_minmax(0,0.7fr)_minmax(0,0.71fr)] items-stretch";
 
 const BODY_CELL =
-  "flex min-h-full min-w-0 items-center border-r border-border/50 px-4 py-2.5 last:border-r-0";
+  "flex min-h-full min-w-0 items-center border-r border-border/50 px-4 py-1.5 last:border-r-0";
 
 function TableCell({
   children,
@@ -31,6 +31,17 @@ function TableCell({
 
 function stopLinkPropagation(event: MouseEvent<HTMLAnchorElement>) {
   event.stopPropagation();
+}
+
+function NewPostingMarker({ className }: { className?: string }) {
+  return (
+    <span className={cn("inline-flex shrink-0 items-center gap-1.5 leading-none", className)}>
+      <span className="text-muted-foreground" aria-hidden>
+        ·
+      </span>
+      <span className="text-[10px] font-medium text-primary">New</span>
+    </span>
+  );
 }
 
 export function PostingRecordRow({
@@ -87,11 +98,7 @@ export function PostingRecordRow({
             {posting.season ? (
               <SeasonBadge season={posting.season} variant="plain" className="shrink-0" />
             ) : null}
-            {isNew ? (
-              <span className="shrink-0 rounded-md border border-[var(--selection-border)] bg-[var(--selection-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--selection-fg)]">
-                New
-              </span>
-            ) : null}
+            {isNew ? <NewPostingMarker /> : null}
           </div>
           {postingHref ? (
             <a
@@ -126,7 +133,7 @@ export function PostingRecordRow({
   }
 
   const rowClassName = cn(
-    "w-full min-h-[2.75rem] border-b border-border/60 text-left transition-colors hover:bg-muted/30",
+    "w-full min-h-[2.25rem] border-b border-border/60 text-left transition-colors hover:bg-muted/30",
     selected && "bg-muted/50",
   );
 
@@ -197,11 +204,7 @@ export function PostingRecordRow({
             />
             <span className="flex min-w-0 items-center gap-1.5">
               <span className="truncate text-sm font-medium text-foreground">{posting.company}</span>
-              {isNew ? (
-                <span className="shrink-0 rounded-md border border-[var(--selection-border)] bg-[var(--selection-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--selection-fg)]">
-                  New
-                </span>
-              ) : null}
+              {isNew ? <NewPostingMarker /> : null}
             </span>
           </span>
         </TableCell>
