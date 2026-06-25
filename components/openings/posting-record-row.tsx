@@ -61,6 +61,7 @@ export function PostingRecordRow({
   const postingHref = safeExternalHref(posting.url);
   const locationLabel = formatCompactLocationSegments(posting.locations, 1) || "Unknown";
   const ageLabel = formatPostingRelativeTime(posting.postedDisplay) || "—";
+  const companySlug = parseCompanySlugFromSourceId(posting.sourceId);
 
   const rowClassName = cn(
     "w-full min-h-[2.25rem] border-b border-border/60 text-left transition-colors hover:bg-muted/30",
@@ -84,7 +85,7 @@ export function PostingRecordRow({
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <CompanyLogo
               company={posting.company}
-              companySlug={parseCompanySlugFromSourceId(posting.sourceId)}
+              companySlug={companySlug}
               logoAssetKey={posting.companyLogoAssetKey}
               websiteUrl={posting.companyWebsiteUrl}
               size={32}
@@ -126,7 +127,7 @@ export function PostingRecordRow({
           <span className="flex min-w-0 items-center gap-2.5">
             <CompanyLogo
               company={posting.company}
-              companySlug={parseCompanySlugFromSourceId(posting.sourceId)}
+              companySlug={companySlug}
               logoAssetKey={posting.companyLogoAssetKey}
               websiteUrl={posting.companyWebsiteUrl}
               size={24}

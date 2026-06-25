@@ -154,10 +154,10 @@ Two catalog companies share one supplier API (`jobs.bytedance.com`) via `lib/scr
 
 | Company slug | Careers surface | Posting URLs | Scope |
 | --- | --- | --- | --- |
+| `tiktok` | [lifeattiktok.com](https://lifeattiktok.com/early-careers) | `lifeattiktok.com/search/{id}` when that page is live, else `joinbytedance.com/search/{id}` | TikTok / TikTok Shop (and related) roles only; excludes PICO-only, CapCut-only, etc. |
 | `bytedance` | [joinbytedance.com](https://joinbytedance.com) | `joinbytedance.com/search/{id}` | All US engineering internships from default intern keywords |
-| `tiktok` | [lifeattiktok.com](https://lifeattiktok.com/early-careers) | `lifeattiktok.com/search/{id}` | TikTok / TikTok Shop (and related) roles only; excludes PICO-only, CapCut-only, etc. |
 
-TikTok uses TikTok-focused search keywords. Roles listed on lifeattiktok but missing from supplier search are merged from `lib/scraping/adapters/lifeattiktok.ts` (IDs in `TIKTOK_SUPPLIER_SEARCH_GAP_JOB_IDS` or after `|` in `board_token`). ByteDance/TikTok supplier search currently exposes accurate locations but not trustworthy publish dates; detail-page date enrichment is opt-in with `SCRAPE_BYTEDANCE_DETAIL_DATES=1` because the public pages usually do not expose `datePosted`.
+TikTok uses TikTok-focused search keywords. Roles listed on lifeattiktok but missing from supplier search are merged from `lib/scraping/adapters/lifeattiktok.ts` (IDs in `TIKTOK_SUPPLIER_SEARCH_GAP_JOB_IDS` or after `|` in `board_token`). ByteDance/TikTok supplier search currently exposes accurate locations but not trustworthy publish dates; detail-page date enrichment is opt-in with `SCRAPE_BYTEDANCE_DETAIL_DATES=1` because the public pages usually do not expose `datePosted`. Both brands share the same supplier API; posting URLs use each brand’s public `/search/{id}` detail page. Most TikTok intern roles only render on `joinbytedance.com` even though they are TikTok-team jobs — the TikTok adapter probes `lifeattiktok.com/search/{id}` first and falls back to `joinbytedance.com/search/{id}` when the TikTok page 404s. When ATS publish dates are unavailable, `estimateByteDanceJobPostedAt()` calibrates snowflake job IDs against repo-sourced anchor dates instead of clumping at index time.
 
 ## Adapter quality checklist
 

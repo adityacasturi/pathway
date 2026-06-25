@@ -2,9 +2,17 @@ import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { buildScopedPostingUrl, parseByteDanceBrandBoard, shouldIncludeJobForBrandScope, type ByteDanceBrandScope } from "./bytedance-brand.ts";
+import {
+  buildScopedPostingUrl,
+  buildByteDanceCareersSearchUrl,
+  buildTikTokCareersSearchUrl,
+  isByteDanceSearchDetailPageLive,
+  parseByteDanceBrandBoard,
+  shouldIncludeJobForBrandScope,
+  type ByteDanceBrandScope,
+} from "./bytedance-brand.ts";
 import { fetchLifeAtTikTokJob } from "./lifeattiktok.ts";
-import { fetchJsonWithTimeout, isHttpUrl, scraperDelay } from "./shared.ts";
+import { fetchJsonWithTimeout, fetchWithTimeout, isHttpUrl, scraperDelay } from "./shared.ts";
 
 /** ByteDance careers search API (jobs.bytedance.com public supplier). */
 export const BYTEDANCE_CAREERS_ORIGIN = "https://jobs.bytedance.com";
@@ -91,7 +99,14 @@ export function createByteDanceAdapter(source: CompanySourceConfig): ScrapeAdapt
       const candidates = jobs
         .filter((job) => isByteDanceListCandidate(job))
         .filter((job) => shouldIncludeJobForBrandScope(board.scope, job));
-      const enriched = candidates.map((job) => ({ job }));
+      const postingUrlByJobId =
+        board.scope === "tiktok"
+          ? await resolveTikTokScopedPostingUrls(candidates.map((job) => job.id).filter(Boolean))
+          : null;
+      const enriched = candidates.map((job) => ({
+        job,
+        postingUrl: postingUrlByJobId?.get(job.id),
+      }));
       return parseByteDanceJobs(enriched, resolvedSource, board, jobs.length);
     },
   };
@@ -169,6 +184,7 @@ export function formatByteDanceLocations(job: ByteDanceJob): string[] {
 
 export interface ByteDanceEnrichedJob {
   job: ByteDanceJob;
+  postingUrl?: string;
 }
 
 export function byteDanceJobDescription(job: ByteDanceJob): string {
@@ -187,11 +203,11 @@ export function parseByteDanceJobs(
   const roles: ReturnType<typeof buildScrapedRole>[] = [];
   const rejected: RoleParseResult["stats"]["rejected"] = [];
 
-  for (const { job } of enriched) {
+  for (const { job, postingUrl: resolvedPostingUrl } of enriched) {
     const roleName = job.title?.trim() || "";
     const description = byteDanceJobDescription(job);
     const locations = formatByteDanceLocations(job);
-    const postingUrl = buildByteDancePostingUrl(board, job.id);
+    const postingUrl = resolvedPostingUrl ?? buildByteDancePostingUrl(board, job.id);
     const departments = [
       job.job_category?.en_name,
       job.job_category?.name,
@@ -373,6 +389,34 @@ async function fetchByteDanceSearchPage(
   const jobs = payload.data?.job_post_list ?? [];
   const count = payload.data?.count ?? jobs.length;
   return { jobs, count };
+}
+
+async function resolveTikTokScopedPostingUrls(jobIds: string[]): Promise<Map<string, string>> {
+  const urls = new Map<string, string>();
+
+  for (const jobId of jobIds) {
+    const tiktokUrl = buildTikTokCareersSearchUrl(jobId);
+    let liveOnTikTok = false;
+
+    try {
+      const res = await fetchWithTimeout(tiktokUrl, {
+        headers: {
+          accept: "text/html,application/xhtml+xml",
+          "accept-language": "en-US,en;q=0.9",
+        },
+      });
+      if (res.ok) {
+        liveOnTikTok = isByteDanceSearchDetailPageLive(await res.text());
+      }
+    } catch {
+      liveOnTikTok = false;
+    }
+
+    urls.set(jobId, liveOnTikTok ? tiktokUrl : buildByteDanceCareersSearchUrl(jobId));
+    await scraperDelay(BYTEDANCE_REQUEST_DELAY_MS);
+  }
+
+  return urls;
 }
 
 export function bytedanceSearchHeaders(board: ByteDanceBoardConfig): HeadersInit {
