@@ -38,7 +38,7 @@ npm run qstash:cron      # cleanup/list retired QStash schedules
 npm run verify           # lint + test:preprod
 ```
 
-Scrape/alerts cron: Vercel Cron (`vercel.json`). Hobby: four daily UTC windows (00/06/12/18) with two scrape shards + delayed instant alerts (no `*/6` — Hobby allows once-per-day expressions only). Pro: can use `7 */6 * * *` with four shards. Required Vercel Production env: `CRON_SECRET`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `ALERT_UNSUBSCRIBE_SECRET`. Scout is locked (`SCOUT_ENABLED = false`); `OPENAI_API_KEY` is only needed when re-enabled.
+Scrape/alerts cron: Vercel Cron (`vercel.json`). Hobby: four daily UTC windows (00/06/12/18) with two scrape shards + delayed instant alerts (no `*/6` — Hobby allows once-per-day expressions only). Pro: can use `7 */6 * * *` with four shards. Required Vercel Production env: `CRON_SECRET`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `ALERT_UNSUBSCRIBE_SECRET`.
 
 ## Next.js 16
 
@@ -46,7 +46,7 @@ Read `node_modules/next/dist/docs/` before changing routing, Server Components, 
 
 ## Product snapshot
 
-Public signup (any valid email) · **Home** briefing · application tracker with event-derived status · **Openings** feed (global internships; per-user country filters) · **Companies** catalog · **Alerts** (email) · **Scout** chat · **Settings** (account, appearance).
+Public signup (any valid email) · **Home** briefing · application tracker with event-derived status · **Openings** feed (global internships; per-user country filters) · **Companies** catalog · **Alerts** (email) · **Settings** (account, appearance).
 
 | Route | Purpose |
 | --- | --- |
@@ -59,12 +59,10 @@ Public signup (any valid email) · **Home** briefing · application tracker with
 | `/openings` | Scraped roles feed |
 | `/companies` | Companies + postings on demand |
 | `/alerts` | Email alert subscriptions + filter prefs |
-| `/chat` | Scout placeholder (redirects to `/home` while locked) |
 | `/settings` | Redirects to `/settings/account` |
 | `/settings/account`, `/settings/appearance` | Account and theme |
 | `/alerts/unsubscribe` | One-click unsubscribe (signed token, public) |
 | `/api/logo` | Authenticated logo proxy (logo.dev) |
-| `/api/chat` | Streaming Scout API (503 while locked) |
 | `/api/cron/scrape-postings` | Sharded scrape handler (cron secret) |
 | `/api/cron/send-instant-alerts` | Instant alert handler (cron secret) |
 | `/api/cron/send-alert-digests` | Digest handler (cron secret; not scheduled) |
@@ -75,7 +73,6 @@ Public signup (any valid email) · **Home** briefing · application tracker with
 
 - User: `applications`, `application_events`, `feed_interactions`, `discover_company_favorites`, `user_preferences`
 - Alerts: `alert_preferences`, `alert_subscriptions`, `alert_sent_postings`, `alert_digest_state`, `alert_curated_sectors`, `alert_unsubscribe_nonces`
-- Scout: `chat_threads`, `chat_messages`, `chat_tool_calls`
 - Scrape catalog: `companies` (`industry` → `discover_industries`), `company_sources`, `scraped_postings`, `scrape_runs` (per-run health summary, service-role only)
 - Status from events: `lib/config/events.ts`
 - Alert writes: scoped server actions in `lib/actions/alerts.ts` (direct client table writes revoked).

@@ -12,7 +12,9 @@ Stored on `alert_preferences`:
 | `alert_countries` | ISO 3166-1 alpha-2 codes; `null` or `{}` = all countries |
 | `alert_include_remote` | When `false`, exclude remote-only postings unless a selected country also matches |
 
-Set via `/alerts` → filter editor. The server action validates the serialized filter payload and writes the scoped `alert_preferences` row with the service-role client for the authenticated `user.id`.
+Set via `/alerts` → **Defaults** (filter editor). The server action validates the serialized filter payload and writes the scoped `alert_preferences` row with the service-role client for the authenticated `user.id`.
+
+**Daily briefing** is toggled from the **Daily briefing** button on the `/alerts` toolbar and includes every role posted in the last 24 hours (no filters). **As-posted** alerts use global defaults merged with each follow's `filter_override`.
 
 ## Per-follow overrides
 

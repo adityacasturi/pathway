@@ -19,7 +19,6 @@ import {
 import { CompaniesIndustryRail } from "@/components/companies/companies-industry-rail";
 import { CompanyInspector } from "@/components/companies/company-inspector";
 import { CompaniesRecordList } from "@/components/companies/companies-record-list";
-import { StarredCompaniesStrip } from "@/components/companies/starred-companies-strip";
 import { PageShell } from "@/components/design-system/page";
 import { resolveInteractionSet } from "@/lib/feed/interactions";
 import {
@@ -81,6 +80,21 @@ function sortCompanies(
     return sortDirection === "asc" ? cmp : -cmp;
   });
   return list;
+}
+
+function pinStarredCompanies(
+  companies: DiscoverCompanyCard[],
+  starredIds: Set<string>,
+): DiscoverCompanyCard[] {
+  if (starredIds.size === 0) return companies;
+
+  const starred: DiscoverCompanyCard[] = [];
+  const rest: DiscoverCompanyCard[] = [];
+  for (const company of companies) {
+    if (starredIds.has(company.id)) starred.push(company);
+    else rest.push(company);
+  }
+  return [...starred, ...rest];
 }
 
 export interface CompaniesPageProps {
@@ -279,19 +293,14 @@ export function CompaniesPage({
     [filtered, sortKey, sortDirection],
   );
 
-  const starredCompanies = useMemo(() => {
-    return sorted.filter((company) => starredIds.has(company.id));
-  }, [sorted, starredIds]);
+  const listedCompanies = useMemo(
+    () => pinStarredCompanies(sorted, starredIds),
+    [sorted, starredIds],
+  );
 
   const showCategoryFilter = industryCatalog.length > 1;
-  const hasSearch = searchTerms.length > 0;
 
-  const mainListedCompanies = useMemo(() => {
-    if (hasSearch) return sorted;
-    return sorted.filter((company) => !starredIds.has(company.id));
-  }, [sorted, starredIds, hasSearch]);
-
-  const useProgressiveReveal = mainListedCompanies.length > INITIAL_VISIBLE_COMPANIES;
+  const useProgressiveReveal = listedCompanies.length > INITIAL_VISIBLE_COMPANIES;
 
   const companyListResetKey = `${resolvedIndustryFilter}|${deferredQuery}|${sortKey}|${sortDirection}`;
   const [visibleState, setVisibleState] = useState({
@@ -303,17 +312,17 @@ export function CompaniesPage({
       ? visibleState.count
       : INITIAL_VISIBLE_COMPANIES;
 
-  const visibleMainCompanies = useMemo(() => {
-    if (!useProgressiveReveal) return mainListedCompanies;
-    return mainListedCompanies.slice(0, effectiveVisibleCount);
-  }, [useProgressiveReveal, mainListedCompanies, effectiveVisibleCount]);
+  const visibleCompanies = useMemo(() => {
+    if (!useProgressiveReveal) return listedCompanies;
+    return listedCompanies.slice(0, effectiveVisibleCount);
+  }, [useProgressiveReveal, listedCompanies, effectiveVisibleCount]);
 
   const listScrollRef = useRef<HTMLDivElement | null>(null);
   const desktopLoadMoreRef = useRef<HTMLDivElement | null>(null);
   const mobileLoadMoreRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!useProgressiveReveal || effectiveVisibleCount >= mainListedCompanies.length) return;
+    if (!useProgressiveReveal || effectiveVisibleCount >= listedCompanies.length) return;
 
     const sentinel = [desktopLoadMoreRef.current, mobileLoadMoreRef.current].find(
       (el) => el !== null && el.getClientRects().length > 0,
@@ -329,7 +338,7 @@ export function CompaniesPage({
         if (entries.some((entry) => entry.isIntersecting)) {
           setVisibleState({
             key: companyListResetKey,
-            count: Math.min(effectiveVisibleCount + LOAD_COMPANY_BATCH, mainListedCompanies.length),
+            count: Math.min(effectiveVisibleCount + LOAD_COMPANY_BATCH, listedCompanies.length),
           });
         }
       },
@@ -338,7 +347,7 @@ export function CompaniesPage({
 
     io.observe(sentinel);
     return () => io.disconnect();
-  }, [useProgressiveReveal, effectiveVisibleCount, companyListResetKey, mainListedCompanies.length]);
+  }, [useProgressiveReveal, effectiveVisibleCount, companyListResetKey, listedCompanies.length]);
 
   const resetPostingFilters = useCallback(() => {
     setPostingQuery("");
@@ -456,7 +465,7 @@ export function CompaniesPage({
     [starredIds],
   );
 
-  const hasMoreRows = useProgressiveReveal && effectiveVisibleCount < mainListedCompanies.length;
+  const hasMoreRows = useProgressiveReveal && effectiveVisibleCount < listedCompanies.length;
 
   const onRefresh = useCallback(() => {
     startRefresh(() => {
@@ -511,16 +520,8 @@ export function CompaniesPage({
             ) : null}
 
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-              {starredCompanies.length > 0 ? (
-                <StarredCompaniesStrip
-                  companies={starredCompanies}
-                  selectedSlug={selectedSlug}
-                  onSelect={openCompany}
-                />
-              ) : null}
-
               <CompaniesRecordList
-                companies={visibleMainCompanies}
+                companies={visibleCompanies}
                 totalCount={filtered.length}
                 selectedSlug={selectedSlug}
                 sortKey={sortKey}

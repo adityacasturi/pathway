@@ -4,6 +4,7 @@ import { enrichAlertPostingCandidate } from "../../lib/alerts/enrich-posting.ts"
 import { DEFAULT_ALERT_FILTERS } from "../../lib/alerts/filters.ts";
 import {
   isAlertEligiblePosting,
+  matchBriefingPostingsToUsers,
   matchPostingsToUsers,
 } from "../../lib/alerts/match-postings.ts";
 import type { AlertSubscription } from "../../lib/alerts/types.ts";
@@ -217,5 +218,31 @@ test("matchPostingsToUsers skips paused subscriptions", () => {
     },
   ];
   const matches = matchPostingsToUsers([posting], subs, quantSectorMembers, matchOptions());
+  assert.equal(matches.length, 0);
+});
+
+test("matchBriefingPostingsToUsers includes postings without follows", () => {
+  const matches = matchBriefingPostingsToUsers([posting], {
+    enabledUserIds: new Set(["u1"]),
+    sentKeys: new Set<string>(),
+  });
+  assert.equal(matches.length, 1);
+  assert.equal(matches[0].channel, "digest");
+});
+
+test("matchBriefingPostingsToUsers ignores alert filters and location eligibility", () => {
+  const unlocated = { ...posting, location: "" };
+  const matches = matchBriefingPostingsToUsers([unlocated], {
+    enabledUserIds: new Set(["u1"]),
+    sentKeys: new Set<string>(),
+  });
+  assert.equal(matches.length, 1);
+});
+
+test("matchBriefingPostingsToUsers skips already sent digest postings", () => {
+  const matches = matchBriefingPostingsToUsers([posting], {
+    enabledUserIds: new Set(["u1"]),
+    sentKeys: new Set(["u1:p1:digest"]),
+  });
   assert.equal(matches.length, 0);
 });

@@ -1,19 +1,15 @@
 import { dedupeAlertMatches } from "@/lib/alerts/dedupe-matches";
 import {
-  loadAlertDigestState,
-  loadAlertFilterDefaults,
   loadAlertPostingCandidates,
   loadAlertSentKeys,
-  loadAlertSubscriptions,
   loadDigestEnabledUserIds,
   loadUserEmails,
   recordAlertSentPostings,
   upsertAlertDigestState,
 } from "@/lib/alerts/load-alert-data";
-import { loadCuratedSectorCompanyMap } from "@/lib/alerts/load-curated-sectors";
-import { matchPostingsToUsers } from "@/lib/alerts/match-postings";
+import { matchBriefingPostingsToUsers } from "@/lib/alerts/match-postings";
 import type { AlertPostingCandidate } from "@/lib/alerts/types";
-import { DIGEST_MAX_POSTINGS } from "@/lib/config/alerts";
+import { DIGEST_LOOKBACK_MS, DIGEST_MAX_POSTINGS } from "@/lib/config/alerts";
 import {
   handleResendBatchFailure,
   pauseBetweenResendSends,
@@ -25,8 +21,6 @@ import {
   buildDigestAlertSubject,
 } from "@/lib/email/templates/digest-alert";
 import { createAdminClient } from "@/lib/supabase/admin";
-
-const DEFAULT_DIGEST_LOOKBACK_MS = 24 * 60 * 60 * 1000;
 
 export async function processDigestAlerts(now = new Date()): Promise<ResendBatchResult> {
   if (!isEmailConfigured()) {
@@ -40,14 +34,8 @@ export async function processDigestAlerts(now = new Date()): Promise<ResendBatch
     return { sent: 0, errors: 0 };
   }
 
-  const digestState = await loadAlertDigestState(supabase, digestUserIds);
-  const earliestSince = getEarliestDigestSince(digestState, now);
-  const [subscriptions, postings, sectorMembers, globalFiltersByUserId] = await Promise.all([
-    loadAlertSubscriptions(supabase),
-    loadAlertPostingCandidates(supabase, earliestSince),
-    loadCuratedSectorCompanyMap(supabase),
-    loadAlertFilterDefaults(supabase),
-  ]);
+  const since = new Date(now.getTime() - DIGEST_LOOKBACK_MS);
+  const postings = await loadAlertPostingCandidates(supabase, since);
 
   if (postings.length === 0) {
     return { sent: 0, errors: 0 };
@@ -56,12 +44,9 @@ export async function processDigestAlerts(now = new Date()): Promise<ResendBatch
   const postingIds = postings.map((posting) => posting.postingId);
   const sentKeys = await loadAlertSentKeys(supabase, postingIds);
   const enabledUserIds = new Set(digestUserIds);
-  const rawMatches = matchPostingsToUsers(postings, subscriptions, sectorMembers, {
+  const rawMatches = matchBriefingPostingsToUsers(postings, {
     enabledUserIds,
     sentKeys,
-    channel: "digest",
-    subscriptionCadences: ["instant", "digest"],
-    globalFiltersByUserId,
   });
   const matches = dedupeAlertMatches(rawMatches);
 
@@ -69,7 +54,7 @@ export async function processDigestAlerts(now = new Date()): Promise<ResendBatch
     return { sent: 0, errors: 0 };
   }
 
-  const postingsByUser = groupMatchesByUser(matches, digestState, now);
+  const postingsByUser = groupBriefingPostingsByUser(matches);
   const emails = await loadUserEmails(supabase, [...postingsByUser.keys()]);
 
   let sent = 0;
@@ -124,32 +109,12 @@ export async function processDigestAlerts(now = new Date()): Promise<ResendBatch
   return { sent, errors, stoppedReason };
 }
 
-function getEarliestDigestSince(digestState: Map<string, Date>, now: Date): Date {
-  let earliest = new Date(now.getTime() - DEFAULT_DIGEST_LOOKBACK_MS);
-
-  for (const lastSentAt of digestState.values()) {
-    if (lastSentAt < earliest) {
-      earliest = lastSentAt;
-    }
-  }
-
-  return earliest;
-}
-
-function groupMatchesByUser(
+function groupBriefingPostingsByUser(
   matches: Array<{ userId: string; posting: AlertPostingCandidate }>,
-  digestState: Map<string, Date>,
-  now: Date,
 ): Map<string, AlertPostingCandidate[]> {
   const byUser = new Map<string, AlertPostingCandidate[]>();
 
   for (const match of matches) {
-    const since =
-      digestState.get(match.userId) ?? new Date(now.getTime() - DEFAULT_DIGEST_LOOKBACK_MS);
-    if (Date.parse(match.posting.postedAt) <= since.getTime()) {
-      continue;
-    }
-
     const list = byUser.get(match.userId) ?? [];
     list.push(match.posting);
     byUser.set(match.userId, list);

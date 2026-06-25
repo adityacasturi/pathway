@@ -41,15 +41,12 @@
     "postinstall": "node scripts/ensure-heroui-styles.mjs"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^3.0.68",
-    "@ai-sdk/react": "^3.0.199",
     "@heroui/react": "^3.1.0",
     "@heroui/styles": "^3.1.0",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.103.3",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.38.0",
-    "ai": "^6.0.197",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -68,13 +65,13 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
-    "playwright": "^1.61.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "playwright": "^1.61.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   },

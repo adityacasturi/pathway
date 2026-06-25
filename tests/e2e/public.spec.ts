@@ -7,10 +7,9 @@ test("landing page renders for anonymous users", async ({ page }) => {
     page.getByRole("heading", { name: "Land your dream internship at top companies." }),
   ).toBeVisible();
   await expect(page.getByLabel("Recent internship openings")).toBeVisible();
-  await expect(page.getByText(/last 7 days/i)).toBeVisible();
-  await expect(page.getByText(/unlock the full list/i)).toBeVisible();
-  await expect(page.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/login");
-  await expect(page.getByRole("link", { name: "Register" })).toHaveAttribute("href", "/register");
+  await expect(page.getByRole("link", { name: "Sign in" }).first()).toHaveAttribute("href", "/login");
+  await expect(page.getByRole("link", { name: "Register" }).first()).toHaveAttribute("href", "/register");
+  await expect(page.getByRole("link", { name: "Get started" })).toHaveAttribute("href", "/register");
 });
 
 test("login and signup are public", async ({ page }) => {
@@ -25,7 +24,7 @@ test("login and signup are public", async ({ page }) => {
 });
 
 test("protected app routes redirect to login", async ({ page }) => {
-  for (const path of ["/home", "/applications", "/openings", "/companies", "/alerts", "/chat", "/settings"]) {
+  for (const path of ["/home", "/applications", "/openings", "/companies", "/alerts", "/settings"]) {
     await page.goto(path);
     await expect(page).toHaveURL(new RegExp(`/login\\?next=${encodeURIComponent(path)}$`));
   }

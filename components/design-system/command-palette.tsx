@@ -6,13 +6,11 @@ import {
   Compass,
   Home,
   LayoutGrid,
-  Lock,
   Mail,
   Plus,
   Radio,
   Search,
   Settings,
-  Wand2,
 } from "lucide-react";
 import {
   Dialog,
@@ -21,13 +19,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { SCOUT_ENABLED } from "@/lib/config/scout";
 import { NAV_LABELS, NAV_SECTIONS, type NavHref } from "@/lib/config/nav";
 import { cn } from "@/lib/utils";
 
 const NAV_ICONS: Record<NavHref, typeof LayoutGrid> = {
   "/home": Home,
-  "/chat": Wand2,
   "/applications": LayoutGrid,
   "/openings": Radio,
   "/companies": Compass,
@@ -45,14 +41,6 @@ type QuickAction = {
 };
 
 const QUICK_ACTIONS: QuickAction[] = [
-  {
-    id: "ask-pathway",
-    label: "Scout",
-    hint: SCOUT_ENABLED ? "Chat" : "Soon",
-    icon: Wand2,
-    event: "pathway:ask-pathway",
-    disabled: !SCOUT_ENABLED,
-  },
   {
     id: "add-application",
     label: "Add application",
@@ -79,7 +67,6 @@ export function CommandPalette() {
     return NAV_SECTIONS.map((section) => ({
       label: section.label,
       items: section.items.flatMap((item) => {
-        if (item.kind !== "link") return [];
         const href = item.href;
         if (!q) return [href];
         return NAV_LABELS[href].toLowerCase().includes(q) || href.includes(q) ? [href] : [];
@@ -177,13 +164,6 @@ export function CommandPalette() {
                         )}
                         onClick={() => {
                           if (action.disabled) return;
-                          if (action.id === "ask-pathway") {
-                            setOpen(false);
-                            const q = query.trim();
-                            router.push(q ? `/chat?q=${encodeURIComponent(q)}` : "/chat");
-                            setQuery("");
-                            return;
-                          }
                           if (action.event) runAction(action.event);
                         }}
                       >
@@ -201,7 +181,6 @@ export function CommandPalette() {
                           {action.label}
                         </span>
                         <span className="ml-auto inline-flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
-                          {action.disabled ? <Lock size={10} strokeWidth={1.8} aria-hidden /> : null}
                           {action.hint}
                         </span>
                       </button>

@@ -109,6 +109,40 @@ export async function updateAlertsEnabled(enabled: boolean) {
   return { ok: true, emailsEnabled: enabled };
 }
 
+export async function updateDigestEnabled(enabled: boolean) {
+  if (typeof enabled !== "boolean") {
+    return { error: "Invalid alert setting." };
+  }
+
+  const rateLimit = await limitAlertsWrite();
+  if (!rateLimit.ok) {
+    return { error: rateLimit.error };
+  }
+
+  const { user } = await getAuthenticatedUser();
+  if (!user) {
+    return { error: "Not authenticated" };
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("alert_preferences").upsert(
+    {
+      user_id: user.id,
+      digest_enabled: enabled,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" },
+  );
+
+  if (error) {
+    return { error: formatSupabaseMutationError(error, "Unable to save daily briefing.") };
+  }
+
+  revalidatePath("/alerts");
+  revalidatePath("/settings");
+  return { ok: true, digestEnabled: enabled };
+}
+
 export async function addSectorAlert(sectorSlug: string) {
   const rateLimit = await limitAlertsWrite();
   if (!rateLimit.ok) {

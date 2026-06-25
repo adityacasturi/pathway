@@ -55,7 +55,7 @@ test("digest emails use compact logo sections with full-line clickable roles", (
   ]);
 
   assert.match(digestHtml, /Pathway Alerts/);
-  assert.match(digestHtml, /New roles from companies and bundles you follow/);
+  assert.match(digestHtml, /Every internship posted in the last 24 hours/);
   assert.match(digestHtml, /company-logos\/openai\.png/);
   assert.match(digestHtml, /company-logos\/stripe\.png/);
   assert.doesNotMatch(digestHtml, /<ul|<li/);

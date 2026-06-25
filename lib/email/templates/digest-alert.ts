@@ -9,7 +9,7 @@ import {
 
 export function buildDigestAlertSubject(count: number): string {
   const label = count === 1 ? "internship" : "internships";
-  return `Your daily digest: ${count} new ${label}`;
+  return `Your daily briefing: ${count} new ${label}`;
 }
 
 export function buildDigestAlertHtml(
@@ -62,7 +62,7 @@ export function buildDigestAlertHtml(
   const openingsUrl = `${getSiteUrl()}/openings`;
   const bodyHtml = `
     <p style="margin:0 0 18px;font-size:14px;line-height:1.55;color:#4b5563;">
-      New roles from companies and bundles you follow.
+      Every internship posted in the last 24 hours.
     </p>
     ${sections}
     ${overflow}

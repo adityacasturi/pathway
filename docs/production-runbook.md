@@ -91,7 +91,6 @@ LOGO_DEV_TOKEN=...              # /api/logo — publishable pk_ for img.logo.dev
 NEXT_PUBLIC_SITE_URL=https://www.trypathway.app   # Referer sent to logo.dev (required if key has domain restrictions)
 UPSTASH_REDIS_REST_URL=...      # Distributed rate limits (server actions, unsubscribe)
 UPSTASH_REDIS_REST_TOKEN=...    # Falls back to in-memory limits when unset
-OPENAI_API_KEY=...              # Scout only; currently locked by SCOUT_ENABLED=false
 ```
 
 **Static company logos:** `npm run company-logos` (all active slugs) or `npm run company-logos -- --slug <slug>` after Discover onboarding. Commits `public/company-logos/*.png` and `lib/logo/static-slug-manifest.json`. In-app surfaces use static files when the slug is in the manifest; otherwise `/api/logo` proxy. Static logo responses are served with long-lived browser cache headers, so navigation should not refetch the full logo grid.

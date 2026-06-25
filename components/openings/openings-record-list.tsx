@@ -172,7 +172,6 @@ export function OpeningsRecordList({
                 index={index}
                 posting={posting}
                 isNew={isPostingNew(posting) && !trackedIdSet.has(posting.id)}
-                tracked={trackedIdSet.has(posting.id)}
                 selected={selectedId === posting.id}
                 onOpen={() => onOpen(posting)}
                 layout="desktop"
@@ -196,7 +195,6 @@ export function OpeningsRecordList({
             index={index}
             posting={posting}
             isNew={isPostingNew(posting) && !trackedIdSet.has(posting.id)}
-            tracked={trackedIdSet.has(posting.id)}
             selected={selectedId === posting.id}
             onOpen={() => onOpen(posting)}
             layout="mobile"

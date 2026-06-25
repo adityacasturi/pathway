@@ -3,10 +3,8 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import {
-  Dog,
   Home,
   LayoutGrid,
-  Lock,
   Radio,
 } from "lucide-react";
 import { MobileMoreNav } from "@/components/app-shell/mobile-more-nav";
@@ -21,27 +19,16 @@ import {
 import { CommandPalette } from "@/components/design-system/command-palette";
 import { APP_SHELL_CSS_VARS } from "@/components/app-shell/shell-layout";
 import { AppTopBar } from "@/components/app-shell/top-bar";
-import { SCOUT_ENABLED, SCOUT_LOCKED_COPY } from "@/lib/config/scout";
 import { type NavHref } from "@/lib/config/nav";
 import { cn } from "@/lib/utils";
 
 type MobileNavItem =
-  | { kind: "link"; href: NavHref; icon: typeof Home; label: string }
-  | { kind: "locked"; id: "scout"; icon: typeof Home; label: string; description: string };
+  { kind: "link"; href: NavHref; icon: typeof Home; label: string };
 
 const MOBILE_NAV: MobileNavItem[] = [
   { kind: "link", href: "/home", icon: Home, label: "Home" },
   { kind: "link", href: "/applications", icon: LayoutGrid, label: "Apps" },
   { kind: "link", href: "/openings", icon: Radio, label: "Feed" },
-  SCOUT_ENABLED
-    ? { kind: "link", href: "/chat", icon: Dog, label: "Scout" }
-    : {
-        kind: "locked",
-        id: "scout",
-        icon: Dog,
-        label: "Scout",
-        description: SCOUT_LOCKED_COPY.description,
-      },
 ];
 
 export function AppShell({
@@ -115,31 +102,6 @@ function MobileNav() {
       <div className="flex items-stretch justify-between gap-0.5">
         {MOBILE_NAV.map((item) => {
           const Icon = item.icon;
-          if (item.kind === "locked") {
-            return (
-              <button
-                key={item.id}
-                type="button"
-                disabled
-                aria-label={`${item.label}, coming soon`}
-                title={item.description}
-                className={cn(
-                  "relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-md px-1 py-2 text-[10px] font-medium",
-                  "cursor-default text-muted-foreground/70",
-                )}
-              >
-                <Icon size={16} strokeWidth={1.75} aria-hidden />
-                <span className="truncate">{item.label}</span>
-                <Lock
-                  size={10}
-                  strokeWidth={1.9}
-                  className="absolute right-2 top-1.5 text-muted-foreground/55"
-                  aria-hidden
-                />
-              </button>
-            );
-          }
-
           const { href, label } = item;
           const isActive = active === href;
           return (

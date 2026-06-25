@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { LayoutGrid } from "lucide-react";
 import { MotionStaggerItem, MotionStaggerList } from "@/components/design-system/motion-stagger";
 import { IndustryIcon } from "@/components/stats/industry-icon";
-import { UI_SELECTED } from "@/lib/ui/selection-styles";
+import { UI_SELECTED, listRailCountClass } from "@/lib/ui/selection-styles";
 import { cn } from "@/lib/utils";
 
 export function CompaniesIndustryRail({
@@ -99,16 +99,7 @@ function IndustryRailItem({
         {icon}
       </span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
-      <span
-        className={cn(
-          "shrink-0 rounded-full px-1.5 py-0.5 font-mono text-[10px] tabular-nums",
-          active
-            ? "bg-[var(--selection-count-bg)] text-[var(--selection-count-fg)]"
-            : "bg-muted text-foreground/85",
-        )}
-      >
-        {count}
-      </span>
+      <span className={listRailCountClass(active)}>{count}</span>
     </button>
   );
 }

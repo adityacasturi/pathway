@@ -1,6 +1,6 @@
 # Architecture
 
-Pathway is a Next.js 16 App Router app backed by Supabase Auth and Postgres. Students sign up with any valid email, get a **Home** briefing, track internship applications on a timeline, browse scraped roles on **Openings**, explore employers on **Companies**, and configure **Alerts**. **Scout** chat is implemented but locked while in progress.
+Pathway is a Next.js 16 App Router app backed by Supabase Auth and Postgres. Students sign up with any valid email, get a **Home** briefing, track internship applications on a timeline, browse scraped roles on **Openings**, explore employers on **Companies**, and configure **Alerts**.
 
 ## Stack
 
@@ -10,7 +10,6 @@ Pathway is a Next.js 16 App Router app backed by Supabase Auth and Postgres. Stu
 | Styling | Tailwind CSS v4 (`app/globals.css` tokens) |
 | UI | HeroUI-backed primitives in `components/ui/`, design-system surfaces, TanStack Table, Recharts, Framer Motion, Lucide icons, Sonner |
 | Data | Supabase Auth, Postgres, RLS, SQL functions/triggers |
-| AI | Vercel AI SDK + OpenAI (`gpt-4o-mini`) for Scout |
 | Scraping | Node scripts + Vercel Cron + Next route handlers (`lib/scraping/`) |
 | Tests | Node test runner (unit), Playwright public smoke (e2e) |
 | Runtime | Node.js 22.x |
@@ -31,13 +30,11 @@ Before changing routing, caching, `proxy.ts`, or Server Components, read the rel
 | `/openings` | Auth | Flat scraped internship feed (save / dismiss / track) |
 | `/companies` | Auth | Company catalog; open roles loaded per company |
 | `/alerts` | Auth | Email alert subscriptions, filters, master toggles |
-| `/chat` | Auth | Scout placeholder; redirects to `/home` while locked |
 | `/settings` | Auth | Redirects to `/settings/account` |
 | `/settings/account` | Auth | Profile, sign out, password reset |
 | `/settings/appearance` | Auth | Accent color and theme |
 | `/alerts/unsubscribe` | Public | One-click email unsubscribe (signed token) |
 | `/api/logo` | Auth | Logo.dev proxy (not a public CDN) |
-| `/api/chat` | Auth | Streaming Scout API; returns 503 while locked |
 | `/api/cron/scrape-postings` | Cron | Sharded scrape handler (`Authorization: Bearer CRON_SECRET`) |
 | `/api/cron/send-instant-alerts` | Cron | Instant alert handler (`Authorization: Bearer CRON_SECRET`) |
 | `/api/cron/send-alert-digests` | Cron | Digest handler (`Authorization: Bearer CRON_SECRET`; not scheduled) |
@@ -67,10 +64,6 @@ User-owned (RLS via `auth.uid()`):
 | `alert_digest_state` | Last digest send timestamp per user |
 | `alert_curated_sectors` | Industry bundle labels/metadata; `alert_curated_sector_companies` maps bundle → company slugs |
 | `alert_unsubscribe_nonces` | Single-use unsubscribe nonces (service-role only) |
-| `chat_threads` | Scout conversation metadata |
-| `chat_messages` | Persisted message parts (JSON) |
-| `chat_tool_calls` | Tool audit summaries per thread |
-
 Shared scrape catalog (authenticated read; writes via service role / cron):
 
 | Table | Role |
@@ -108,8 +101,6 @@ Priority (highest wins): rejected → offer → interview → OA → applied.
 | `user-preferences.ts` | Openings view prefs, Applications hide toggles |
 | `settings.ts` | Password reset email |
 | `alerts.ts` | Email alert subscriptions, filters, master switch |
-| `chat.ts` | Scout thread list/create/load/delete |
-
 Pattern: validate input → Supabase server client or scoped service-role write → `revalidatePath()` for affected routes.
 
 ## Supabase clients
@@ -148,24 +139,14 @@ Loader: `lib/discover/companies.ts`. UI: `components/companies/companies-page.ts
 - Company inspector reuses Openings **Track** and **Save for later** (`feed_interactions`); applied postings hidden.
 - Same scrape store and intern/engineering filters as Openings — see [scraping.md](./scraping.md).
 
-## Scout (`/chat`)
-
-- Feature flag: `SCOUT_ENABLED` in `lib/config/scout.ts` (currently `false`).
-- While locked, the sidebar/mobile nav show Scout as a disabled coming-soon item, `/chat` redirects to `/home`, and `/api/chat` returns 503.
-- UI: `components/chat/chat-page.tsx`.
-- Streaming API: `app/api/chat/route.ts` (OpenAI `gpt-4o-mini` via Vercel AI SDK).
-- Tools in `lib/chat/tools.ts` query the openings catalog; results render as embedded UI blocks.
-- Threads/messages in `chat_threads` / `chat_messages`; audit in `chat_tool_calls`.
-- Env when re-enabled: `OPENAI_API_KEY`. Without it, `/api/chat` returns 503.
-
 ## Email alerts
 
 - UI: `app/alerts/page.tsx`, `components/alerts/alerts-page.tsx` (and related `components/alerts/*`).
-- **Daily digest** — `alert_preferences.digest_enabled` + `/api/cron/send-alert-digests` handler exist but digest is not scheduled in production and has no in-app toggle yet.
-- **Instant alerts** — `alert_preferences.emails_enabled` + company/industry bundle subscriptions in `alert_subscriptions`.
+- **Daily briefing** — `alert_preferences.digest_enabled` + `/api/cron/send-alert-digests` (once daily, 13:00 UTC). Toggle via **Daily briefing** on the `/alerts` toolbar. Sends every open role posted in the last 24 hours (no filters).
+- **As-posted alerts** — `alert_preferences.emails_enabled` + company/industry bundle subscriptions in `alert_subscriptions`.
 - Filter semantics: [alerts-filters.md](./alerts-filters.md).
 - Matching: `lib/alerts/match-postings.ts` (`posted_at` for new or republished roles).
-- Send: Resend via `lib/email/resend-client.ts`; instant alerts run after Vercel Cron scrape shards complete. The digest handler remains available but is not scheduled in production.
+- Send: Resend via `lib/email/resend-client.ts`; instant alerts run after Vercel Cron scrape shards complete; daily briefing runs at 13:00 UTC.
 - Env: `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `ALERT_UNSUBSCRIBE_SECRET`.
 - Unsubscribe: `GET /alerts/unsubscribe` confirm form; `POST` performs disable. HMAC token + single-use nonce.
 - Writes: server actions authenticate the user, then perform scoped service-role writes; direct client alert table writes are revoked.

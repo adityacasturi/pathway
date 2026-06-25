@@ -23,7 +23,6 @@ Handoff document for coding agents and LLMs. For day-to-day commands see [../CLA
 | Openings | `/openings` | Flat scraped internship feed; save/dismiss/track; hides applied URLs by default |
 | Companies | `/companies` | Employer catalog by industry; postings loaded on demand per company |
 | Alerts | `/alerts` | Email subscriptions (per company or industry bundle), filter prefs, instant + digest toggles |
-| Scout | `/chat` | AI chat over openings catalog — **locked** (`SCOUT_ENABLED = false`) |
 | Settings | `/settings/account`, `/settings/appearance` | Profile, accent (midnight/indigo/rose), theme |
 | Unsubscribe | `/alerts/unsubscribe` | Public one-click email unsubscribe (HMAC + nonce) |
 
@@ -41,7 +40,6 @@ Handoff document for coding agents and LLMs. For day-to-day commands see [../CLA
 | UI | HeroUI-backed primitives in `components/ui/`, Lucide icons, Sonner toasts, Framer Motion (subtle) |
 | Data | **Supabase** Auth + Postgres + RLS |
 | Email | **Resend** (alerts) |
-| AI | Vercel AI SDK + OpenAI `gpt-4o-mini` (Scout, when enabled) |
 | Scraping | `runAllScrapes` + typed adapters (`fetch` + JSON/HTML parsers); `resolvePostedAt` + `upsert.ts`; Vercel Cron in production |
 | Tests | Node native test runner (unit), Playwright (public e2e smoke) |
 
@@ -55,15 +53,14 @@ Handoff document for coding agents and LLMs. For day-to-day commands see [../CLA
 app/                    # Next.js routes, layouts, API routes, cron handlers
 components/             # UI by feature (app-shell, openings, companies, alerts, home, landing, …)
 lib/
-  actions/              # Server Actions (auth, applications, feed, discover, alerts, chat)
+  actions/              # Server Actions (auth, applications, feed, discover, alerts)
   alerts/               # Alert matching, email templates, digest/instant send
-  config/               # Events, accent, scout flag, signup flag
+  config/               # Events, accent, signup flag
   discover/             # Companies catalog loaders
   feed/                 # Openings feed (scraped-postings.ts, types, posted display)
   home/                 # Home briefing data
   scraping/             # Adapters, registry, upsert, scrape runner
   supabase/             # server.ts (user/RLS), admin.ts (service role)
-  chat/                 # Scout tools and streaming helpers
 scripts/                # scrape, discover-queue, company-logos, audits, alerts CLI
 supabase/migrations/    # Optional git SQL for review; remote Supabase is schema truth
 tests/unit/             # Unit tests (*.test.ts)
@@ -89,7 +86,6 @@ Public without login: landing, auth flows, `/alerts/unsubscribe`, cron API route
 | Route | Auth | Purpose |
 | --- | --- | --- |
 | `/api/logo` | User | Logo.dev proxy for company logos |
-| `/api/chat` | User | Scout streaming API (503 while locked) |
 | `/api/cron/scrape-postings` | `CRON_SECRET` | Sharded scrape handler |
 | `/api/cron/send-instant-alerts` | `CRON_SECRET` | Instant alert emails after scrape |
 | `/api/cron/send-alert-digests` | `CRON_SECRET` | Digest handler (not scheduled in prod) |
@@ -113,8 +109,6 @@ Public without login: landing, auth flows, `/alerts/unsubscribe`, cron API route
 | `alert_digest_state` | Last digest timestamp |
 | `alert_curated_sectors` | Industry bundle metadata |
 | `alert_unsubscribe_nonces` | Single-use unsubscribe tokens |
-| `chat_threads`, `chat_messages`, `chat_tool_calls` | Scout (when enabled) |
-
 ### Shared scrape catalog (authenticated read; writes via service role / cron)
 
 | Table | Purpose |
@@ -170,12 +164,6 @@ Defined in `lib/config/events.ts`. Priority (highest wins): **rejected → offer
 - Production: Vercel Cron in `vercel.json` (Hobby: 4 daily UTC windows, 2 shards; Pro can do `*/6` with 4 shards)
 - Onboarding: `npm run discover-company`, `npm run discover-queue` (bulk SQLite queue)
 
-### Scout (locked)
-
-- Flag: `SCOUT_ENABLED = false` in `lib/config/scout.ts`
-- `/chat` redirects to `/home`; `/api/chat` returns 503
-- When enabled: streaming chat, tools query openings catalog, threads in DB
-
 ---
 
 ## Server actions and clients
@@ -189,8 +177,6 @@ Defined in `lib/config/events.ts`. Priority (highest wins): **rejected → offer
 | `lib/actions/discover.ts` | Company postings, favorites |
 | `lib/actions/user-preferences.ts` | View prefs |
 | `lib/actions/alerts.ts` | Alert subscriptions and prefs |
-| `lib/actions/chat.ts` | Scout threads |
-
 | Client | Use |
 | --- | --- |
 | `lib/supabase/server.ts` | Cookie-aware, RLS as user |
@@ -210,8 +196,6 @@ Defined in `lib/config/events.ts`. Priority (highest wins): **rejected → offer
 | `RESEND_API_KEY` | Outbound alert email |
 | `RESEND_FROM_EMAIL` | Alert sender |
 | `ALERT_UNSUBSCRIBE_SECRET` | Unsubscribe token signing |
-| `OPENAI_API_KEY` | Scout only (when re-enabled) |
-
 Never put secrets in `NEXT_PUBLIC_*`.
 
 ---
@@ -271,8 +255,7 @@ npm run company-logos      # Static PNGs + manifest
 2. Read `node_modules/next/dist/docs/` for Next.js 16 routing/caching/Server Actions
 3. Match existing patterns in `app/`, `components/`, `lib/actions/`
 4. Minimize scope; no secrets in client env; no broad RLS changes without migration
-5. Scout is locked — do not route users to `/chat` unless re-enabling
-6. Signup is open (valid email + disposable-domain blocklist in `lib/auth/validation.ts`)
+5. Signup is open (valid email + disposable-domain blocklist in `lib/auth/validation.ts`)
 
 ---
 

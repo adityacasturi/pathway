@@ -26,10 +26,6 @@ export function LiveSkeleton() {
   return <PageLoadingSpinner label="Loading openings" />;
 }
 
-export function ChatSkeleton() {
-  return <PageLoadingSpinner label="Loading chat" />;
-}
-
 export function AlertsSkeleton() {
   return <PageLoadingSpinner label="Loading alerts" />;
 }

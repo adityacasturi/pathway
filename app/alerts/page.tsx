@@ -121,6 +121,7 @@ export default async function AlertsRoute() {
   return (
     <AlertsPage
       globalFilters={globalFilters}
+      briefingEnabled={preferencesRes.data?.digest_enabled ?? false}
       subscriptions={subscriptions}
       curatedSectors={curatedSectors}
       companies={companies.map((company) => ({

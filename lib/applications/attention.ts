@@ -1,4 +1,4 @@
-import { getAppliedDate } from "@/lib/chat/queries";
+import { getAppliedDate } from "@/lib/applications/dates";
 import type { Application } from "@/types/application";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;

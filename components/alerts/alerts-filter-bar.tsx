@@ -1,23 +1,30 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Plus, Settings2 } from "lucide-react";
+import { ListFilter, Plus, Settings2 } from "lucide-react";
 import {
   AlertDefaultsActiveRail,
   AlertFiltersEditor,
   countActiveAlertFiltersView,
   hasActiveAlertFiltersView,
 } from "@/components/alert-filters-editor";
-import { alertTypeFilterPillClass } from "@/components/alerts/filter-chip-styles";
+import { AlertsDailyBriefingToolbarButton } from "@/components/alerts/alerts-daily-briefing-toolbar-button";
 import type { AlertTypeFilter } from "@/components/alerts/types";
 import { FilterPill } from "@/components/design-system/toolbar";
 import { SectionStack } from "@/components/design-system/surface";
 import { SearchInput } from "@/components/search-input";
 import { Button } from "@/components/ui/button";
+import { FilterSection } from "@/components/ui/filter-menu";
 import { ToolbarButton } from "@/components/ui/toolbar-button";
 import type { AlertFiltersView } from "@/lib/alerts/filters";
 import { UI_COUNT_BADGE } from "@/lib/ui/selection-styles";
 import { cn } from "@/lib/utils";
+
+const TYPE_FILTER_LABELS: Record<AlertTypeFilter, string> = {
+  all: "All",
+  company: "Companies",
+  sector: "Bundles",
+};
 
 export function AlertsFilterBar({
   searchRef,
@@ -33,6 +40,7 @@ export function AlertsFilterBar({
   globalFilters,
   onGlobalFiltersChange,
   globalFiltersPending,
+  briefingEnabled,
   onOpenAddPanel,
 }: {
   searchRef: React.RefObject<HTMLDivElement | null>;
@@ -48,23 +56,36 @@ export function AlertsFilterBar({
   globalFilters: AlertFiltersView;
   onGlobalFiltersChange: (next: AlertFiltersView) => void;
   globalFiltersPending: boolean;
+  briefingEnabled: boolean;
   onOpenAddPanel: () => void;
 }) {
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [defaultsOpen, setDefaultsOpen] = useState(false);
+  const filtersRef = useRef<HTMLDivElement | null>(null);
   const defaultsRef = useRef<HTMLDivElement | null>(null);
   const globalActive = hasActiveAlertFiltersView(globalFilters);
   const activeDefaultCount = countActiveAlertFiltersView(globalFilters);
+  const typeFilterActive = typeFilter !== "all";
+
+  const typeOptions: Array<{ key: AlertTypeFilter; label: string; count: number }> = [
+    { key: "all", label: TYPE_FILTER_LABELS.all, count: totalCount },
+    { key: "company", label: TYPE_FILTER_LABELS.company, count: companyCount },
+    { key: "sector", label: TYPE_FILTER_LABELS.sector, count: sectorCount },
+  ];
 
   useEffect(() => {
     function onPointerDown(event: PointerEvent) {
+      if (!filtersRef.current?.contains(event.target as Node)) {
+        setFiltersOpen(false);
+      }
       if (!defaultsRef.current?.contains(event.target as Node)) {
         setDefaultsOpen(false);
       }
     }
-    if (!defaultsOpen) return;
+    if (!filtersOpen && !defaultsOpen) return;
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [defaultsOpen]);
+  }, [filtersOpen, defaultsOpen]);
 
   return (
     <div className={cn("relative shrink-0 bg-card", searchFocused && "z-30")}>
@@ -91,34 +112,53 @@ export function AlertsFilterBar({
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <div className="flex shrink-0 items-center gap-1.5">
-            <FilterPill active={typeFilter === "all"} onClick={() => onTypeFilterChange("all")}>
-              All
-              <span className="tabular-nums text-muted-foreground">{totalCount}</span>
-            </FilterPill>
-            <FilterPill
-              active={typeFilter === "company"}
-              onClick={() => onTypeFilterChange("company")}
-              className={alertTypeFilterPillClass("company", typeFilter === "company")}
+          <AlertsDailyBriefingToolbarButton
+            key={briefingEnabled ? "on" : "off"}
+            enabled={briefingEnabled}
+          />
+
+          <div ref={filtersRef} className="relative shrink-0">
+            <ToolbarButton
+              active={filtersOpen || typeFilterActive}
+              aria-expanded={filtersOpen}
+              onClick={() => {
+                setFiltersOpen((open) => !open);
+                setDefaultsOpen(false);
+              }}
             >
-              Companies
-              <span className="tabular-nums text-muted-foreground">{companyCount}</span>
-            </FilterPill>
-            <FilterPill
-              active={typeFilter === "sector"}
-              onClick={() => onTypeFilterChange("sector")}
-              className={alertTypeFilterPillClass("sector", typeFilter === "sector")}
-            >
-              Bundles
-              <span className="tabular-nums text-muted-foreground">{sectorCount}</span>
-            </FilterPill>
+              <ListFilter size={14} strokeWidth={1.75} className="opacity-80" />
+              Filter
+              {typeFilterActive ? <span className={UI_COUNT_BADGE}>1</span> : null}
+            </ToolbarButton>
+            {filtersOpen ? (
+              <SectionStack className="absolute right-0 top-full z-40 mt-1.5 w-[min(18rem,calc(100vw-2.5rem))] shadow-sm">
+                <FilterSection title="Type" compact>
+                  <div className="flex flex-wrap gap-2">
+                    {typeOptions.map((option) => (
+                      <FilterPill
+                        key={option.key}
+                        active={typeFilter === option.key}
+                        onClick={() => onTypeFilterChange(option.key)}
+                        className="h-7 px-2.5 text-[12px]"
+                      >
+                        {option.label}
+                        <span className="tabular-nums text-muted-foreground">{option.count}</span>
+                      </FilterPill>
+                    ))}
+                  </div>
+                </FilterSection>
+              </SectionStack>
+            ) : null}
           </div>
 
           <div ref={defaultsRef} className="relative shrink-0">
             <ToolbarButton
               active={defaultsOpen || globalActive}
               aria-expanded={defaultsOpen}
-              onClick={() => setDefaultsOpen((open) => !open)}
+              onClick={() => {
+                setDefaultsOpen((open) => !open);
+                setFiltersOpen(false);
+              }}
             >
               <Settings2 size={14} strokeWidth={1.75} className="opacity-80" />
               Defaults

@@ -1,6 +1,6 @@
 # Pathway
 
-Internship search and application tracking for students. **Home** briefing, **Applications** tracker, **Openings** feed, **Companies** catalog, **Alerts** for new roles, and a marketing landing at `/`. **Scout** AI chat is present in the codebase but locked while it is in progress.
+Internship search and application tracking for students. **Home** briefing, **Applications** tracker, **Openings** feed, **Companies** catalog, **Alerts** for new roles, and a marketing landing at `/`.
 
 **Stack:** Next.js 16 · React 19 · Supabase · Tailwind v4 · Playwright (e2e)
 
@@ -9,7 +9,7 @@ Internship search and application tracking for students. **Home** briefing, **Ap
 | Doc | When to read |
 | --- | --- |
 | [docs/README.md](docs/README.md) | Index of all documentation |
-| [docs/architecture.md](docs/architecture.md) | Routes, data model, feeds, Scout, actions |
+| [docs/architecture.md](docs/architecture.md) | Routes, data model, feeds, actions |
 | [docs/scraping.md](docs/scraping.md) | Scrape runner, adapters, onboarding companies |
 | [docs/discover-industries.md](docs/discover-industries.md) | Company industry taxonomy (`discover_industries`) |
 | [docs/alerts-filters.md](docs/alerts-filters.md) | Alert season/country/remote filter semantics |
@@ -47,9 +47,6 @@ Internship search and application tracking for students. **Home** briefing, **Ap
    RESEND_API_KEY=...
    RESEND_FROM_EMAIL="Pathway <alerts@yourdomain.com>"
    ALERT_UNSUBSCRIBE_SECRET=any-long-random-string
-
-   # Scout chat (optional while Scout is locked)
-   OPENAI_API_KEY=sk-...
 
    # Distributed rate limiting (recommended in production)
    UPSTASH_REDIS_REST_URL=...
@@ -106,13 +103,12 @@ You do **not** need to run SQL files from git — the hosted database is already
 ## Project layout
 
 ```text
-app/                    Routes, layouts, cron + chat + logo API
+app/                    Routes, layouts, cron + logo API
 components/             Product UI (app-shell/, home/, openings/, companies/, landing/, …)
 components/ui/          Shared UI primitives
 lib/actions/            Server Actions
 lib/alerts/             Email alert matching, digest/instant send
 lib/auth/               Signup / login validation helpers
-lib/chat/               Scout tools, prompts, persistence
 lib/config/             Events, accent, season filter, nav, status colors
 lib/discover/           Companies catalog loaders (discover_industries)
 lib/feed/               Openings feed types and loaders
@@ -133,7 +129,6 @@ tests/unit/             Node unit tests
 - Openings hides postings you already applied to (by normalized posting URL).
 - Scrape ingestion: Vercel Cron runs sharded `/api/cron/scrape-postings` + `/api/cron/send-instant-alerts` (four times daily on Hobby; `*/6` on Pro); local `npm run scrape`.
 - Email alerts (`/alerts`) send when `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and `ALERT_UNSUBSCRIBE_SECRET` are configured.
-- Scout is locked for now (`SCOUT_ENABLED = false` in `lib/config/scout.ts`); `/chat` redirects to `/home` and `/api/chat` returns 503. Re-enable later with `OPENAI_API_KEY`.
 
 ## Agents and database work
 

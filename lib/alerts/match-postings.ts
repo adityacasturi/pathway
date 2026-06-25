@@ -24,7 +24,7 @@ export function matchPostingsToUsers(
     enabledUserIds: Set<string>;
     sentKeys: Set<string>;
     channel: AlertChannel;
-    /** Defaults to `[channel]`. Digest uses instant follows with digest delivery. */
+    /** Defaults to `[channel]`. */
     subscriptionCadences?: AlertCadence[];
     globalFiltersByUserId: Map<string, AlertFilters>;
   },
@@ -56,6 +56,28 @@ export function matchPostingsToUsers(
       if (options.sentKeys.has(key)) continue;
 
       matches.push({ userId: sub.userId, posting, channel: options.channel });
+    }
+  }
+
+  return matches;
+}
+
+/** Daily briefing: every posting in the lookback window, no user filters. */
+export function matchBriefingPostingsToUsers(
+  postings: AlertPostingCandidate[],
+  options: {
+    enabledUserIds: Set<string>;
+    sentKeys: Set<string>;
+  },
+): AlertMatch[] {
+  const matches: AlertMatch[] = [];
+
+  for (const posting of postings) {
+    for (const userId of options.enabledUserIds) {
+      const key = buildSentKey(userId, posting.postingId, "digest");
+      if (options.sentKeys.has(key)) continue;
+
+      matches.push({ userId, posting, channel: "digest" });
     }
   }
 

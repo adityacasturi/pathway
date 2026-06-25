@@ -5,7 +5,7 @@ Start here if you are setting up the repo, onboarding companies, or debugging pr
 | Doc | Audience | Contents |
 | --- | --- | --- |
 | [../README.md](../README.md) | Everyone | Local setup, env vars, npm scripts, repo layout |
-| [architecture.md](./architecture.md) | Engineers & agents | Routes, data model, Home, Openings, Companies, Scout, alerts, auth, testing |
+| [architecture.md](./architecture.md) | Engineers & agents | Routes, data model, Home, Openings, Companies, alerts, auth, testing |
 | [scraping.md](./scraping.md) | Engineers & agents | Scrape runner, adapters, company onboarding |
 | [discover-industries.md](./discover-industries.md) | Engineers & agents | Industry taxonomy (`discover_industries`) |
 | [scraped-posted-dates.md](./scraped-posted-dates.md) | Engineers | Posted vs Discovered date provenance |
@@ -27,7 +27,6 @@ Start here if you are setting up the repo, onboarding companies, or debugging pr
 | Openings | `/openings` | `lib/feed/` — flat scraped role feed |
 | Companies | `/companies` | `lib/discover/` — employer catalog |
 | Alerts | `/alerts` | `lib/alerts/` |
-| Scout | `/chat` | `lib/chat/`; locked while in progress |
 | Settings | `/settings` | Account + appearance |
 
 **Discover** in docs usually means the scrape catalog / onboarding workflow (`discover-queue`, `discover-company`, `discover_industries`), not a separate product route.

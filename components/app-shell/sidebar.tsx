@@ -2,30 +2,15 @@
 
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  BookOpen,
-  Code2,
-  Compass,
-  Dog,
-  FileText,
-  Home,
-  LayoutGrid,
-  Lightbulb,
-  Mail,
-  MessageSquare,
-  Radio,
-  Settings,
-  Wand2,
-} from "lucide-react";
+import { Compass, Home, LayoutGrid, Mail, Radio, Settings } from "lucide-react";
 import { SidebarAccount } from "@/components/app-shell/sidebar-account";
-import { SidebarItem, SidebarLockedItem, SidebarSectionLabel } from "@/components/design-system/sidebar-item";
+import { SidebarItem, SidebarSectionLabel } from "@/components/design-system/sidebar-item";
 import { useDisplayNavHref } from "@/components/app-shell/navigation-pending";
 import {
   getPageLabel,
   isActiveNavHref,
   NAV_SECTIONS,
   type NavHref,
-  type NavLockedId,
 } from "@/lib/config/nav";
 
 const NAV_ICONS: Record<NavHref, typeof Home> = {
@@ -34,26 +19,15 @@ const NAV_ICONS: Record<NavHref, typeof Home> = {
   "/openings": Radio,
   "/companies": Compass,
   "/alerts": Mail,
-  "/chat": Wand2,
   "/settings": Settings,
 };
 
-const LOCKED_ICONS: Record<NavLockedId, typeof FileText> = {
-  jarvis: Wand2,
-  draft: FileText,
-  scout: Dog,
-  forums: MessageSquare,
-  alpha: Lightbulb,
-  guides: BookOpen,
-  practice: Code2,
-};
-
 const NAV_LINK_ITEMS = NAV_SECTIONS.flatMap((section) =>
-  section.items.flatMap((item) =>
-    item.kind === "link"
-      ? [{ href: item.href, label: getPageLabel(item.href), icon: NAV_ICONS[item.href] }]
-      : [],
-  ),
+  section.items.map((item) => ({
+    href: item.href,
+    label: getPageLabel(item.href),
+    icon: NAV_ICONS[item.href],
+  })),
 );
 
 export function AppSidebar({ userEmail }: { userEmail: string | null }) {
@@ -85,34 +59,24 @@ export function AppSidebar({ userEmail }: { userEmail: string | null }) {
           <div key={section.label}>
             <SidebarSectionLabel first={sectionIndex === 0}>{section.label}</SidebarSectionLabel>
             <div className="space-y-0.5">
-              {section.items.map((item) =>
-                item.kind === "link" ? (
-                  <SidebarItem
-                    key={item.href}
-                    href={item.href}
-                    label={getPageLabel(item.href)}
-                    icon={NAV_ICONS[item.href]}
-                    active={activeNavHref === item.href}
-                    onClick={(event) => {
-                      if (isActiveNavHref(pathname, item.href)) {
-                        event.preventDefault();
-                        return;
-                      }
-                      router.prefetch(item.href);
-                    }}
-                    onPointerEnter={() => router.prefetch(item.href)}
-                    onFocus={() => router.prefetch(item.href)}
-                  />
-                ) : (
-                  <SidebarLockedItem
-                    key={item.id}
-                    label={item.label}
-                    hint={item.hint}
-                    description={item.description}
-                    icon={LOCKED_ICONS[item.id]}
-                  />
-                ),
-              )}
+              {section.items.map((item) => (
+                <SidebarItem
+                  key={item.href}
+                  href={item.href}
+                  label={getPageLabel(item.href)}
+                  icon={NAV_ICONS[item.href]}
+                  active={activeNavHref === item.href}
+                  onClick={(event) => {
+                    if (isActiveNavHref(pathname, item.href)) {
+                      event.preventDefault();
+                      return;
+                    }
+                    router.prefetch(item.href);
+                  }}
+                  onPointerEnter={() => router.prefetch(item.href)}
+                  onFocus={() => router.prefetch(item.href)}
+                />
+              ))}
             </div>
           </div>
         ))}

@@ -13,7 +13,7 @@ Pathway: Next.js 16, React 19, Supabase internship tracker. **Read this file fir
 | Doc | Use for |
 | --- | --- |
 | [docs/README.md](docs/README.md) | Index |
-| [docs/architecture.md](docs/architecture.md) | Routes, tables, Openings/Companies/Home, Scout, actions |
+| [docs/architecture.md](docs/architecture.md) | Routes, tables, Openings/Companies/Home, actions |
 | [docs/alerts-filters.md](docs/alerts-filters.md) | Alert filter matching rules |
 | [tests/README.md](tests/README.md) | Unit and e2e test layout |
 | [docs/scraping.md](docs/scraping.md) | Scrape, adapters, company onboarding |
@@ -67,7 +67,7 @@ Do **not** search `supabase/migrations_archive/` for current schema or whether a
 - Default accent: midnight (black). Accents: midnight, indigo, rose.
 - Openings hides applied postings by default.
 - Default post-login route: `/home`.
-- Scout is locked for now (`SCOUT_ENABLED = false`); do not route users into `/chat` unless re-enabling it.
+- The chat assistant surface has been removed; do not add retired chat routes back without product direction.
 - Listing rows: simple, consistent across Openings/Companies/Applications (no row animation flourishes).
 - Email alerts (`/alerts`) require `RESEND_API_KEY` + `RESEND_FROM_EMAIL` + `ALERT_UNSUBSCRIBE_SECRET` for outbound delivery.
 

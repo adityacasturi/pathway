@@ -42,6 +42,7 @@ import { getSearchTerms } from "@/lib/search-terms";
 
 interface Props {
   globalFilters: AlertFilters;
+  briefingEnabled: boolean;
   subscriptions: AlertSubscriptionView[];
   companies: AlertCompanyOption[];
   curatedSectors: CuratedSectorView[];
@@ -49,6 +50,7 @@ interface Props {
 
 export function AlertsPage({
   globalFilters: initialGlobalFilters,
+  briefingEnabled,
   subscriptions: initialSubscriptions,
   companies,
   curatedSectors,
@@ -350,6 +352,7 @@ export function AlertsPage({
                 globalFilters={globalFilterView}
                 onGlobalFiltersChange={setGlobalFilterView}
                 globalFiltersPending={isGlobalFiltersPending}
+                briefingEnabled={briefingEnabled}
                 onOpenAddPanel={() => setAddPanelOpen(true)}
               />
 

@@ -1,8 +1,6 @@
 "use client";
 
-import { Lock } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
-import { ComingSoonHoverCard } from "@/components/design-system/coming-soon-hover-card";
 import { NavLink } from "@/components/nav-link";
 import { UI_SELECTED } from "@/lib/ui/selection-styles";
 import { cn } from "@/lib/utils";
@@ -16,42 +14,6 @@ const itemClass = (active: boolean) =>
       ? cn(UI_SELECTED, "border border-transparent font-semibold")
       : "font-medium text-foreground/95 hover:bg-muted/55 hover:text-foreground",
   );
-
-export function SidebarLockedItem({
-  label,
-  hint,
-  description,
-  icon: Icon,
-}: {
-  label: string;
-  hint: string;
-  description: string;
-  icon: ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
-}) {
-  return (
-    <ComingSoonHoverCard
-      title={label}
-      hint={hint}
-      description={description}
-      icon={Icon}
-      side="right"
-    >
-      <div
-        tabIndex={0}
-        aria-disabled="true"
-        aria-label={`${label}, coming soon`}
-        className={cn(
-          itemClass(false),
-          "cursor-default select-none text-foreground/62 hover:text-foreground/78",
-        )}
-      >
-        <Icon size={17} strokeWidth={1.75} className="shrink-0 text-muted-foreground" />
-        <span className="min-w-0 flex-1 truncate">{label}</span>
-        <Lock size={13} strokeWidth={1.75} className="shrink-0 text-muted-foreground/55" aria-hidden />
-      </div>
-    </ComingSoonHoverCard>
-  );
-}
 
 export function SidebarItem({
   href,
