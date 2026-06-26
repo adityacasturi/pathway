@@ -1,23 +1,22 @@
 import type { CompanySourceConfig, ScrapeAdapter } from "../types.ts";
 import {
-  buildSalesforceRssUrl,
-  parseSalesforceJobs,
-  parseSalesforceRssXml,
+  fetchSalesforceCareersJobs,
+  parseSalesforceCareersJobs,
   resolveSalesforceBoard,
-  type SalesforceRssJob,
+  SALESFORCE_DEFAULT_SOURCE_URL,
+  type SalesforceCareersJob,
 } from "./salesforce.ts";
-import { fetchJsonWithTimeout } from "./shared.ts";
 
 /** Slack listings are published on Salesforce careers (Slack is a Salesforce company). */
-export const SLACK_SALESFORCE_RSS_URL = buildSalesforceRssUrl("en");
+export const SLACK_SALESFORCE_SOURCE_URL = SALESFORCE_DEFAULT_SOURCE_URL;
 
 const SLACK_BRAND_PATTERN = /\bslack\b/i;
 
-export function isSlackRelatedJob(job: SalesforceRssJob): boolean {
-  const title = job.title.trim();
+export function isSlackRelatedJob(job: Pick<SalesforceCareersJob, "jobPostingTitle" | "externalJobPostingSite">): boolean {
+  const title = job.jobPostingTitle.trim();
   let path = "";
   try {
-    path = new URL(job.url).pathname.toLowerCase();
+    path = new URL(job.externalJobPostingSite ?? "").pathname.toLowerCase();
   } catch {
     path = "";
   }
@@ -40,30 +39,21 @@ export function isSlackRelatedJob(job: SalesforceRssJob): boolean {
 export function createSlackAdapter(source: CompanySourceConfig): ScrapeAdapter {
   const board = resolveSalesforceBoard({
     ...source,
-    sourceUrl: source.sourceUrl?.trim() || SLACK_SALESFORCE_RSS_URL,
-    boardToken: source.boardToken?.trim() || "en",
+    sourceUrl: source.sourceUrl?.trim() || SLACK_SALESFORCE_SOURCE_URL,
+    boardToken: source.boardToken?.trim() || "prod",
   });
   const resolvedSource = {
     ...source,
-    boardToken: board.locale,
-    sourceUrl: board.rssUrl,
+    boardToken: board.env,
+    sourceUrl: board.feedUrls[0],
   };
 
   return {
     source: resolvedSource,
     async fetchRoles() {
-      const res = await fetchJsonWithTimeout(board.rssUrl, {
-        headers: {
-          accept: "application/rss+xml, application/xml, text/xml, */*",
-        },
-      });
-      if (!res.ok) {
-        throw new Error(`Salesforce RSS returned ${res.status} for ${board.rssUrl}`);
-      }
-      const xml = await res.text();
-      const jobs = parseSalesforceRssXml(xml);
+      const { jobs, feedUrl } = await fetchSalesforceCareersJobs(board);
       const slackJobs = jobs.filter(isSlackRelatedJob);
-      return parseSalesforceJobs(slackJobs, resolvedSource, jobs.length);
+      return parseSalesforceCareersJobs(slackJobs, resolvedSource, jobs.length, feedUrl);
     },
   };
 }

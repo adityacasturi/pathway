@@ -182,7 +182,19 @@ export function parseWayfairJobs(
 }
 
 async function fetchWayfairJobList(board: WayfairBoardConfig): Promise<WayfairJobSummary[]> {
-  const res = await fetchJsonWithTimeout(board.jobSearchUrl, { headers: atsJsonHeaders() });
+  const res = await fetchJsonWithTimeout(
+    board.jobSearchUrl,
+    {
+      headers: {
+        referer: `${board.careersOrigin.replace(/\/$/, "")}/`,
+        origin: "https://www.wayfair.com",
+      },
+    },
+    {
+      maxAttempts: 5,
+      retryDelayMs: 2_000,
+    },
+  );
   if (!res.ok) {
     throw new Error(`Wayfair job_search_data returned ${res.status} for ${board.jobSearchUrl}`);
   }

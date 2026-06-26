@@ -202,14 +202,22 @@ export async function fetchWithTimeout(
   throw lastError;
 }
 
-export async function fetchJsonWithTimeout(url: string, init: RequestInit = {}): Promise<Response> {
-  return fetchWithTimeout(url, {
-    ...init,
-    headers: {
-      ...atsJsonHeaders(),
-      ...(init.headers ?? {}),
+export async function fetchJsonWithTimeout(
+  url: string,
+  init: RequestInit = {},
+  options: FetchWithTimeoutOptions = {},
+): Promise<Response> {
+  return fetchWithTimeout(
+    url,
+    {
+      ...init,
+      headers: {
+        ...atsJsonHeaders(),
+        ...(init.headers ?? {}),
+      },
     },
-  });
+    options,
+  );
 }
 
 function normalizeToken(value: string | null | undefined): string | null {
