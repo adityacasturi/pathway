@@ -28,8 +28,6 @@ export interface FeedPosting {
   season: FeedSeason | null;
   /** Unix seconds for sort (`posted_at`, falling back to `first_seen_at`). */
   datePosted: number;
-  /** Unix seconds for Live NEW badge (`posted_at`, falling back to `first_seen_at`). */
-  pathwayNewUnix: number;
   /** Relative-time source (`posted_at`, falling back to `first_seen_at`). */
   postedDisplay: PostedDisplay;
   dateUpdated: number;

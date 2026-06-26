@@ -10,7 +10,12 @@ import {
   remToPx,
   type HomeDashboardRowLayout,
 } from "@/lib/home/row-budget";
-import { splitHomePostingSlots } from "@/lib/home/posting-slots";
+import {
+  HOME_MOBILE_POSTINGS_TOTAL_ROWS,
+  HOME_MOBILE_SIDEBAR_TOTAL_ROWS,
+  HOME_POSTINGS_TOTAL_ROWS,
+  splitHomePostingSlots,
+} from "@/lib/home/posting-slots";
 
 const WIDE_LAYOUT_QUERY = "(min-width: 1024px)";
 
@@ -19,10 +24,13 @@ function fallbackLayout(
   savedTotal: number,
   hotCompaniesTotal: number,
   alertActivityTotal: number,
+  mobile = false,
 ): HomeDashboardRowLayout {
-  const { freshSlots, savedSlots } = splitHomePostingSlots(12, recentTotal, savedTotal);
+  const postingRows = mobile ? HOME_MOBILE_POSTINGS_TOTAL_ROWS : HOME_POSTINGS_TOTAL_ROWS;
+  const sidebarRows = mobile ? HOME_MOBILE_SIDEBAR_TOTAL_ROWS : HOME_POSTINGS_TOTAL_ROWS;
+  const { freshSlots, savedSlots } = splitHomePostingSlots(postingRows, recentTotal, savedTotal);
   const { freshSlots: hotCompanySlots, savedSlots: alertActivitySlots } = splitHomePostingSlots(
-    12,
+    sidebarRows,
     hotCompaniesTotal,
     alertActivityTotal,
   );
@@ -67,14 +75,16 @@ export function useHomeDashboardLayout(
   const postingTableHeaderRef = useRef<HTMLDivElement>(null);
 
   const [layout, setLayout] = useState<HomeDashboardRowLayout>(() =>
-    fallbackLayout(recentTotal, savedTotal, hotCompaniesTotal, alertActivityTotal),
+    fallbackLayout(recentTotal, savedTotal, hotCompaniesTotal, alertActivityTotal, true),
   );
+  const [isWideLayout, setIsWideLayout] = useState(false);
 
   const recalculate = useCallback(() => {
     const grid = gridRef.current;
     if (!grid) return;
 
     const isWide = window.matchMedia(WIDE_LAYOUT_QUERY).matches;
+    setIsWideLayout(isWide);
     if (!isWide) {
       setLayout((current) => {
         const next = fallbackLayout(
@@ -82,6 +92,7 @@ export function useHomeDashboardLayout(
           savedTotal,
           hotCompaniesTotal,
           alertActivityTotal,
+          true,
         );
         return layoutEqual(current, next) ? current : next;
       });
@@ -95,8 +106,7 @@ export function useHomeDashboardLayout(
     const postingTableHeaderPx =
       postingTableHeaderRef.current?.offsetHeight ??
       remToPx(HOME_POSTING_TABLE_HEADER_REM, rootFontSizePx);
-    const postingRowPx =
-      postingTableHeaderRef.current?.offsetHeight ?? remToPx(HOME_POSTING_ROW_REM, rootFontSizePx);
+    const postingRowPx = remToPx(HOME_POSTING_ROW_REM, rootFontSizePx);
     const sidebarRowPx = remToPx(HOME_SIDEBAR_ROW_REM, rootFontSizePx);
     const columnGapPx = readGapPx(leftColumnRef.current ?? rightColumnRef.current);
 
@@ -185,5 +195,6 @@ export function useHomeDashboardLayout(
     hotHeaderRef,
     alertActivityHeaderRef,
     postingTableHeaderRef,
+    isWideLayout,
   };
 }

@@ -7,7 +7,7 @@ import {
 } from "@/lib/user-preferences/view-preferences";
 
 const VIEW_PREFERENCE_COLUMNS =
-  "live_last_seen_at, live_hide_applied, live_season_filter, hide_rejected, hide_archived";
+  "live_hide_applied, live_season_filter, hide_rejected, hide_archived";
 
 export interface UserViewPreferences {
   feed: FeedViewPreferences;

@@ -13,7 +13,7 @@ export const DIGEST_MAX_POSTINGS = 20;
 
 /** User-facing copy for the daily briefing email (`digest` channel internally). */
 export const DAILY_BRIEFING_COPY = {
-  label: "Briefing",
+  label: "Daily",
   description: "One email each morning with every role posted in the last 24 hours.",
   hint: "One email each morning with every internship posted in the last 24 hours.",
 } as const;

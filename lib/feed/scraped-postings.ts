@@ -1,6 +1,5 @@
 import {
   resolveEffectivePostedUnix,
-  resolvePathwayNewUnix,
   resolvePostedDisplay,
   toUnixSeconds,
 } from "./posted-display.ts";
@@ -99,7 +98,6 @@ export function mapScrapedRowToFeedPosting(
     hasRemoteLocation(locations);
   const id = stablePostingId(url);
   const datePosted = resolveEffectivePostedUnix(row);
-  const pathwayNewUnix = resolvePathwayNewUnix(row);
   const postedDisplay = resolvePostedDisplay(row);
   const dateUpdated = Math.max(
     toUnixSeconds(row.last_seen_at),
@@ -122,7 +120,6 @@ export function mapScrapedRowToFeedPosting(
     hasRemote,
     season,
     datePosted,
-    pathwayNewUnix,
     postedDisplay,
     dateUpdated,
   };

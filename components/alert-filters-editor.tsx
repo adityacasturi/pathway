@@ -22,6 +22,9 @@ export function AlertFiltersEditor({
   clearLabel = "Clear",
   alwaysShowClear = false,
   onClearAction,
+  hideSectionTitles = false,
+  sectionUnstyled = false,
+  hideSectionAction = false,
 }: {
   value: AlertFiltersView;
   onChange: (next: AlertFiltersView) => void;
@@ -30,6 +33,9 @@ export function AlertFiltersEditor({
   clearLabel?: string;
   alwaysShowClear?: boolean;
   onClearAction?: () => void;
+  hideSectionTitles?: boolean;
+  sectionUnstyled?: boolean;
+  hideSectionAction?: boolean;
 }) {
   const selectedSeasons = useMemo(
     () => new Set<FeedSeason>(value.seasons),
@@ -72,6 +78,9 @@ export function AlertFiltersEditor({
           clearLabel={clearLabel}
           alwaysShowClear={alwaysShowClear}
           chipClassName={CHIP_CLASS}
+          hideTitle={hideSectionTitles}
+          unstyled={sectionUnstyled}
+          hideAction={hideSectionAction}
         />
       ) : null}
       {fields === "all" || fields === "countries" ? (
@@ -87,6 +96,9 @@ export function AlertFiltersEditor({
           clearLabel={clearLabel}
           alwaysShowClear={alwaysShowClear}
           chipClassName={CHIP_CLASS}
+          hideTitle={hideSectionTitles}
+          unstyled={sectionUnstyled}
+          hideAction={hideSectionAction}
         />
       ) : null}
     </div>

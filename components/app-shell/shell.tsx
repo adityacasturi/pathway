@@ -1,35 +1,17 @@
 "use client";
 
 import type { ReactNode } from "react";
-import Link from "next/link";
-import {
-  Home,
-  LayoutGrid,
-  Radio,
-} from "lucide-react";
-import { MobileMoreNav } from "@/components/app-shell/mobile-more-nav";
 import { AppSidebar } from "@/components/app-shell/sidebar";
 import {
   NavigationPendingGate,
   NavigationPendingOverlay,
   NavigationPendingProvider,
-  useDisplayNavHref,
   useNavigationPending,
 } from "@/components/app-shell/navigation-pending";
 import { CommandPalette } from "@/components/design-system/command-palette";
 import { APP_SHELL_CSS_VARS } from "@/components/app-shell/shell-layout";
 import { AppTopBar } from "@/components/app-shell/top-bar";
-import { type NavHref } from "@/lib/config/nav";
 import { cn } from "@/lib/utils";
-
-type MobileNavItem =
-  { kind: "link"; href: NavHref; icon: typeof Home; label: string };
-
-const MOBILE_NAV: MobileNavItem[] = [
-  { kind: "link", href: "/home", icon: Home, label: "Home" },
-  { kind: "link", href: "/applications", icon: LayoutGrid, label: "Apps" },
-  { kind: "link", href: "/openings", icon: Radio, label: "Feed" },
-];
 
 export function AppShell({
   children,
@@ -61,11 +43,10 @@ function AppShellFrame({
           <AppSidebar userEmail={userEmail} />
           <ContentArea>
             <NavigationPendingGate>
-              <div className="h-full min-h-0 pb-20 md:pb-0">{children}</div>
+              <div className="h-full min-h-0">{children}</div>
             </NavigationPendingGate>
           </ContentArea>
         </div>
-        <MobileNav />
       </div>
       <CommandPalette />
     </NavigationPendingProvider>
@@ -87,43 +68,5 @@ function ContentArea({ children }: { children: ReactNode }) {
       <NavigationPendingOverlay />
       <div className={cn("h-full min-h-0", navigating && "invisible")}>{children}</div>
     </div>
-  );
-}
-
-function MobileNav() {
-  const { startNavigation } = useNavigationPending();
-  const active = useDisplayNavHref();
-
-  return (
-    <nav
-      aria-label="Mobile pages"
-      className="fixed inset-x-3 bottom-3 z-50 rounded-lg border border-border bg-card p-1 shadow-sm md:hidden"
-    >
-      <div className="flex items-stretch justify-between gap-0.5">
-        {MOBILE_NAV.map((item) => {
-          const Icon = item.icon;
-          const { href, label } = item;
-          const isActive = active === href;
-          return (
-            <Link
-              key={href}
-              href={href}
-              onPointerDown={() => startNavigation(href)}
-              className={cn(
-                "flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-md px-1 py-2 text-[10px] font-medium",
-                "transition-[background-color,color,transform] duration-200 ease-[var(--motion-ease-smooth)] active:scale-[0.97]",
-                isActive
-                  ? "bg-muted text-foreground"
-                  : "text-muted-foreground",
-              )}
-            >
-              <Icon size={16} strokeWidth={1.75} />
-              <span className="truncate">{label}</span>
-            </Link>
-          );
-        })}
-        <MobileMoreNav />
-      </div>
-    </nav>
   );
 }

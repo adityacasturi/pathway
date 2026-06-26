@@ -15,39 +15,32 @@ import {
 } from "@/components/home/home-section-styles";
 import {
   alertCountLabel,
-  homeAlertActivityDescription,
-  homeAlertActivitySummary,
   type HomeAlertActivityRow,
 } from "@/lib/home/alert-activity";
-import { HOME_SIDEBAR_ROW_REM } from "@/lib/home/row-budget";
+import { homeSidebarListBodyLayout } from "@/lib/home/list-body-layout";
 import { cn } from "@/lib/utils";
-
-const SIDEBAR_ROW_HEIGHT = `${HOME_SIDEBAR_ROW_REM}rem`;
-
-function alertActivityBodyHeight(slotCount: number): string {
-  return `calc(${slotCount} * ${SIDEBAR_ROW_HEIGHT})`;
-}
 
 export function HomeAlertActivityPanel({
   rows,
-  allRows,
   slotCount,
   splitAbove = false,
   headerRef,
   bodyHeightPx,
+  isWideLayout,
 }: {
   rows: HomeAlertActivityRow[];
-  allRows: HomeAlertActivityRow[];
   slotCount: number;
   splitAbove?: boolean;
   headerRef?: Ref<HTMLDivElement>;
   bodyHeightPx?: number;
+  isWideLayout: boolean;
 }) {
-  const alertSummary = homeAlertActivitySummary(allRows);
-  const paddingRows = Math.max(0, slotCount - rows.length);
-  const bodyHeight =
-    bodyHeightPx && bodyHeightPx > 0 ? `${bodyHeightPx}px` : alertActivityBodyHeight(slotCount);
-  const flexRows = Boolean(bodyHeightPx && bodyHeightPx > 0);
+  const { style, paddingRows } = homeSidebarListBodyLayout(
+    isWideLayout,
+    slotCount,
+    rows.length,
+    bodyHeightPx,
+  );
 
   if (rows.length === 0 && slotCount === 0) return null;
 
@@ -56,7 +49,6 @@ export function HomeAlertActivityPanel({
       <div ref={headerRef} className={HOME_SECTION_HEADER}>
         <HomeSectionHeader
           title="Your alerts"
-          description={homeAlertActivityDescription(alertSummary)}
           actions={<HomeHeaderArrowLink href="/alerts" label="Manage alerts" />}
           className="mb-0"
         />
@@ -69,13 +61,8 @@ export function HomeAlertActivityPanel({
       ) : (
         <MotionStaggerList
           as="ul"
-          className="grid overflow-hidden"
-          style={{
-            height: bodyHeight,
-            gridTemplateRows: flexRows
-              ? `repeat(${slotCount}, minmax(0, 1fr))`
-              : `repeat(${slotCount}, ${SIDEBAR_ROW_HEIGHT})`,
-          }}
+          className={cn("w-full min-w-0 max-lg:overflow-x-hidden", isWideLayout && "grid overflow-hidden")}
+          style={style}
         >
           {rows.map((row, index) => (
             <MotionStaggerItem
@@ -87,7 +74,7 @@ export function HomeAlertActivityPanel({
               <Link
                 href="/alerts"
                 className={cn(
-                  "flex h-full min-h-0 items-center gap-3 px-5 py-2.5",
+                  "flex h-full min-h-0 w-full min-w-0 items-center gap-3 overflow-hidden px-4 py-2.5 max-lg:overflow-x-hidden lg:px-5",
                   HOME_ROW_HOVER,
                 )}
               >

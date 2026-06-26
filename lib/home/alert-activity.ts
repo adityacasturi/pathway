@@ -216,33 +216,4 @@ function alertCountLabel(count: number): string {
   return `${count.toLocaleString()} roles emailed this week`;
 }
 
-export function homeAlertActivitySummary(rows: HomeAlertActivityRow[]): {
-  companyCount: number;
-  roleCount: number;
-} {
-  const alerted = rows.filter((row) => row.alertCount > 0);
-  return {
-    companyCount: alerted.length,
-    roleCount: alerted.reduce((sum, row) => sum + row.alertCount, 0),
-  };
-}
-
-export function homeAlertActivityDescription(summary: {
-  companyCount: number;
-  roleCount: number;
-}): string {
-  if (summary.roleCount === 0) {
-    return "Roles we've emailed you about in the last 7 days.";
-  }
-
-  const companies =
-    summary.companyCount === 1
-      ? "1 company"
-      : `${summary.companyCount.toLocaleString()} companies`;
-  const roles =
-    summary.roleCount === 1 ? "1 role" : `${summary.roleCount.toLocaleString()} roles`;
-
-  return `${roles} across ${companies} in the last 7 days.`;
-}
-
 export { alertCountLabel };

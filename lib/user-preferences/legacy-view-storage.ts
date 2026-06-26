@@ -10,7 +10,6 @@ export interface BrowserStorage {
 }
 
 const FEED_STORAGE_KEYS = [
-  "pathway:feed-last-seen-at",
   "pathway:live-hide-applied",
   "pathway:live-season",
   "pathway:discover-hide-applied",
@@ -61,13 +60,6 @@ export function readStoredFeedViewPreferences(
     return { preferences: initialFeedPrefs, hasStoredPreferences: false };
   }
 
-  const storedLastSeen = readStorageValue(storage, "pathway:feed-last-seen-at");
-  const parsedLastSeen = storedLastSeen ? Number.parseInt(storedLastSeen, 10) : NaN;
-  const lastSeenUnix =
-    Number.isFinite(parsedLastSeen) && parsedLastSeen > initialFeedPrefs.lastSeenUnix
-      ? parsedLastSeen
-      : initialFeedPrefs.lastSeenUnix;
-
   const hideAppliedPref = firstStoredValue(storage, [
     "pathway:live-hide-applied",
     "pathway:discover-hide-applied",
@@ -88,7 +80,7 @@ export function readStoredFeedViewPreferences(
     : initialFeedPrefs.selectedSeasons;
 
   return {
-    preferences: { lastSeenUnix, hideApplied, selectedSeasons },
+    preferences: { hideApplied, selectedSeasons },
     hasStoredPreferences: hasStoredValue(storage, FEED_STORAGE_KEYS),
   };
 }

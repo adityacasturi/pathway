@@ -32,7 +32,7 @@ export function ContentAreaSpinner({
           "fixed z-[48] flex items-center justify-center",
           "bg-background",
           "top-[var(--app-topbar-height)] right-0 bottom-0 left-0",
-          "pb-20 md:bottom-0 md:left-[var(--app-sidebar-width)] md:pb-0",
+          "md:left-[var(--app-sidebar-width)]",
           className,
         )}
         style={APP_SHELL_CSS_VARS}

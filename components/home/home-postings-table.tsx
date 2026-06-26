@@ -10,10 +10,10 @@ import { safeExternalHref } from "@/lib/url";
 import { cn } from "@/lib/utils";
 import { HOME_ROW_BORDER, HOME_ROW_HOVER } from "@/components/home/home-section-styles";
 
-export const HOME_POSTING_ROW_CLASS = "h-[2.25rem] overflow-hidden";
+export const HOME_POSTING_ROW_CLASS = "min-h-[2.25rem] overflow-hidden lg:h-[2.25rem]";
 export const HOME_POSTING_ROW_FLEX_CLASS = "h-full min-h-0 overflow-hidden";
 
-/** Fixed row height — panels size from slot count × this value, not flex ratios. */
+/** Fixed row height on desktop — panels size from slot count × this value. */
 export const HOME_POSTING_ROW_HEIGHT = "2.25rem";
 
 export function homePostingsTableBodyHeight(slotCount: number): string {
@@ -39,6 +39,7 @@ const HOME_HEADER_ICONS: Record<string, LucideIcon> = {
 export function HomeTableHeaderCell({ label, className }: { label: string; className?: string }) {
   const Icon = HOME_HEADER_ICONS[label];
   const centered = label === "Season";
+
   return (
     <div className={cn(HEADER_CELL, centered && "justify-center", className)}>
       <span
@@ -47,9 +48,7 @@ export function HomeTableHeaderCell({ label, className }: { label: string; class
           centered && "justify-center",
         )}
       >
-        {Icon ? (
-          <Icon size={14} strokeWidth={1.75} className="shrink-0 text-muted-foreground/70" aria-hidden />
-        ) : null}
+        <Icon size={14} strokeWidth={1.75} className="shrink-0 text-muted-foreground/70" aria-hidden />
         {label}
       </span>
     </div>
@@ -64,6 +63,48 @@ export function HomeTableBodyCell({
   className?: string;
 }) {
   return <div className={cn(BODY_CELL, className)}>{children}</div>;
+}
+
+function HomePostingRowMobile({ posting }: { posting: FeedPosting }) {
+  const href = safeExternalHref(posting.url);
+  const companySlug = parseCompanySlugFromSourceId(posting.sourceId);
+
+  const content = (
+    <>
+      <CompanyLogo
+        company={posting.company}
+        companySlug={companySlug}
+        logoAssetKey={posting.companyLogoAssetKey}
+        websiteUrl={posting.companyWebsiteUrl}
+        size={32}
+        lazy
+      />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-foreground">{posting.company}</p>
+        <p className="truncate text-xs text-foreground/80">{posting.title}</p>
+      </div>
+      {posting.season ? (
+        <SeasonBadge season={posting.season} variant="plain" className="shrink-0" />
+      ) : null}
+    </>
+  );
+
+  const rowClass = cn(
+    "flex w-full min-w-0 items-center gap-3 overflow-hidden px-4 py-3 text-left",
+    HOME_ROW_HOVER,
+  );
+
+  if (href) {
+    return (
+      <li className={HOME_ROW_BORDER}>
+        <a href={href} target="_blank" rel="noopener noreferrer" className={rowClass}>
+          {content}
+        </a>
+      </li>
+    );
+  }
+
+  return <li className={cn(rowClass, HOME_ROW_BORDER)}>{content}</li>;
 }
 
 function CompanyCell({ posting }: { posting: FeedPosting }) {
@@ -113,7 +154,13 @@ function SeasonCell({ posting }: { posting: FeedPosting }) {
   );
 }
 
-export function HomePostingRow({ posting, flexHeight }: { posting: FeedPosting; flexHeight?: boolean }) {
+function HomePostingRowDesktop({
+  posting,
+  flexHeight,
+}: {
+  posting: FeedPosting;
+  flexHeight?: boolean;
+}) {
   const href = safeExternalHref(posting.url);
 
   const row = (
@@ -147,13 +194,32 @@ export function HomePostingRow({ posting, flexHeight }: { posting: FeedPosting; 
   );
 }
 
+export function HomePostingRow({
+  posting,
+  flexHeight,
+  isWideLayout,
+}: {
+  posting: FeedPosting;
+  flexHeight?: boolean;
+  isWideLayout: boolean;
+}) {
+  if (!isWideLayout) {
+    return <HomePostingRowMobile posting={posting} />;
+  }
+  return <HomePostingRowDesktop posting={posting} flexHeight={flexHeight} />;
+}
+
 export function HomeEmptyPostingRow({
   className,
   flexHeight,
+  isWideLayout,
 }: {
   className?: string;
   flexHeight?: boolean;
+  isWideLayout: boolean;
 }) {
+  if (!isWideLayout) return null;
+
   return (
     <li
       aria-hidden

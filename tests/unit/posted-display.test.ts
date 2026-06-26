@@ -4,7 +4,6 @@ import test from "node:test";
 import {
   resolveEffectivePostedUnix,
   resolvePostedDisplay,
-  resolvePathwayNewUnix,
   toUnixSeconds,
 } from "@/lib/feed/posted-display";
 
@@ -31,15 +30,6 @@ test("resolvePostedDisplay uses posted_at", () => {
   const display = resolvePostedDisplay(row);
   assert.equal(display.kind, "posted");
   assert.equal(display.unixSeconds, POSTED_AT_UNIX);
-});
-
-test("resolvePathwayNewUnix matches effective posted unix", () => {
-  const row = {
-    first_seen_at: FIRST_SEEN,
-    posted_at: POSTED_AT,
-  };
-
-  assert.equal(resolvePathwayNewUnix(row), resolveEffectivePostedUnix(row));
 });
 
 test("resolvePostedDisplay falls back to first_seen_at when posted_at is invalid", () => {

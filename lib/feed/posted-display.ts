@@ -19,10 +19,6 @@ export function toUnixSeconds(iso: string | null | undefined): number {
   return Number.isFinite(ms) ? Math.floor(ms / 1000) : 0;
 }
 
-export function resolvePathwayNewUnix(row: PostedDateRowFields): number {
-  return resolveEffectivePostedUnix(row);
-}
-
 /** Sort order — user-facing posted/reposted time, falling back to first scrape. */
 export function resolveEffectivePostedUnix(row: PostedDateRowFields): number {
   return toUnixSeconds(row.posted_at) || toUnixSeconds(row.first_seen_at);

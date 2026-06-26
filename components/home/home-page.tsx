@@ -52,22 +52,23 @@ export function HomePage({
     hotHeaderRef,
     alertActivityHeaderRef,
     postingTableHeaderRef,
+    isWideLayout,
   } = useHomeDashboardLayout(recentTotal, savedTotal, hotCompaniesTotal, alertActivityTotal);
 
   return (
-    <PageShell className="flex h-full min-h-0 flex-col overflow-hidden">
-      <section className="flex h-full min-h-0 flex-col bg-card">
+    <PageShell className="flex min-h-0 flex-col overflow-x-hidden overflow-y-auto lg:h-full lg:overflow-hidden">
+      <section className="flex min-h-0 flex-col bg-card max-lg:min-w-0 max-lg:overflow-x-hidden lg:h-full lg:overflow-hidden">
         <header className={HOME_PIPELINE_RAIL}>
           <HomeBriefingCard seasonSnapshot={seasonSnapshot} />
         </header>
 
         <div
           ref={gridRef}
-          className="grid min-h-0 flex-1 items-stretch lg:grid-cols-[minmax(0,1.15fr)_minmax(11rem,0.62fr)]"
+          className="grid min-h-0 flex-1 items-stretch max-lg:min-w-0 max-lg:overflow-x-hidden lg:grid-cols-[minmax(0,1.15fr)_minmax(11rem,0.62fr)]"
         >
           <div
             ref={leftColumnRef}
-            className="flex h-full min-h-0 flex-col lg:border-r lg:border-border"
+            className="flex min-h-0 flex-col max-lg:min-w-0 max-lg:overflow-x-hidden lg:h-full lg:border-r lg:border-border"
           >
             <HomeRecentPostingsPanel
               postings={recentPostings.slice(0, freshSlotCount)}
@@ -76,6 +77,7 @@ export function HomePage({
               headerRef={recentHeaderRef}
               tableHeaderRef={postingTableHeaderRef}
               bodyHeightPx={recentBodyHeightPx}
+              isWideLayout={isWideLayout}
               splitBelow={savedTotal > 0}
             />
             {savedTotal > 0 ? (
@@ -83,6 +85,7 @@ export function HomePage({
                 postings={savedPostings.slice(0, savedSlotCount)}
                 slotCount={savedSlotCount}
                 savedTotal={savedTotal}
+                isWideLayout={isWideLayout}
                 splitAbove
                 headerRef={savedHeaderRef}
                 bodyHeightPx={savedBodyHeightPx}
@@ -93,11 +96,12 @@ export function HomePage({
           <aside
             ref={rightColumnRef}
             aria-label="Market sidebar"
-            className="flex h-full min-h-0 flex-col"
+            className="flex min-h-0 flex-col max-lg:min-w-0 max-lg:overflow-x-hidden lg:h-full"
           >
             <HomeHotCompaniesPanel
               companies={hotCompanies.slice(0, hotCompanySlotCount)}
               slotCount={hotCompanySlotCount}
+              isWideLayout={isWideLayout}
               headerRef={hotHeaderRef}
               bodyHeightPx={hotCompanyBodyHeightPx}
               splitBelow={alertActivityTotal > 0}
@@ -105,8 +109,8 @@ export function HomePage({
             {alertActivityTotal > 0 ? (
               <HomeAlertActivityPanel
                 rows={alertActivity.slice(0, alertActivitySlotCount)}
-                allRows={alertActivity}
                 slotCount={alertActivitySlotCount}
+                isWideLayout={isWideLayout}
                 splitAbove
                 headerRef={alertActivityHeaderRef}
                 bodyHeightPx={alertActivityBodyHeightPx}

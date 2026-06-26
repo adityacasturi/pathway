@@ -49,7 +49,6 @@ test("buildTrackApplicationFormData joins feed posting locations", () => {
     hasRemote: true,
     season: "Fall",
     datePosted: 1_700_000_000,
-    pathwayNewUnix: 1_700_000_000,
     postedDisplay: {
       kind: "added",
       unixSeconds: 1_700_000_000,

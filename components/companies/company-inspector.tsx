@@ -14,7 +14,7 @@ import { SeasonDot, SeasonFilterSection } from "@/components/season-filter-secti
 import { SearchInput } from "@/components/search-input";
 import { MotionStaggerItem, MotionStaggerList } from "@/components/design-system/motion-stagger";
 import { SectionStack } from "@/components/design-system/surface";
-import { DataToolbar, FilterPill } from "@/components/design-system/toolbar";
+import { FilterPill } from "@/components/design-system/toolbar";
 import { formatCountryCode } from "@/lib/feed/country-filter";
 import type { CountryFilterOption } from "@/lib/feed/country-filter";
 import type { FeedSeason } from "@/lib/feed/types";
@@ -26,7 +26,7 @@ import { formatCompactLocationSegments } from "@/lib/feed/us-locations";
 import type { DiscoverCompanyCard, ScrapedPostingRow } from "@/lib/discover/types";
 import { safeExternalHref } from "@/lib/url";
 import { useMounted } from "@/lib/ui/use-mounted";
-import { UI_COUNT_BADGE } from "@/lib/ui/selection-styles";
+import { UI_TOOLBAR_FILTER_COUNT } from "@/lib/ui/selection-styles";
 import { cn } from "@/lib/utils";
 
 function CompanyInspectorMetadata({ company }: { company: DiscoverCompanyCard }) {
@@ -62,12 +62,10 @@ function CompanyInspectorMetadata({ company }: { company: DiscoverCompanyCard })
 
 function CompanyInspectorPostingRow({
   posting,
-  company,
   onOpen,
   index,
 }: {
   posting: ScrapedPostingRow;
-  company: DiscoverCompanyCard;
   onOpen: () => void;
   index: number;
 }) {
@@ -86,14 +84,6 @@ function CompanyInspectorPostingRow({
         onClick={onOpen}
         className="flex w-full cursor-pointer items-center gap-3 px-5 py-2.5 text-left transition-colors hover:bg-muted/30"
       >
-        <CompanyLogo
-          company={company.name}
-          companySlug={company.slug}
-          logoAssetKey={company.logoAssetKey}
-          websiteUrl={company.websiteUrl}
-          size={40}
-          lazy
-        />
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-2">
             {postingHref ? (
@@ -126,6 +116,50 @@ function CompanyInspectorPostingRow({
         ) : null}
       </button>
     </MotionStaggerItem>
+  );
+}
+
+function CompanyInspectorFilterPanel({
+  selectedPostingSeasons,
+  onTogglePostingSeason,
+  onClearPostingSeasons,
+  postingSeasonCounts,
+  countryFilterOptions,
+  selectedPostingCountries,
+  onTogglePostingCountry,
+  onClearPostingCountries,
+  className,
+}: {
+  selectedPostingSeasons: ReadonlySet<FeedSeason>;
+  onTogglePostingSeason: (season: FeedSeason) => void;
+  onClearPostingSeasons: () => void;
+  postingSeasonCounts?: Partial<Record<FeedSeason, number>>;
+  countryFilterOptions: CountryFilterOption[];
+  selectedPostingCountries: ReadonlySet<string>;
+  onTogglePostingCountry: (code: string) => void;
+  onClearPostingCountries: () => void;
+  className?: string;
+}) {
+  return (
+    <SectionStack className={className}>
+      <SeasonFilterSection
+        compact
+        selected={selectedPostingSeasons}
+        onToggle={onTogglePostingSeason}
+        onClear={onClearPostingSeasons}
+        counts={postingSeasonCounts}
+        chipClassName="h-7 px-2.5 text-[12px]"
+      />
+      <CountryFilterSection
+        compact
+        showFlags
+        options={countryFilterOptions}
+        selected={selectedPostingCountries}
+        onToggle={onTogglePostingCountry}
+        onClear={onClearPostingCountries}
+        chipClassName="h-7 px-2.5 text-[12px]"
+      />
+    </SectionStack>
   );
 }
 
@@ -174,6 +208,7 @@ export function CompanyInspector({
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filtersRef = useRef<HTMLDivElement | null>(null);
+  const mobileFilterPanelRef = useRef<HTMLDivElement | null>(null);
   const mounted = useMounted();
   const postingActiveFilterCount =
     selectedPostingSeasons.size + selectedPostingCountries.size;
@@ -184,7 +219,9 @@ export function CompanyInspector({
   useEffect(() => {
     function onPointerDown(event: PointerEvent) {
       if (!filtersRef.current?.contains(event.target as Node)) {
-        setFiltersOpen(false);
+        if (!mobileFilterPanelRef.current?.contains(event.target as Node)) {
+          setFiltersOpen(false);
+        }
       }
     }
     if (!filtersOpen) return;
@@ -251,56 +288,60 @@ export function CompanyInspector({
       {postingsAvailable && postingsAvailable.length > 0 ? (
         <div className="shrink-0 border-b border-border">
           <div className="px-5 py-3">
-            <DataToolbar
-              leading={
-                <div className="[&_input]:h-8 [&_input]:text-sm">
-                  <SearchInput
-                    value={postingQuery}
-                    onChange={onPostingQueryChange}
-                    placeholder="Search role or location…"
+            <div className="relative flex items-center gap-2">
+              <div className="min-w-0 flex-1 [&_input]:h-8 [&_input]:text-sm">
+                <SearchInput
+                  value={postingQuery}
+                  onChange={onPostingQueryChange}
+                  placeholder="Search role or location…"
+                />
+              </div>
+              <div ref={filtersRef} className="relative shrink-0">
+                <FilterPill
+                  active={filtersOpen || postingActiveFilterCount > 0}
+                  onClick={() => setFiltersOpen((value) => !value)}
+                  aria-expanded={filtersOpen}
+                  className="rounded-md"
+                >
+                  <ListFilter size={14} strokeWidth={1.75} />
+                  Filter
+                  {postingActiveFilterCount > 0 ? (
+                    <span className={UI_TOOLBAR_FILTER_COUNT}>{postingActiveFilterCount}</span>
+                  ) : null}
+                </FilterPill>
+                {filtersOpen ? (
+                  <CompanyInspectorFilterPanel
+                    selectedPostingSeasons={selectedPostingSeasons}
+                    onTogglePostingSeason={onTogglePostingSeason}
+                    onClearPostingSeasons={onClearPostingSeasons}
+                    postingSeasonCounts={postingSeasonCounts}
+                    countryFilterOptions={countryFilterOptions}
+                    selectedPostingCountries={selectedPostingCountries}
+                    onTogglePostingCountry={onTogglePostingCountry}
+                    onClearPostingCountries={onClearPostingCountries}
+                    className="absolute right-0 top-[calc(100%+6px)] z-[90] hidden w-[min(22rem,calc(100vw-2.5rem))] shadow-sm xl:block"
+                  />
+                ) : null}
+              </div>
+              {filtersOpen ? (
+                <div
+                  ref={mobileFilterPanelRef}
+                  className="absolute right-0 top-full z-[90] mt-1.5 w-[min(22rem,calc(100vw-2rem))] xl:hidden"
+                >
+                  <CompanyInspectorFilterPanel
+                    selectedPostingSeasons={selectedPostingSeasons}
+                    onTogglePostingSeason={onTogglePostingSeason}
+                    onClearPostingSeasons={onClearPostingSeasons}
+                    postingSeasonCounts={postingSeasonCounts}
+                    countryFilterOptions={countryFilterOptions}
+                    selectedPostingCountries={selectedPostingCountries}
+                    onTogglePostingCountry={onTogglePostingCountry}
+                    onClearPostingCountries={onClearPostingCountries}
+                    className="shadow-sm"
                   />
                 </div>
-              }
-              trailing={
-                <div ref={filtersRef} className="relative">
-                  <FilterPill
-                    active={filtersOpen || postingActiveFilterCount > 0}
-                    onClick={() => setFiltersOpen((value) => !value)}
-                    aria-expanded={filtersOpen}
-                    className="rounded-md"
-                  >
-                    <ListFilter size={14} strokeWidth={1.75} />
-                    Filter
-                    {postingActiveFilterCount > 0 ? (
-                      <span className={UI_COUNT_BADGE}>
-                        {postingActiveFilterCount}
-                      </span>
-                    ) : null}
-                  </FilterPill>
-                  {filtersOpen ? (
-                    <SectionStack className="absolute right-0 top-[calc(100%+6px)] z-[90] w-[min(22rem,calc(100vw-2.5rem))] shadow-sm">
-                      <SeasonFilterSection
-                        compact
-                        selected={selectedPostingSeasons}
-                        onToggle={onTogglePostingSeason}
-                        onClear={onClearPostingSeasons}
-                        counts={postingSeasonCounts}
-                        chipClassName="h-7 px-2.5 text-[12px]"
-                      />
-                      <CountryFilterSection
-                        compact
-                        showFlags
-                        options={countryFilterOptions}
-                        selected={selectedPostingCountries}
-                        onToggle={onTogglePostingCountry}
-                        onClear={onClearPostingCountries}
-                        chipClassName="h-7 px-2.5 text-[12px]"
-                      />
-                    </SectionStack>
-                  ) : null}
-                </div>
-              }
-            />
+              ) : null}
+            </div>
           </div>
           {hasActivePostingChips ? (
             <div className="flex flex-wrap items-center gap-1.5 border-t border-border px-5 py-2">
@@ -368,7 +409,6 @@ export function CompanyInspector({
                 key={posting.id}
                 index={index}
                 posting={posting}
-                company={company}
                 onOpen={() => onOpenPosting(posting)}
               />
             ))}

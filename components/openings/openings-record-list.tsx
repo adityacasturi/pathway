@@ -75,12 +75,13 @@ interface Props {
   hasActiveFilters: boolean;
   searchQuery: string;
   loadMoreRef?: RefObject<HTMLDivElement | null>;
+  desktopLoadMoreRef?: RefObject<HTMLDivElement | null>;
+  mobileLoadMoreRef?: RefObject<HTMLDivElement | null>;
+  listScrollRef?: RefObject<HTMLDivElement | null>;
   hasMoreRows?: boolean;
   sortKey: OpeningsSortKey | null;
   sortDirection: OpeningsSortDirection;
   onSortChange: (key: OpeningsSortKey) => void;
-  isPostingNew: (posting: FeedPosting) => boolean;
-  trackedIdSet: Set<string>;
   selectedId?: string | null;
   onOpen: (posting: FeedPosting) => void;
 }
@@ -91,15 +92,18 @@ export function OpeningsRecordList({
   hasActiveFilters,
   searchQuery,
   loadMoreRef,
+  desktopLoadMoreRef,
+  mobileLoadMoreRef,
+  listScrollRef,
   hasMoreRows = false,
   sortKey,
   sortDirection,
   onSortChange,
-  isPostingNew,
-  trackedIdSet,
   selectedId = null,
   onOpen,
 }: Props) {
+  const desktopSentinelRef = desktopLoadMoreRef ?? loadMoreRef;
+
   if (postings.length === 0) {
     return (
       <div className="flex flex-1 items-center justify-center bg-card p-8">
@@ -164,21 +168,22 @@ export function OpeningsRecordList({
           />
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div ref={listScrollRef} className="min-h-0 flex-1 overflow-y-auto">
           <MotionStaggerList as="ul">
             {postings.map((posting, index) => (
               <PostingRecordRow
                 key={posting.id}
                 index={index}
                 posting={posting}
-                isNew={isPostingNew(posting) && !trackedIdSet.has(posting.id)}
                 selected={selectedId === posting.id}
                 onOpen={() => onOpen(posting)}
                 layout="desktop"
               />
             ))}
           </MotionStaggerList>
-          {hasMoreRows ? <div ref={loadMoreRef} className="h-8" aria-hidden="true" /> : null}
+          {hasMoreRows ? (
+            <div ref={desktopSentinelRef} className="h-8" aria-hidden="true" />
+          ) : null}
         </div>
 
         <div className="shrink-0 border-t border-border bg-muted/20 px-4 py-2">
@@ -194,12 +199,16 @@ export function OpeningsRecordList({
             key={posting.id}
             index={index}
             posting={posting}
-            isNew={isPostingNew(posting) && !trackedIdSet.has(posting.id)}
             selected={selectedId === posting.id}
             onOpen={() => onOpen(posting)}
             layout="mobile"
           />
         ))}
+        {hasMoreRows ? (
+          <li>
+            <div ref={mobileLoadMoreRef} className="h-8" aria-hidden="true" />
+          </li>
+        ) : null}
       </MotionStaggerList>
     </>
   );

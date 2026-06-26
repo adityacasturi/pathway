@@ -9,7 +9,6 @@ import { AlertsSubscriptionList } from "@/components/alerts/alerts-subscription-
 import type {
   AlertCompanyOption,
   AlertSubscriptionView,
-  AlertTypeFilter,
   CuratedSectorView,
 } from "@/components/alerts/types";
 import { PageShell } from "@/components/design-system/page";
@@ -81,7 +80,6 @@ export function AlertsPage({
   const [query, setQuery] = useState("");
   const [addQuery, setAddQuery] = useState("");
   const [addPanelOpen, setAddPanelOpen] = useState(false);
-  const [typeFilter, setTypeFilter] = useState<AlertTypeFilter>("all");
   const [searchFocused, setSearchFocused] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [pendingSlug, setPendingSlug] = useState<string | null>(null);
@@ -157,15 +155,10 @@ export function AlertsPage({
     [subscriptions],
   );
 
-  const companyCount = subscriptions.filter((sub) => sub.type === "company").length;
-  const sectorCount = subscriptions.filter((sub) => sub.type === "sector").length;
 
   const filteredSubscriptions = useMemo(() => {
     const terms = getSearchTerms(query);
     const filtered = subscriptions.filter((sub) => {
-      if (typeFilter !== "all" && sub.type !== typeFilter) {
-        return false;
-      }
       if (terms.length === 0) {
         return true;
       }
@@ -173,7 +166,7 @@ export function AlertsPage({
       return terms.every((term) => haystack.includes(term));
     });
     return sortAlertSubscriptions(filtered);
-  }, [query, subscriptions, typeFilter]);
+  }, [query, subscriptions]);
 
   const bundleSectors = useMemo(
     () => filterSectorsByQuery(curatedSectors, addQuery),
@@ -344,11 +337,6 @@ export function AlertsPage({
                 onQueryChange={setQuery}
                 searchFocused={searchFocused}
                 onSearchFocusChange={setSearchFocused}
-                typeFilter={typeFilter}
-                onTypeFilterChange={setTypeFilter}
-                companyCount={companyCount}
-                sectorCount={sectorCount}
-                totalCount={subscriptions.length}
                 globalFilters={globalFilterView}
                 onGlobalFiltersChange={setGlobalFilterView}
                 globalFiltersPending={isGlobalFiltersPending}

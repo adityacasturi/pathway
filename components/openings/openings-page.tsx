@@ -143,22 +143,15 @@ export function OpeningsPage({
     });
   }, [router]);
 
-  const [lastSeen, setLastSeen] = useState<number | null>(
-    storedInitialFeedPrefs.preferences.lastSeenUnix,
-  );
   const persistedSelectedSeasonsKey = useRef(
     serializeSelectedSeasons(storedInitialFeedPrefs.preferences.selectedSeasons),
   );
 
   useEffect(() => {
     const patch: {
-      lastSeenUnix?: number;
       selectedSeasons?: FeedSeason[];
     } = {};
 
-    if (storedInitialFeedPrefs.preferences.lastSeenUnix > initialFeedPrefs.lastSeenUnix) {
-      patch.lastSeenUnix = storedInitialFeedPrefs.preferences.lastSeenUnix;
-    }
     const storedSeasons = storedInitialFeedPrefs.preferences.selectedSeasons;
     const initialSeasons = initialFeedPrefs.selectedSeasons;
     if (
@@ -177,14 +170,7 @@ export function OpeningsPage({
     } else if (storedInitialFeedPrefs.hasStoredPreferences) {
       clearStoredFeedViewPreferences(window.localStorage);
     }
-  }, [initialFeedPrefs.lastSeenUnix, initialFeedPrefs.selectedSeasons, storedInitialFeedPrefs]);
-
-  useEffect(() => {
-    return () => {
-      const unix = Math.floor(Date.now() / 1000);
-      void updateFeedViewPreferences({ lastSeenUnix: unix });
-    };
-  }, []);
+  }, [initialFeedPrefs.selectedSeasons, storedInitialFeedPrefs]);
 
   useEffect(() => {
     const nextKey = serializeSelectedSeasons([...selectedSeasons]);
@@ -371,39 +357,6 @@ export function OpeningsPage({
     });
   }, [filtered, sortKey, sortDirection]);
 
-  const previewNewBadge =
-    process.env.NODE_ENV === "development" && searchParams.get("previewNew") === "1";
-
-  const previewNewIds = useMemo(() => {
-    if (!previewNewBadge) return null;
-    const ids = new Set<string>();
-    for (const posting of sorted) {
-      if (trackedIdSet.has(posting.id)) continue;
-      ids.add(posting.id);
-      if (ids.size >= 5) break;
-    }
-    return ids;
-  }, [previewNewBadge, sorted, trackedIdSet]);
-
-  const isPostingNew = useCallback(
-    (p: FeedPosting): boolean =>
-      previewNewIds?.has(p.id) === true ||
-      (lastSeen != null && lastSeen > 0 && p.pathwayNewUnix > lastSeen),
-    [lastSeen, previewNewIds],
-  );
-
-  const newCount = useMemo(() => {
-    if (previewNewIds) return previewNewIds.size;
-    if (lastSeen == null) return 0;
-    let count = 0;
-    for (const p of postings) {
-      if (p.pathwayNewUnix > lastSeen && isFeedPostingVisibleByState(p, visibilityState)) {
-        count++;
-      }
-    }
-    return count;
-  }, [postings, lastSeen, previewNewIds, visibilityState]);
-
   const listResetKey = `${deferredQuery}|${[...selectedSeasons].sort().join(",")}|${[...selectedCountries].sort().join(",")}|${showSavedOnly}|${recentDays ?? ""}|${sortKey ?? ""}|${sortDirection}`;
   const [visibleState, setVisibleState] = useState({
     key: listResetKey,
@@ -415,23 +368,33 @@ export function OpeningsPage({
   const activeFilterCount =
     selectedSeasons.size + selectedCountries.size + (showSavedOnly ? 1 : 0) + (recentDays != null ? 1 : 0);
 
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const listScrollRef = useRef<HTMLDivElement | null>(null);
+  const desktopLoadMoreRef = useRef<HTMLDivElement | null>(null);
+  const mobileLoadMoreRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (effectiveVisibleCount >= sorted.length) return;
-    const el = sentinelRef.current;
-    if (!el) return;
+
+    const sentinel = [desktopLoadMoreRef.current, mobileLoadMoreRef.current].find(
+      (el) => el !== null && el.getClientRects().length > 0,
+    );
+    if (!sentinel) return;
+
+    const scrollRoot = listScrollRef.current;
+    const root =
+      scrollRoot && scrollRoot.getClientRects().length > 0 ? scrollRoot : null;
+
     const io = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting) {
+        if (entries.some((entry) => entry.isIntersecting)) {
           setVisibleState({
             key: listResetKey,
             count: Math.min(effectiveVisibleCount + LOAD_BATCH, sorted.length),
           });
         }
       },
-      { rootMargin: "800px 0px" },
+      { root, rootMargin: root ? "200px 0px" : "800px 0px" },
     );
-    io.observe(el);
+    io.observe(sentinel);
     return () => io.disconnect();
   }, [effectiveVisibleCount, listResetKey, sorted.length]);
 
@@ -529,13 +492,6 @@ export function OpeningsPage({
     [quickTrackEnabled, onApplicationCreated, router],
   );
 
-  const markAllSeen = useCallback(() => {
-    const now = Math.floor(Date.now() / 1000);
-    setLastSeen(now);
-    void updateFeedViewPreferences({ lastSeenUnix: now });
-    toast.success("New postings marked seen");
-  }, []);
-
   const openPosting = useCallback((posting: FeedPosting) => {
     setSelectedPostingId((current) => (current === posting.id ? null : posting.id));
   }, []);
@@ -578,8 +534,6 @@ export function OpeningsPage({
             onClearCountries={() => setSelectedCountries(new Set())}
             showSavedOnly={showSavedOnly}
             onShowSavedOnlyChange={setShowSavedOnly}
-            newCount={newCount}
-            onMarkAllSeen={markAllSeen}
             isRefreshing={isRefreshing}
             onRefresh={onRefresh}
           />
@@ -606,13 +560,13 @@ export function OpeningsPage({
                 query || selectedSeasons.size > 0 || selectedCountries.size > 0 || showSavedOnly,
               )}
               searchQuery={query}
-              loadMoreRef={sentinelRef}
+              listScrollRef={listScrollRef}
+              desktopLoadMoreRef={desktopLoadMoreRef}
+              mobileLoadMoreRef={mobileLoadMoreRef}
               hasMoreRows={effectiveVisibleCount < sorted.length}
               sortKey={sortKey}
               sortDirection={sortDirection}
               onSortChange={handleSortChange}
-              isPostingNew={isPostingNew}
-              trackedIdSet={trackedIdSet}
               selectedId={selectedPosting?.id ?? null}
               onOpen={openPosting}
             />

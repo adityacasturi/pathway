@@ -19,7 +19,6 @@ function posting(id: string, datePosted: number): FeedPosting {
     hasRemote: false,
     season: null,
     datePosted,
-    pathwayNewUnix: datePosted,
     postedDisplay: { kind: "posted", unixSeconds: datePosted },
     dateUpdated: datePosted,
   };

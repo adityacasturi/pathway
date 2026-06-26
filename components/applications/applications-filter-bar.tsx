@@ -13,7 +13,7 @@ import { FilterChip } from "@/components/ui/filter-chip";
 import { Button } from "@/components/ui/button";
 import { ToolbarButton } from "@/components/ui/toolbar-button";
 import { FilterPill } from "@/components/design-system/toolbar";
-import { UI_COUNT_BADGE } from "@/lib/ui/selection-styles";
+import { UI_TOOLBAR_FILTER_COUNT } from "@/lib/ui/selection-styles";
 import { SectionStack, Surface } from "@/components/design-system/surface";
 import { StatusDot, statusSurfaceStyle } from "@/components/status-badge";
 import { countApplicationsByReachedStatus } from "@/lib/applications/pipeline-counts";
@@ -31,8 +31,6 @@ type StatusFilter = "all" | Status;
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "company", label: "Company" },
   { key: "role", label: "Role" },
-  { key: "location", label: "Location" },
-  { key: "season", label: "Season" },
   { key: "status", label: "Status" },
   { key: "last_activity", label: "Last updated" },
 ];
@@ -96,6 +94,8 @@ export function ApplicationsFilterBar({
   const sortRef = useRef<HTMLDivElement | null>(null);
   const filterRef = useRef<HTMLDivElement | null>(null);
   const addRef = useRef<HTMLDivElement | null>(null);
+  const mobileActionsRef = useRef<HTMLDivElement | null>(null);
+  const mobileFilterPanelRef = useRef<HTMLDivElement | null>(null);
   const activeSort = sortKey ?? "last_activity";
   const statusCounts = useMemo(
     () => countApplicationsByReachedStatus(applications),
@@ -116,7 +116,9 @@ export function ApplicationsFilterBar({
         setSortOpen(false);
       }
       if (!filterRef.current?.contains(event.target as Node)) {
-        setFilterOpen(false);
+        if (!mobileFilterPanelRef.current?.contains(event.target as Node)) {
+          setFilterOpen(false);
+        }
       }
       if (!addRef.current?.contains(event.target as Node)) {
         setAddOpen(false);
@@ -135,64 +137,8 @@ export function ApplicationsFilterBar({
 
   return (
     <div className={cn("relative shrink-0 bg-card", searchFocused && "z-30")}>
-      <div className="flex flex-wrap items-center gap-2.5 border-b border-border px-5 py-3 md:px-4">
-        <div ref={addRef} className="relative">
-          <Button
-            type="button"
-            size="sm"
-            aria-expanded={addOpen}
-            aria-haspopup="menu"
-            className="h-8 shrink-0 gap-1 rounded-md px-2.5 text-sm"
-            onClick={() => {
-              setAddOpen((open) => !open);
-              setSortOpen(false);
-              setFilterOpen(false);
-            }}
-          >
-            <Plus size={14} strokeWidth={2} aria-hidden />
-            Add
-            <ChevronDown
-              size={14}
-              strokeWidth={2}
-              className={cn("opacity-80 transition-transform", addOpen && "rotate-180")}
-              aria-hidden
-            />
-          </Button>
-          {addOpen ? (
-            <Surface
-              padding="p-1.5"
-              className="absolute left-0 top-full z-40 mt-1.5 w-56 shadow-sm"
-            >
-              <ul role="menu" aria-label="Add application" className="space-y-0.5">
-                <AddMenuItem
-                  icon={<PenLine size={15} strokeWidth={1.75} aria-hidden />}
-                  label="Add manually"
-                  hint="Enter company and role"
-                  onClick={() => {
-                    onAddApplication();
-                    setAddOpen(false);
-                  }}
-                />
-                <AddMenuItem
-                  icon={<Radio size={15} strokeWidth={1.75} aria-hidden />}
-                  label="Browse openings"
-                  hint="Track from live roles"
-                  href="/openings"
-                  onNavigate={() => setAddOpen(false)}
-                />
-                <AddMenuItem
-                  icon={<Compass size={15} strokeWidth={1.75} aria-hidden />}
-                  label="Browse companies"
-                  hint="Pick a company first"
-                  href="/companies"
-                  onNavigate={() => setAddOpen(false)}
-                />
-              </ul>
-            </Surface>
-          ) : null}
-        </div>
-
-        <div className="min-w-[10rem] flex-1 [&_input]:h-8 [&_input]:rounded-md [&_input]:text-sm">
+      <div className="flex flex-col gap-2 border-b border-border px-4 py-2 md:flex-row md:flex-wrap md:items-center md:gap-2.5 md:py-3">
+        <div className="order-1 min-w-0 w-full md:order-2 md:min-w-[10rem] md:flex-1 [&_input]:h-8 [&_input]:rounded-md [&_input]:text-sm">
           <SearchInput
             ref={searchRef}
             value={query}
@@ -202,17 +148,120 @@ export function ApplicationsFilterBar({
           />
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
-          <div ref={sortRef} className="relative">
+        <div
+          ref={mobileActionsRef}
+          className="order-2 relative grid w-full grid-cols-3 gap-2 md:contents"
+        >
+          <div ref={addRef} className="relative min-w-0 md:order-1">
+            <Button
+              type="button"
+              size="sm"
+              aria-expanded={addOpen}
+              aria-haspopup="menu"
+              className="h-8 w-full gap-1 rounded-md px-2 text-sm"
+              onClick={() => {
+                setAddOpen((open) => !open);
+                setSortOpen(false);
+                setFilterOpen(false);
+              }}
+            >
+              <Plus size={14} strokeWidth={2} aria-hidden />
+              Add
+              <ChevronDown
+                size={14}
+                strokeWidth={2}
+                className={cn("opacity-80 transition-transform", addOpen && "rotate-180")}
+                aria-hidden
+              />
+            </Button>
+            {addOpen ? (
+              <Surface
+                padding="p-1.5"
+                className="absolute left-0 top-full z-40 mt-1.5 w-56 shadow-sm"
+              >
+                <ul role="menu" aria-label="Add application" className="space-y-0.5">
+                  <AddMenuItem
+                    icon={<PenLine size={15} strokeWidth={1.75} aria-hidden />}
+                    label="Add manually"
+                    hint="Enter company and role"
+                    onClick={() => {
+                      onAddApplication();
+                      setAddOpen(false);
+                    }}
+                  />
+                  <AddMenuItem
+                    icon={<Radio size={15} strokeWidth={1.75} aria-hidden />}
+                    label="Browse openings"
+                    hint="Track from live roles"
+                    href="/openings"
+                    onNavigate={() => setAddOpen(false)}
+                  />
+                  <AddMenuItem
+                    icon={<Compass size={15} strokeWidth={1.75} aria-hidden />}
+                    label="Browse companies"
+                    hint="Pick a company first"
+                    href="/companies"
+                    onNavigate={() => setAddOpen(false)}
+                  />
+                </ul>
+              </Surface>
+            ) : null}
+          </div>
+
+          <div ref={filterRef} className="relative min-w-0 md:order-4 md:flex-none">
+            <ToolbarButton
+              active={filterOpen || activeFilterCount > 0}
+              aria-expanded={filterOpen}
+              aria-label={
+                activeFilterCount > 0 ? `Filter, ${activeFilterCount} active` : "Filter"
+              }
+              className="h-8 w-full justify-center gap-1.5 px-2 md:w-auto md:justify-start md:gap-1.5 md:px-2.5"
+              onClick={() => {
+                setFilterOpen((open) => !open);
+                setSortOpen(false);
+              }}
+            >
+              <ListFilter size={14} strokeWidth={1.75} className="shrink-0 opacity-80" />
+              Filter
+              {activeFilterCount > 0 ? (
+                <span className={UI_TOOLBAR_FILTER_COUNT}>{activeFilterCount}</span>
+              ) : null}
+            </ToolbarButton>
+            {filterOpen ? (
+              <ApplicationsFilterPanel
+                className="absolute right-0 top-full z-40 mt-1.5 hidden w-[min(22rem,calc(100vw-2.5rem))] shadow-sm md:block"
+                statusCounts={statusCounts}
+                statusFilter={statusFilter}
+                onStatusFilterChange={onStatusFilterChange}
+                selectedSeasons={selectedSeasons}
+                onToggleSeason={onToggleSeason}
+                onClearSeasons={onClearSeasons}
+                seasonCounts={seasonCounts}
+                countryFilterOptions={countryFilterOptions}
+                selectedCountries={selectedCountries}
+                onToggleCountry={onToggleCountry}
+                onClearCountries={onClearCountries}
+                hasApplications={hasApplications}
+                hideRejected={hideRejected}
+                onHideRejectedChange={onHideRejectedChange}
+                hideArchived={hideArchived}
+                onHideArchivedChange={onHideArchivedChange}
+              />
+            ) : null}
+          </div>
+
+          <div ref={sortRef} className="relative min-w-0 md:order-3 md:flex-none">
             <ToolbarButton
               active={sortOpen || sortKey !== null}
               aria-expanded={sortOpen}
+              aria-label="Sort"
+              className="h-8 w-full justify-center gap-1.5 px-2 md:w-auto md:justify-start md:gap-1.5 md:px-2.5"
               onClick={() => {
                 setSortOpen((open) => !open);
                 setFilterOpen(false);
               }}
             >
-              <ArrowDownUp size={14} strokeWidth={1.75} className="opacity-80" />
+              <ArrowDownUp size={14} strokeWidth={1.75} className="shrink-0 opacity-80" />
               Sort
             </ToolbarButton>
             {sortOpen ? (
@@ -253,87 +302,37 @@ export function ApplicationsFilterBar({
             ) : null}
           </div>
 
-          <div ref={filterRef} className="relative">
-            <ToolbarButton
-              active={filterOpen || activeFilterCount > 0}
-              aria-expanded={filterOpen}
-              onClick={() => {
-                setFilterOpen((open) => !open);
-                setSortOpen(false);
-              }}
+          {filterOpen ? (
+            <div
+              ref={mobileFilterPanelRef}
+              className="absolute right-0 top-full z-40 mt-1.5 w-[min(22rem,calc(100vw-2rem))] md:hidden"
             >
-              <ListFilter size={14} strokeWidth={1.75} className="opacity-80" />
-              Filter
-              {activeFilterCount > 0 ? (
-                <span className={UI_COUNT_BADGE}>{activeFilterCount}</span>
-              ) : null}
-            </ToolbarButton>
-            {filterOpen ? (
-              <SectionStack className="absolute right-0 top-full z-40 mt-1.5 w-[min(22rem,calc(100vw-2.5rem))] shadow-sm">
-                <FilterSection title="Pipeline stage" compact>
-                  <div className="flex flex-wrap gap-2">
-                    <PipelineStageChip
-                      status="applied"
-                      count={statusCounts.applied}
-                      active={statusFilter === "all" || statusFilter === "applied"}
-                      onClick={() => onStatusFilterChange("all")}
-                    />
-                    {PIPELINE_FILTER_STATUSES.map((status) => (
-                      <PipelineStageChip
-                        key={status}
-                        status={status}
-                        count={statusCounts[status]}
-                        active={statusFilter === status}
-                        onClick={() =>
-                          onStatusFilterChange(statusFilter === status ? "all" : status)
-                        }
-                      />
-                    ))}
-                  </div>
-                </FilterSection>
-                <SeasonFilterSection
-                  compact
-                  selected={selectedSeasons}
-                  onToggle={onToggleSeason}
-                  onClear={onClearSeasons}
-                  counts={seasonCounts}
-                  chipClassName="h-7 px-2.5 text-[12px]"
-                />
-                <CountryFilterSection
-                  compact
-                  showFlags
-                  options={countryFilterOptions}
-                  selected={selectedCountries}
-                  onToggle={onToggleCountry}
-                  onClear={onClearCountries}
-                  chipClassName="h-7 px-2.5 text-[12px]"
-                />
-                {hasApplications ? (
-                  <FilterSection title="Visibility" compact>
-                    <div className="space-y-1">
-                      <FilterToggle
-                        label="Hide rejected"
-                        checked={hideRejected}
-                        onChange={onHideRejectedChange}
-                        compact
-                      />
-                      <FilterToggle
-                        label="Hide archived"
-                        checked={hideArchived}
-                        onChange={onHideArchivedChange}
-                        compact
-                      />
-                    </div>
-                  </FilterSection>
-                ) : null}
-              </SectionStack>
-            ) : null}
-          </div>
+              <ApplicationsFilterPanel
+                className="shadow-sm"
+                statusCounts={statusCounts}
+                statusFilter={statusFilter}
+                onStatusFilterChange={onStatusFilterChange}
+                selectedSeasons={selectedSeasons}
+                onToggleSeason={onToggleSeason}
+                onClearSeasons={onClearSeasons}
+                seasonCounts={seasonCounts}
+                countryFilterOptions={countryFilterOptions}
+                selectedCountries={selectedCountries}
+                onToggleCountry={onToggleCountry}
+                onClearCountries={onClearCountries}
+                hasApplications={hasApplications}
+                hideRejected={hideRejected}
+                onHideRejectedChange={onHideRejectedChange}
+                hideArchived={hideArchived}
+                onHideArchivedChange={onHideArchivedChange}
+              />
+            </div>
+          ) : null}
         </div>
       </div>
 
       {hasActiveChips ? (
-        <div className="flex flex-wrap items-center gap-1.5 border-b border-border px-5 py-2 md:px-4">
+        <div className="flex flex-wrap items-center gap-1.5 border-b border-border px-4 py-2">
           {query.trim() ? (
             <FilterPill active onClick={() => onQueryChange("")}>
               Search: {query.trim()}
@@ -400,6 +399,105 @@ function PipelineStageChip({
       className="h-7 px-2.5 text-[12px]"
       style={active ? statusSurfaceStyle(status) : undefined}
     />
+  );
+}
+
+function ApplicationsFilterPanel({
+  className,
+  statusCounts,
+  statusFilter,
+  onStatusFilterChange,
+  selectedSeasons,
+  onToggleSeason,
+  onClearSeasons,
+  seasonCounts,
+  countryFilterOptions,
+  selectedCountries,
+  onToggleCountry,
+  onClearCountries,
+  hasApplications,
+  hideRejected,
+  onHideRejectedChange,
+  hideArchived,
+  onHideArchivedChange,
+}: {
+  className?: string;
+  statusCounts: ReturnType<typeof countApplicationsByReachedStatus>;
+  statusFilter: StatusFilter;
+  onStatusFilterChange: (status: StatusFilter) => void;
+  selectedSeasons: ReadonlySet<FeedSeason>;
+  onToggleSeason: (season: FeedSeason) => void;
+  onClearSeasons: () => void;
+  seasonCounts: Partial<Record<FeedSeason, number>>;
+  countryFilterOptions: ReturnType<typeof import("@/lib/feed/country-filter").buildCountryFilterOptions>;
+  selectedCountries: Set<string>;
+  onToggleCountry: (code: string) => void;
+  onClearCountries: () => void;
+  hasApplications: boolean;
+  hideRejected: boolean;
+  onHideRejectedChange: (value: boolean) => void;
+  hideArchived: boolean;
+  onHideArchivedChange: (value: boolean) => void;
+}) {
+  return (
+    <SectionStack className={className}>
+      <FilterSection title="Pipeline stage" compact>
+        <div className="flex flex-wrap gap-2">
+          <PipelineStageChip
+            status="applied"
+            count={statusCounts.applied}
+            active={statusFilter === "all" || statusFilter === "applied"}
+            onClick={() => onStatusFilterChange("all")}
+          />
+          {PIPELINE_FILTER_STATUSES.map((status) => (
+            <PipelineStageChip
+              key={status}
+              status={status}
+              count={statusCounts[status]}
+              active={statusFilter === status}
+              onClick={() =>
+                onStatusFilterChange(statusFilter === status ? "all" : status)
+              }
+            />
+          ))}
+        </div>
+      </FilterSection>
+      <SeasonFilterSection
+        compact
+        selected={selectedSeasons}
+        onToggle={onToggleSeason}
+        onClear={onClearSeasons}
+        counts={seasonCounts}
+        chipClassName="h-7 px-2.5 text-[12px]"
+      />
+      <CountryFilterSection
+        compact
+        showFlags
+        options={countryFilterOptions}
+        selected={selectedCountries}
+        onToggle={onToggleCountry}
+        onClear={onClearCountries}
+        chipClassName="h-7 px-2.5 text-[12px]"
+      />
+      {hasApplications ? (
+        <FilterSection title="Visibility" compact>
+          <div className="space-y-1">
+            <FilterToggle
+              label="Hide rejected"
+              checked={hideRejected}
+              onChange={onHideRejectedChange}
+              compact
+            />
+            <FilterToggle
+              label="Hide archived"
+              checked={hideArchived}
+              onChange={onHideArchivedChange}
+              compact
+            />
+          </div>
+        </FilterSection>
+      ) : null}
+    </SectionStack>
   );
 }
 

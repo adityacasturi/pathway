@@ -36,7 +36,6 @@ export function scrapedPostingToFeedPosting(
     hasRemote: hasRemoteLocation(segments.length > 0 ? segments : locations),
     season: posting.season,
     datePosted: 0,
-    pathwayNewUnix: 0,
     postedDisplay: posting.postedDisplay,
     dateUpdated: 0,
   };

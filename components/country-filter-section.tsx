@@ -22,6 +22,9 @@ export function CountryFilterSection({
   dense = false,
   compact = false,
   hideLabel = false,
+  hideTitle = false,
+  unstyled = false,
+  hideAction = false,
   clearLabel = "Clear",
   alwaysShowClear = false,
 }: {
@@ -37,6 +40,9 @@ export function CountryFilterSection({
   dense?: boolean;
   compact?: boolean;
   hideLabel?: boolean;
+  hideTitle?: boolean;
+  unstyled?: boolean;
+  hideAction?: boolean;
   clearLabel?: string;
   alwaysShowClear?: boolean;
 }) {
@@ -166,16 +172,21 @@ export function CountryFilterSection({
     <FilterSection
       title="Country"
       compact={compact}
+      hideTitle={hideTitle}
+      unstyled={unstyled}
       action={
-        selected.size > 0 || alwaysShowClear
-          ? { label: clearLabel, onClick: onClear }
-          : undefined
+        hideAction
+          ? undefined
+          : selected.size > 0 || alwaysShowClear
+            ? { label: clearLabel, onClick: onClear }
+            : undefined
       }
     >
       <div
         className={cn(
-          "flex max-h-40 flex-wrap overflow-y-auto",
-          compact ? "gap-2" : "gap-2.5",
+          "flex flex-wrap",
+          unstyled ? "gap-2" : "max-h-40 overflow-y-auto",
+          !unstyled && (compact ? "gap-2" : "gap-2.5"),
         )}
       >
         {chips}

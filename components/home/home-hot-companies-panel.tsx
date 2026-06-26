@@ -13,15 +13,9 @@ import {
   HOME_SECTION_HEADER,
   HOME_SECTION_SPLIT_BELOW,
 } from "@/components/home/home-section-styles";
-import { HOME_SIDEBAR_ROW_REM } from "@/lib/home/row-budget";
 import type { HotCompany } from "@/lib/home/briefing";
+import { homeSidebarListBodyLayout } from "@/lib/home/list-body-layout";
 import { cn } from "@/lib/utils";
-
-const HOT_COMPANY_ROW_HEIGHT = `${HOME_SIDEBAR_ROW_REM}rem`;
-
-function hotCompaniesBodyHeight(slotCount: number): string {
-  return `calc(${slotCount} * ${HOT_COMPANY_ROW_HEIGHT})`;
-}
 
 export function HomeHotCompaniesPanel({
   companies,
@@ -29,26 +23,27 @@ export function HomeHotCompaniesPanel({
   splitBelow = false,
   headerRef,
   bodyHeightPx,
+  isWideLayout,
 }: {
   companies: HotCompany[];
   slotCount: number;
   splitBelow?: boolean;
   headerRef?: Ref<HTMLDivElement>;
   bodyHeightPx?: number;
+  isWideLayout: boolean;
 }) {
-  const paddingRows = Math.max(0, slotCount - companies.length);
-  const bodyHeight =
-    bodyHeightPx && bodyHeightPx > 0
-      ? `${bodyHeightPx}px`
-      : hotCompaniesBodyHeight(slotCount);
-  const flexRows = Boolean(bodyHeightPx && bodyHeightPx > 0);
+  const { style, paddingRows } = homeSidebarListBodyLayout(
+    isWideLayout,
+    slotCount,
+    companies.length,
+    bodyHeightPx,
+  );
 
   return (
     <section className={cn(HOME_SECTION, splitBelow && HOME_SECTION_SPLIT_BELOW)}>
       <div ref={headerRef} className={HOME_SECTION_HEADER}>
         <HomeSectionHeader
           title="Hot companies"
-          description="Most new roles posted in the last 7 days."
           actions={<HomeHeaderArrowLink href="/companies" label="Browse companies" />}
           className="mb-0"
         />
@@ -59,13 +54,8 @@ export function HomeHotCompaniesPanel({
       ) : (
         <MotionStaggerList
           as="ul"
-          className="grid overflow-hidden"
-          style={{
-            height: bodyHeight,
-            gridTemplateRows: flexRows
-              ? `repeat(${slotCount}, minmax(0, 1fr))`
-              : `repeat(${slotCount}, ${HOT_COMPANY_ROW_HEIGHT})`,
-          }}
+          className={cn("w-full min-w-0 max-lg:overflow-x-hidden", isWideLayout && "grid overflow-hidden")}
+          style={style}
         >
           {companies.map((company, index) => (
             <MotionStaggerItem
@@ -77,7 +67,7 @@ export function HomeHotCompaniesPanel({
               <Link
                 href={`/companies?company=${encodeURIComponent(company.slug)}`}
                 className={cn(
-                  "flex h-full min-h-0 items-center gap-3 px-5 py-2.5",
+                  "flex h-full min-h-0 w-full min-w-0 items-center gap-3 overflow-hidden px-4 py-2.5 max-lg:overflow-x-hidden lg:px-5",
                   HOME_ROW_HOVER,
                 )}
               >

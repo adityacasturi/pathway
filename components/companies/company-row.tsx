@@ -113,7 +113,7 @@ export function CompanyRow({
               <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
                 <IndustryIcon slug={company.industry} className="!size-4" />
                 <span className="truncate">{company.industryLabel}</span>
-                <span className="text-border">·</span>
+                <span className="text-foreground/45">·</span>
                 <span className="tabular-nums">{formatOpeningCount(company.openCount)}</span>
               </p>
             </div>

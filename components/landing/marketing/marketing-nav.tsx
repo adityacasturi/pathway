@@ -34,7 +34,7 @@ export function MarketingNav() {
     <header className="mkt-nav" data-scrolled={scrolled ? "true" : "false"}>
       <div className="mkt-nav-inner">
         <Wordmark className="mkt-nav-wordmark" />
-        <div className="flex items-center gap-2">
+        <div className="hidden items-center gap-2 sm:flex">
           <Link href="/login" className="public-nav-button public-nav-button-secondary">
             Sign in
           </Link>

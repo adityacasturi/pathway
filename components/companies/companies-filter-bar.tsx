@@ -56,6 +56,7 @@ export function CompaniesFilterBar({
   const [industryOpen, setIndustryOpen] = useState(false);
   const sortRef = useRef<HTMLDivElement | null>(null);
   const industryRef = useRef<HTMLDivElement | null>(null);
+  const mobileIndustryPanelRef = useRef<HTMLDivElement | null>(null);
   const activeSort = sortKey ?? "openings";
 
   const selectedIndustryLabel =
@@ -70,7 +71,9 @@ export function CompaniesFilterBar({
         setSortOpen(false);
       }
       if (!industryRef.current?.contains(event.target as Node)) {
-        setIndustryOpen(false);
+        if (!mobileIndustryPanelRef.current?.contains(event.target as Node)) {
+          setIndustryOpen(false);
+        }
       }
     }
     if (!sortOpen && !industryOpen) return;
@@ -81,8 +84,8 @@ export function CompaniesFilterBar({
   return (
     <div className={cn("relative shrink-0 bg-card", searchFocused && "z-30", className)}>
       <h1 className="sr-only">Companies</h1>
-      <div className="flex flex-wrap items-center gap-2.5 border-b border-border px-4 py-3">
-        <div className="min-w-[10rem] flex-1 [&_input]:h-8 [&_input]:rounded-md [&_input]:text-sm">
+      <div className="flex flex-col gap-2.5 border-b border-border px-4 py-3 lg:flex-row lg:flex-wrap lg:items-center">
+        <div className="w-full min-w-[10rem] lg:flex-1 [&_input]:h-8 [&_input]:rounded-md [&_input]:text-sm">
           <SearchInput
             ref={searchRef}
             value={query}
@@ -92,9 +95,14 @@ export function CompaniesFilterBar({
           />
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div
+          className={cn(
+            "relative grid w-full gap-2 lg:flex lg:w-auto lg:shrink-0 lg:items-center",
+            showIndustryFilter ? "grid-cols-3" : "grid-cols-2",
+          )}
+        >
           {showIndustryFilter ? (
-            <div ref={industryRef} className="relative lg:hidden">
+            <div ref={industryRef} className="relative min-w-0 lg:hidden">
               <ToolbarButton
                 active={industryOpen || industryFilter !== "all"}
                 aria-expanded={industryOpen}
@@ -102,110 +110,73 @@ export function CompaniesFilterBar({
                   setIndustryOpen((open) => !open);
                   setSortOpen(false);
                 }}
-                className="max-w-[11rem]"
+                className="h-8 w-full min-w-0 justify-center gap-1 px-1.5"
               >
                 <span className="truncate">{selectedIndustryLabel}</span>
                 <ChevronDown size={14} strokeWidth={1.75} className="shrink-0 opacity-70" />
               </ToolbarButton>
-              {industryOpen ? (
-                <Surface
-                  padding="p-2"
-                  className="absolute right-0 top-full z-40 mt-1.5 max-h-72 w-64 overflow-y-auto shadow-sm"
-                >
-                  <ul className="space-y-0.5">
-                    <IndustryMenuItem
-                      active={industryFilter === "all"}
-                      label="All industries"
-                      count={searchableCount}
-                      icon={<LayoutGrid className="size-3.5 shrink-0" strokeWidth={1.75} aria-hidden />}
-                      onClick={() => {
-                        onIndustryFilterChange("all");
-                        setIndustryOpen(false);
-                      }}
-                    />
-                    {industryOptions.map((option) => (
-                      <IndustryMenuItem
-                        key={option.industry}
-                        active={industryFilter === option.industry}
-                        label={option.label}
-                        count={option.count}
-                        icon={<IndustryIcon slug={option.industry} className="!size-5" />}
-                        onClick={() => {
-                          onIndustryFilterChange(option.industry);
-                          setIndustryOpen(false);
-                        }}
-                      />
-                    ))}
-                  </ul>
-                </Surface>
-              ) : null}
             </div>
           ) : null}
 
-          <div ref={sortRef} className="relative">
+          <div ref={sortRef} className="relative min-w-0">
             <ToolbarButton
               active={sortOpen || sortKey !== null}
               aria-expanded={sortOpen}
+              className="h-8 w-full justify-center gap-1.5 px-2 lg:w-auto lg:justify-start lg:px-2.5"
               onClick={() => {
                 setSortOpen((open) => !open);
                 setIndustryOpen(false);
               }}
             >
-              <ArrowDownUp size={14} strokeWidth={1.75} className="opacity-80" />
+              <ArrowDownUp size={14} strokeWidth={1.75} className="shrink-0 opacity-80" />
               Sort
             </ToolbarButton>
             {sortOpen ? (
-              <Surface padding="p-2" className="absolute right-0 top-full z-40 mt-1.5 w-52 shadow-sm">
-                <ul className="space-y-0.5">
-                  {SORT_OPTIONS.map((option) => {
-                    const active = activeSort === option.key;
-                    return (
-                      <li key={option.key}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onSortChange(option.key);
-                            setSortOpen(false);
-                          }}
-                          className={cn(
-                            "flex h-9 w-full items-center justify-between rounded-md px-2.5 text-sm transition-colors",
-                            active
-                              ? "bg-muted font-medium text-foreground"
-                              : "text-foreground/80 hover:bg-muted/50",
-                          )}
-                        >
-                          <span>{option.label}</span>
-                          {active && sortKey ? (
-                            <span className="text-xs text-muted-foreground">
-                              {sortDirection === "asc" ? "↑" : "↓"}
-                            </span>
-                          ) : null}
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </Surface>
+              <CompanySortMenu
+                activeSort={activeSort}
+                sortKey={sortKey}
+                sortDirection={sortDirection}
+                onSortChange={onSortChange}
+                onClose={() => setSortOpen(false)}
+                className="absolute left-0 top-full z-40 mt-1.5 w-52 shadow-sm lg:left-auto lg:right-0"
+              />
             ) : null}
           </div>
 
-          <span className="mx-0.5 h-5 w-px shrink-0 bg-border" aria-hidden />
+          <div className="min-w-0">
+            <ToolbarButton
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              aria-label="Refresh companies"
+              aria-busy={isRefreshing}
+              title="Refresh"
+              className="h-8 w-full justify-center px-2 lg:w-auto lg:justify-start lg:gap-1.5 lg:px-2.5"
+            >
+              <RefreshCw
+                size={14}
+                strokeWidth={1.75}
+                className={cn("shrink-0 opacity-80", isRefreshing && "animate-spin")}
+                aria-hidden
+              />
+              <span className="hidden lg:inline">Refresh</span>
+            </ToolbarButton>
+          </div>
 
-          <ToolbarButton
-            onClick={onRefresh}
-            disabled={isRefreshing}
-            aria-label="Refresh companies"
-            aria-busy={isRefreshing}
-            title="Refresh"
-            className="px-2"
-          >
-            <RefreshCw
-              size={14}
-              strokeWidth={1.75}
-              className={cn("opacity-80", isRefreshing && "animate-spin")}
-              aria-hidden
-            />
-          </ToolbarButton>
+          {industryOpen && showIndustryFilter ? (
+            <div
+              ref={mobileIndustryPanelRef}
+              className="absolute right-0 top-full z-40 mt-1.5 w-[min(16rem,calc(100vw-2rem))] lg:hidden"
+            >
+              <CompanyIndustryMenu
+                industryFilter={industryFilter}
+                searchableCount={searchableCount}
+                industryOptions={industryOptions}
+                onIndustryFilterChange={onIndustryFilterChange}
+                onClose={() => setIndustryOpen(false)}
+                className="max-h-72 overflow-y-auto shadow-sm"
+              />
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -222,6 +193,102 @@ export function CompaniesFilterBar({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function CompanySortMenu({
+  activeSort,
+  sortKey,
+  sortDirection,
+  onSortChange,
+  onClose,
+  className,
+}: {
+  activeSort: CompanySortKey;
+  sortKey: CompanySortKey | null;
+  sortDirection: CompanySortDirection;
+  onSortChange: (key: CompanySortKey) => void;
+  onClose: () => void;
+  className?: string;
+}) {
+  return (
+    <Surface padding="p-2" className={className}>
+      <ul className="space-y-0.5">
+        {SORT_OPTIONS.map((option) => {
+          const active = activeSort === option.key;
+          return (
+            <li key={option.key}>
+              <button
+                type="button"
+                onClick={() => {
+                  onSortChange(option.key);
+                  onClose();
+                }}
+                className={cn(
+                  "flex h-9 w-full items-center justify-between rounded-md px-2.5 text-sm transition-colors",
+                  active
+                    ? "bg-muted font-medium text-foreground"
+                    : "text-foreground/80 hover:bg-muted/50",
+                )}
+              >
+                <span>{option.label}</span>
+                {active && sortKey ? (
+                  <span className="text-xs text-muted-foreground">
+                    {sortDirection === "asc" ? "↑" : "↓"}
+                  </span>
+                ) : null}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </Surface>
+  );
+}
+
+function CompanyIndustryMenu({
+  industryFilter,
+  searchableCount,
+  industryOptions,
+  onIndustryFilterChange,
+  onClose,
+  className,
+}: {
+  industryFilter: string;
+  searchableCount: number;
+  industryOptions: Array<{ industry: string; label: string; count: number }>;
+  onIndustryFilterChange: (value: string) => void;
+  onClose: () => void;
+  className?: string;
+}) {
+  return (
+    <Surface padding="p-2" className={className}>
+      <ul className="space-y-0.5">
+        <IndustryMenuItem
+          active={industryFilter === "all"}
+          label="All industries"
+          count={searchableCount}
+          icon={<LayoutGrid className="size-3.5 shrink-0" strokeWidth={1.75} aria-hidden />}
+          onClick={() => {
+            onIndustryFilterChange("all");
+            onClose();
+          }}
+        />
+        {industryOptions.map((option) => (
+          <IndustryMenuItem
+            key={option.industry}
+            active={industryFilter === option.industry}
+            label={option.label}
+            count={option.count}
+            icon={<IndustryIcon slug={option.industry} className="!size-5" />}
+            onClick={() => {
+              onIndustryFilterChange(option.industry);
+              onClose();
+            }}
+          />
+        ))}
+      </ul>
+    </Surface>
   );
 }
 

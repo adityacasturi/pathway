@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
-import { Copy, KeyRound, Loader2, LogOut } from "lucide-react";
+import { KeyRound, Loader2, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { SettingsGroup } from "@/components/settings/settings-group";
 import { UserAvatar } from "@/components/ui/avatar";
@@ -53,16 +53,6 @@ export function SettingsAccountPage({ userEmail }: Props) {
   const [passwordResetPending, startPasswordResetTransition] = useTransition();
   const [passwordResetError, setPasswordResetError] = useState<string | null>(null);
 
-  async function onCopyEmail() {
-    if (!safeEmail) return;
-    try {
-      await navigator.clipboard.writeText(safeEmail);
-      toast.success("Email copied");
-    } catch {
-      toast.error("Couldn't copy email");
-    }
-  }
-
   function onPasswordReset() {
     setPasswordResetError(null);
     startPasswordResetTransition(async () => {
@@ -90,18 +80,6 @@ export function SettingsAccountPage({ userEmail }: Props) {
               {safeEmail || "—"}
             </p>
           </div>
-          {safeEmail ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8 shrink-0 gap-1.5"
-              onClick={() => void onCopyEmail()}
-            >
-              <Copy size={14} strokeWidth={1.75} aria-hidden />
-              Copy
-            </Button>
-          ) : null}
           <form action={logout}>
             <SignOutButton />
           </form>

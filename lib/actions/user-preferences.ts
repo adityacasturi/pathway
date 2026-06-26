@@ -39,9 +39,6 @@ export async function updateFeedViewPreferences(patch: FeedViewPreferencesPatch)
     updated_at: new Date().toISOString(),
   };
 
-  if (parsed.patch.lastSeenAtIso !== undefined) {
-    row.live_last_seen_at = parsed.patch.lastSeenAtIso;
-  }
   if (parsed.patch.hideApplied !== undefined) {
     row.live_hide_applied = parsed.patch.hideApplied;
   }
@@ -51,11 +48,6 @@ export async function updateFeedViewPreferences(patch: FeedViewPreferencesPatch)
 
   const { error } = await supabase.from("user_preferences").upsert(row, { onConflict: "user_id" });
 
-  if (isMissingPreferenceColumnError(error, "live_last_seen_at")) {
-    return {
-      error: "Live feed preferences are unavailable until the latest database migration is applied.",
-    };
-  }
   if (error) {
     return { error: formatSupabaseMutationError(error, "Unable to save feed preferences.") };
   }

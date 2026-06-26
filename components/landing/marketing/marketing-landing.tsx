@@ -35,9 +35,6 @@ const landingDisplay = Instrument_Serif({
   display: "swap",
 });
 
-/** Roles newer than this read as freshly posted and get the "New" marker. */
-const FRESH_WINDOW_SECONDS = 60 * 60 * 48;
-
 const BODY_CELL =
   "flex min-h-full min-w-0 items-center px-3.5 py-2.5 sm:px-5";
 
@@ -75,17 +72,15 @@ function LandingTableHeaderCell({ label, className }: { label: string; className
   );
 }
 
-function OpeningRow({ posting, nowUnix }: { posting: FeedPosting; nowUnix: number }) {
+function OpeningRow({ posting }: { posting: FeedPosting }) {
   const href = safeExternalHref(posting.url);
   const companySlug = parseCompanySlugFromSourceId(posting.sourceId);
   const locationLabel = formatCompactLocationSegments(posting.locations, 1) || "Worldwide";
   const ageLabel = formatPostingRelativeTime(posting.postedDisplay) || "—";
-  const isFresh =
-    posting.pathwayNewUnix > 0 && nowUnix - posting.pathwayNewUnix < FRESH_WINDOW_SECONDS;
 
   return (
     <li className="mkt-row min-h-[3.125rem] items-stretch border-b border-border/35 text-left transition-colors last:border-b-0 hover:bg-muted/20">
-      <div className={BODY_CELL}>
+      <div className={cn(BODY_CELL, "mkt-cell-company")}>
         <span className="flex min-w-0 items-center gap-3">
           <CompanyLogo
             company={posting.company}
@@ -95,32 +90,31 @@ function OpeningRow({ posting, nowUnix }: { posting: FeedPosting; nowUnix: numbe
             size={26}
             lazy
           />
-          <span className="flex min-w-0 items-center gap-1.5">
-            <span className="truncate text-sm font-medium text-foreground">{posting.company}</span>
-            {isFresh ? (
-              <span className="inline-flex shrink-0 items-center gap-1.5 leading-none">
-                <span className="text-muted-foreground" aria-hidden>
-                  ·
-                </span>
-                <span className="text-[10px] font-medium text-primary">New</span>
-              </span>
-            ) : null}
+          <span className="mkt-cell-company-name truncate text-sm font-medium text-foreground">
+            {posting.company}
           </span>
         </span>
       </div>
-      <div className={BODY_CELL}>
-        {href ? (
-          <a
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn("min-w-0 truncate text-sm", LINK_MUTED_CLASS)}
-          >
-            {posting.title}
-          </a>
-        ) : (
-          <span className="min-w-0 truncate text-sm text-foreground/90">{posting.title}</span>
-        )}
+      <div className={cn(BODY_CELL, "mkt-cell-role")}>
+        <span className="flex min-w-0 items-center gap-2">
+          {posting.season ? (
+            <span className="mkt-role-season-hint shrink-0" title={posting.season}>
+              <SeasonBadge season={posting.season} variant="plain" />
+            </span>
+          ) : null}
+          {href ? (
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn("min-w-0 truncate text-sm", LINK_MUTED_CLASS)}
+            >
+              {posting.title}
+            </a>
+          ) : (
+            <span className="min-w-0 truncate text-sm text-foreground/90">{posting.title}</span>
+          )}
+        </span>
       </div>
       <div className={cn(BODY_CELL, "mkt-cell-loc")}>
         <span className="min-w-0 truncate text-sm text-foreground/80">{locationLabel}</span>
@@ -128,20 +122,14 @@ function OpeningRow({ posting, nowUnix }: { posting: FeedPosting; nowUnix: numbe
       <div className={cn(BODY_CELL, "mkt-cell-season justify-center")}>
         {posting.season ? <SeasonBadge season={posting.season} variant="plain" className="shrink-0" /> : null}
       </div>
-      <div className={cn(BODY_CELL, "justify-end")}>
+      <div className={cn(BODY_CELL, "mkt-cell-posted justify-end")}>
         <span className="min-w-0 truncate text-right text-sm tabular-nums text-foreground/80">{ageLabel}</span>
       </div>
     </li>
   );
 }
 
-function LiveOpeningsBoard({
-  preview,
-  nowUnix,
-}: {
-  preview: LandingOpeningPreview;
-  nowUnix: number;
-}) {
+function LiveOpeningsBoard({ preview }: { preview: LandingOpeningPreview }) {
   const hasRows = preview.postings.length > 0;
 
   return (
@@ -149,22 +137,22 @@ function LiveOpeningsBoard({
       <div className="mkt-product-rail">
         <div className="mkt-product-frame" aria-label="Recent internship openings">
           {hasRows ? (
-            <>
+            <div className="mkt-table">
               <div className="mkt-row mkt-row-head items-stretch border-b border-border/35">
-                <LandingTableHeaderCell label="Company" />
-                <LandingTableHeaderCell label="Role" />
+                <LandingTableHeaderCell label="Company" className="mkt-cell-company" />
+                <LandingTableHeaderCell label="Role" className="mkt-cell-role" />
                 <LandingTableHeaderCell label="Location" className="mkt-cell-loc" />
                 <LandingTableHeaderCell label="Season" className="mkt-cell-season" />
-                <LandingTableHeaderCell label="Posted" />
+                <LandingTableHeaderCell label="Posted" className="mkt-cell-posted" />
               </div>
               <OpeningsScrollGate previewDays={LANDING_OPENINGS_DAYS}>
                 <ul>
                   {preview.postings.map((posting) => (
-                    <OpeningRow key={posting.id} posting={posting} nowUnix={nowUnix} />
+                    <OpeningRow key={posting.id} posting={posting} />
                   ))}
                 </ul>
               </OpeningsScrollGate>
-            </>
+            </div>
           ) : (
             <div className="flex flex-col items-start gap-4 px-5 py-12">
               <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
@@ -189,10 +177,6 @@ export function MarketingLanding({
 }: {
   openingsPreview: LandingOpeningPreview;
 }) {
-  // Captured once per server render — freshness markers are request-time stable.
-  // eslint-disable-next-line react-hooks/purity
-  const nowUnix = Math.floor(Date.now() / 1000);
-
   return (
     <div className={cn("mkt-shell", landingDisplay.variable)}>
       <MarketingNav />
@@ -214,16 +198,14 @@ export function MarketingLanding({
             </div>
           </div>
 
-          <LiveOpeningsBoard preview={openingsPreview} nowUnix={nowUnix} />
+          <LiveOpeningsBoard preview={openingsPreview} />
         </section>
 
         <section className="mkt-proof" aria-label="Schools using Pathway">
           <div className="mkt-proof-label-strip">
             <div className="mkt-product-rail">
               <div className="mkt-proof-label-row">
-                <span className="mkt-proof-label-line" aria-hidden />
                 <p className="mkt-proof-label">Used by students at</p>
-                <span className="mkt-proof-label-line" aria-hidden />
               </div>
             </div>
           </div>

@@ -149,6 +149,28 @@
   text-align: center;
 }
 
+.mkt-hero-copy-mobile {
+  display: block;
+}
+
+.mkt-hero-copy-line {
+  display: block;
+}
+
+.mkt-hero-copy-desktop {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .mkt-hero-copy-mobile {
+    display: none;
+  }
+
+  .mkt-hero-copy-desktop {
+    display: block;
+  }
+}
+
 .mkt-hero-kinetic {
   position: relative;
   display: block;
@@ -227,23 +249,39 @@
 .mkt-hero-actions {
   margin-top: clamp(1.75rem, 4vw, 2.25rem);
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 0.75rem;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 @media (min-width: 640px) {
   .mkt-hero-actions {
-    flex-direction: row;
-    justify-content: center;
+    gap: 0.75rem;
   }
 }
 
 .mkt-hero-cta {
   min-width: 0;
-  height: 2.625rem;
-  padding-inline: 1.125rem;
-  font-size: 0.9375rem;
+  height: 2.25rem;
+  padding-inline: 0.875rem;
+  font-size: 0.8125rem;
+  gap: 0.375rem;
+}
+
+.mkt-hero-cta.lp-cta--primary,
+.mkt-hero-cta.lp-cta--secondary {
+  min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .mkt-hero-cta {
+    height: 2.625rem;
+    padding-inline: 1.125rem;
+    font-size: 0.9375rem;
+    gap: 0.4375rem;
+  }
 }
 
 .mkt-hero-cta-icon-ne {
@@ -280,11 +318,15 @@
 }
 
 .mkt-product-frame {
-  overflow: hidden;
+  overflow: visible;
   border: 0;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
+}
+
+.mkt-table {
+  width: 100%;
 }
 
 .mkt-board-scroll {
@@ -307,6 +349,7 @@
   --mkt-lock-offset: 16px;
   --mkt-lock-progress: 0;
   position: relative;
+  overflow: visible;
 }
 
 .mkt-board-lock-overlay {
@@ -314,17 +357,20 @@
   inset-inline: 0;
   bottom: 0;
   display: flex;
-  height: 13rem;
-  align-items: center;
+  min-height: 18rem;
+  padding-bottom: 1.25rem;
+  align-items: flex-end;
   justify-content: center;
   overflow: hidden;
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in oklab, var(--card) 0%, transparent),
-      color-mix(in oklab, var(--card) 72%, transparent) 46%,
-      color-mix(in oklab, var(--card) 96%, transparent)
-    );
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    color-mix(in oklab, var(--card) 10%, transparent) 18%,
+    color-mix(in oklab, var(--card) 32%, transparent) 36%,
+    color-mix(in oklab, var(--card) 58%, transparent) 56%,
+    color-mix(in oklab, var(--card) 82%, transparent) 76%,
+    color-mix(in oklab, var(--card) 96%, transparent) 100%
+  );
   opacity: var(--mkt-lock-progress);
   pointer-events: none;
   transform: translateY(var(--mkt-lock-offset));
@@ -337,9 +383,26 @@
   content: "";
   position: absolute;
   inset: 0;
-  opacity: var(--mkt-lock-progress);
-  backdrop-filter: blur(3px) saturate(0.98);
-  -webkit-backdrop-filter: blur(3px) saturate(0.98);
+  backdrop-filter: blur(7px) saturate(0.98);
+  -webkit-backdrop-filter: blur(7px) saturate(0.98);
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgb(0 0 0 / 0.15) 14%,
+    rgb(0 0 0 / 0.4) 32%,
+    rgb(0 0 0 / 0.68) 52%,
+    rgb(0 0 0 / 0.88) 72%,
+    #000 92%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgb(0 0 0 / 0.15) 14%,
+    rgb(0 0 0 / 0.4) 32%,
+    rgb(0 0 0 / 0.68) 52%,
+    rgb(0 0 0 / 0.88) 72%,
+    #000 92%
+  );
   pointer-events: none;
 }
 
@@ -365,6 +428,14 @@
   -webkit-backdrop-filter: blur(12px);
 }
 
+.mkt-board-lock-head {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 0.875rem;
+}
+
 .mkt-board-lock-icon {
   display: inline-flex;
   height: 2.25rem;
@@ -377,20 +448,26 @@
   color: var(--primary-foreground);
 }
 
-.mkt-board-lock-copy {
-  display: flex;
-  min-width: 0;
-  flex: 1;
-  text-align: left;
-}
-
 .mkt-board-lock-title {
+  margin: 0;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 0.8125rem;
   font-weight: 600;
+  line-height: 1.35;
   color: var(--foreground);
+}
+
+.mkt-board-lock-card--mobile {
+  display: none;
+}
+
+.mkt-board-lock-mobile-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .mkt-board-lock-link {
@@ -416,46 +493,100 @@
 
 @media (max-width: 639px) {
   .mkt-board-lock-overlay {
-    height: 11.75rem;
+    min-height: 12rem;
   }
 
-  .mkt-board-lock-card {
-    align-items: flex-start;
-    border-radius: 18px;
-    flex-wrap: wrap;
+  .mkt-board-lock-card--desktop {
+    display: none;
   }
 
-  .mkt-board-lock-link {
-    margin-left: calc(2.25rem + 0.875rem);
+  .mkt-board-lock-card--mobile {
+    display: inline-flex;
+    width: auto;
+    max-width: calc(100% - 1.5rem);
+    gap: 0.5rem;
+    padding: 0.375rem 0.875rem 0.375rem 0.375rem;
+    color: var(--foreground);
+    text-decoration: none;
+    transition: transform 180ms var(--motion-ease-standard);
+  }
+
+  .mkt-board-lock-card--mobile:hover {
+    transform: translateY(-1px);
+  }
+
+  .mkt-board-lock-card--mobile .mkt-board-lock-icon {
+    height: 1.75rem;
+    width: 1.75rem;
+  }
+}
+
+@media (min-width: 640px) {
+  .mkt-board-lock-card--mobile {
+    display: none;
   }
 }
 
 /* Row grid mirrors the real Openings feed table. */
 .mkt-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.5fr) 6.25rem;
+  grid-template-columns:
+    minmax(11rem, 1.1fr) minmax(14rem, 1.45fr) minmax(9rem, 0.92fr)
+    minmax(5rem, 0.7fr) minmax(5.5rem, 0.71fr);
   align-items: stretch;
 }
 
-.mkt-cell-loc,
-.mkt-cell-season {
+.mkt-role-season-hint {
   display: none;
 }
 
-@media (min-width: 640px) {
+@media (max-width: 639px) {
+  .mkt-row-head .mkt-cell-company > span {
+    display: none;
+  }
+
   .mkt-row {
-    grid-template-columns:
-      minmax(0, 1.1fr) minmax(0, 1.45fr) minmax(0, 0.92fr)
-      minmax(0, 0.7fr) minmax(0, 0.71fr);
+    grid-template-columns: 2.75rem minmax(0, 1fr) minmax(4.75rem, auto);
   }
 
   .mkt-cell-loc,
   .mkt-cell-season {
-    display: flex;
+    display: none;
   }
 
-  .mkt-cell-season {
-    transform: translateX(0.5rem);
+  .mkt-cell-company-name {
+    display: none;
+  }
+
+  .mkt-cell-company {
+    justify-content: center;
+    padding-inline: 0.75rem;
+  }
+
+  .mkt-cell-role {
+    padding-inline: 0.5rem 0.75rem;
+  }
+
+  .mkt-cell-posted {
+    padding-inline: 0.5rem 0.75rem 0.5rem 0.25rem;
+    font-size: 0.8125rem;
+  }
+
+  .mkt-role-season-hint {
+    display: inline-flex;
+  }
+
+  .mkt-role-season-hint .season-pill-label {
+    display: none;
+  }
+
+  .mkt-role-season-hint .season-pill {
+    gap: 0;
+  }
+
+  .mkt-role-season-hint .season-pill-dot {
+    width: 0.4375rem;
+    height: 0.4375rem;
   }
 }
 
@@ -501,13 +632,7 @@
 .mkt-proof-label-row {
   display: flex;
   align-items: center;
-  gap: clamp(0.875rem, 2.5vw, 1.5rem);
-}
-
-.mkt-proof-label-line {
-  flex: 1 1 auto;
-  height: 1px;
-  background: var(--rule);
+  justify-content: center;
 }
 
 .mkt-proof-label {
@@ -690,16 +815,16 @@
 
 .mkt-footer-inner {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  flex-direction: row;
+  align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+  width: 100%;
 }
 
 @media (min-width: 640px) {
   .mkt-footer-inner {
-    flex-direction: row;
-    align-items: center;
+    gap: 1rem;
   }
 }
 

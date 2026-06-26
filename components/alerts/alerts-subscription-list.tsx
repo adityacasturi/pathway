@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AlertMatchFieldPopover } from "@/components/alerts/alert-match-field-popover";
+import { AlertSubscriptionMobileSheet } from "@/components/alerts/alert-subscription-mobile-sheet";
 import type { AlertSubscriptionView } from "@/components/alerts/types";
 import { CountryFlag } from "@/components/country-flag";
 import { MotionStaggerItem, MotionStaggerList } from "@/components/design-system/motion-stagger";
@@ -85,11 +86,15 @@ export function AlertsSubscriptionList({
   onAddAlert?: () => void;
 }) {
   const [openField, setOpenField] = useState<OpenFieldState>(null);
+  const [mobileSubscriptionId, setMobileSubscriptionId] = useState<string | null>(null);
   const fieldAnchorRef = useRef<HTMLElement | null>(null);
   const trimmedQuery = searchQuery.trim();
 
   const openSubscription = openField
     ? subscriptions.find((subscription) => subscription.id === openField.subscriptionId) ?? null
+    : null;
+  const mobileSubscription = mobileSubscriptionId
+    ? subscriptions.find((subscription) => subscription.id === mobileSubscriptionId) ?? null
     : null;
 
   function closeFieldPopover() {
@@ -196,11 +201,27 @@ export function AlertsSubscriptionList({
               onTogglePaused={onTogglePaused}
               onRemove={onRemove}
               onOpenField={(field, anchor) => openFieldPopover(subscription.id, field, anchor)}
+              onOpenMobile={() => setMobileSubscriptionId(subscription.id)}
               layout="mobile"
             />
           ))}
         </MotionStaggerList>
       </div>
+
+      {mobileSubscription ? (
+        <AlertSubscriptionMobileSheet
+          subscription={mobileSubscription}
+          globalFilters={globalFilters}
+          open
+          onClose={() => setMobileSubscriptionId(null)}
+          onUpdated={onSubscriptionUpdated}
+          onRemove={(subscription) => {
+            setMobileSubscriptionId(null);
+            onRemove(subscription);
+          }}
+          removePending={pendingRemoveId === mobileSubscription.id}
+        />
+      ) : null}
 
       {openField && openSubscription ? (
         <AlertMatchFieldPopover
@@ -248,6 +269,7 @@ function SubscriptionRow({
   onTogglePaused,
   onRemove,
   onOpenField,
+  onOpenMobile,
   layout,
   index,
 }: {
@@ -259,6 +281,7 @@ function SubscriptionRow({
   onTogglePaused: (subscriptionId: string, paused: boolean) => void;
   onRemove: (subscription: AlertSubscriptionView) => void;
   onOpenField: (field: AlertMatchField, anchor: HTMLElement) => void;
+  onOpenMobile?: () => void;
   layout: "desktop" | "mobile";
   index: number;
 }) {
@@ -269,6 +292,7 @@ function SubscriptionRow({
       subscription={subscription}
       disabled={rowActionsDisabled}
       onTogglePaused={onTogglePaused}
+      showLabel={layout === "desktop"}
     />
   );
 
@@ -280,50 +304,32 @@ function SubscriptionRow({
   if (layout === "mobile") {
     return (
       <MotionStaggerItem as="li" index={index}>
-      <div
-        className={cn(
-          "group flex w-full items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/35",
-          subscription.paused && "opacity-70",
-        )}
-      >
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <div className="flex min-w-0 items-center gap-2">
-            <div className="flex min-w-0 flex-1 items-center gap-4">
-              <FollowAvatar subscription={subscription} />
-              <span className="min-w-0 flex-1 pl-0.5">
-                <span className="flex items-center gap-2">
-                  <span className="truncate text-sm font-medium text-foreground">{subscription.label}</span>
-                  <FollowTypeLabel type={subscription.type} />
-                </span>
-              </span>
+        <div
+          className={cn(
+            "flex items-center gap-3 px-4 py-2.5 transition-colors",
+            subscription.paused && "opacity-70",
+          )}
+        >
+          <button
+            type="button"
+            onClick={() => onOpenMobile?.()}
+            className="flex min-w-0 flex-1 items-center gap-3 rounded-md text-left transition-colors hover:bg-muted/35 active:bg-muted/45"
+          >
+            <FollowAvatar subscription={subscription} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-foreground">{subscription.label}</p>
+              <p
+                className={cn(
+                  "mt-0.5 text-xs font-medium",
+                  alertTargetTypeLabelClass(subscription.type),
+                )}
+              >
+                {subscription.type === "company" ? "Company" : "Bundle"}
+              </p>
             </div>
-            <RemoveAlertButton
-              subscription={subscription}
-              disabled={rowActionsDisabled}
-              pending={removePending}
-              onRemove={onRemove}
-              className={removePending ? "opacity-100" : "opacity-100 md:opacity-0 md:group-hover:opacity-100"}
-            />
-          </div>
-          <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 pl-[calc(var(--sector-logo-size,2rem)+1rem)]">
-            <MobileFilterFieldCell
-              field="seasons"
-              subscription={subscription}
-              globalFilters={globalFilters}
-              open={seasonsOpen}
-              onOpen={(anchor) => onOpenField("seasons", anchor)}
-            />
-            <MobileFilterFieldCell
-              field="countries"
-              subscription={subscription}
-              globalFilters={globalFilters}
-              open={countriesOpen}
-              onOpen={(anchor) => onOpenField("countries", anchor)}
-            />
-          </span>
+          </button>
+          {emailAlertsControl}
         </div>
-        <div className="shrink-0">{emailAlertsControl}</div>
-      </div>
       </MotionStaggerItem>
     );
   }
@@ -451,7 +457,7 @@ const MatchFieldTrigger = forwardRef<
         open
           ? "border-solid border-border bg-muted/40"
           : "border-dashed border-border/55 bg-muted/10 hover:border-border/80 hover:bg-muted/45",
-        size === "mobile" ? "max-w-full px-1.5 py-0.5" : "-mx-0.5 w-full px-2 py-1.5",
+        size === "mobile" ? "w-full px-2 py-1" : "-mx-0.5 w-full px-2 py-1.5",
       )}
     >
       <span className="min-w-0 flex-1 truncate">{children}</span>
@@ -468,48 +474,6 @@ const MatchFieldTrigger = forwardRef<
     </button>
   );
 });
-
-function MobileFilterFieldCell({
-  field,
-  subscription,
-  globalFilters,
-  open,
-  onOpen,
-}: {
-  field: AlertMatchField;
-  subscription: AlertSubscriptionView;
-  globalFilters: AlertFilters;
-  open: boolean;
-  onOpen: (anchor: HTMLElement) => void;
-}) {
-  const triggerRef = useRef<HTMLButtonElement>(null);
-
-  return (
-    <span className="relative inline-flex max-w-full">
-      <MatchFieldTrigger
-        ref={triggerRef}
-        field={field}
-        open={open}
-        size="mobile"
-        onClick={() => {
-          if (triggerRef.current) {
-            onOpen(triggerRef.current);
-          }
-        }}
-      >
-        {field === "seasons" ? (
-          <SeasonFilterDisplay subscription={subscription} globalFilters={globalFilters} />
-        ) : (
-          <LocationFilterDisplay
-            subscription={subscription}
-            globalFilters={globalFilters}
-            compact
-          />
-        )}
-      </MatchFieldTrigger>
-    </span>
-  );
-}
 
 function FilterFieldCell({
   field,
@@ -563,10 +527,12 @@ function EmailAlertsToggle({
   subscription,
   disabled,
   onTogglePaused,
+  showLabel = true,
 }: {
   subscription: AlertSubscriptionView;
   disabled: boolean;
   onTogglePaused: (subscriptionId: string, paused: boolean) => void;
+  showLabel?: boolean;
 }) {
   const emailsEnabled = !subscription.paused;
 
@@ -582,15 +548,16 @@ function EmailAlertsToggle({
         onCheckedChange={(enabled) => onTogglePaused(subscription.id, !enabled)}
         aria-label={`Email alerts for ${subscription.label}`}
       />
-      <span
-        className={cn(
-          TABLE_TEXT,
-          "shrink-0",
-          emailsEnabled ? "text-foreground" : "text-muted-foreground",
-        )}
-      >
-        {emailsEnabled ? "On" : "Paused"}
-      </span>
+      {showLabel ? (
+        <span
+          className={cn(
+            "shrink-0 text-xs",
+            emailsEnabled ? "text-foreground" : "text-muted-foreground",
+          )}
+        >
+          {emailsEnabled ? "On" : "Paused"}
+        </span>
+      ) : null}
     </div>
   );
 }

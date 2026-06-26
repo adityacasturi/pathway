@@ -13,19 +13,14 @@ export function HomeSectionHeader({
   className?: string;
 }) {
   return (
-    <div
-      className={cn(
-        "flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between",
-        className,
-      )}
-    >
-      <div>
-        <h3 className="text-base font-semibold tracking-tight text-foreground">{title}</h3>
+    <div className={cn("flex items-center justify-between gap-3", className)}>
+      <div className="min-w-0 flex-1">
+        <h3 className="text-sm font-semibold leading-none tracking-tight text-foreground">{title}</h3>
         {description ? (
           <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
         ) : null}
       </div>
-      {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
+      {actions ? <div className="flex shrink-0 items-center">{actions}</div> : null}
     </div>
   );
 }

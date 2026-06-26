@@ -6,9 +6,9 @@ export function HomeHeaderArrowLink({ href, label }: { href: string; label: stri
     <Link
       href={href}
       aria-label={label}
-      className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
+      className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
     >
-      <ArrowRight size={16} strokeWidth={1.75} />
+      <ArrowRight size={14} strokeWidth={1.75} />
     </Link>
   );
 }

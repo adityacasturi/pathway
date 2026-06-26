@@ -103,7 +103,7 @@ export function CompaniesRecordList({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-card">
+    <div className="bg-card md:flex md:min-h-0 md:flex-1 md:flex-col">
       <div className="hidden min-h-0 flex-1 flex-col md:flex">
         <div
           className={cn(

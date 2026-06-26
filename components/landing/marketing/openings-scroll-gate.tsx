@@ -67,13 +67,19 @@ export function OpeningsScrollGate({
         className={progress > 0.08 ? "mkt-board-lock-overlay mkt-board-lock-overlay--active" : "mkt-board-lock-overlay"}
         aria-hidden={progress < 0.08}
       >
-        <div className="mkt-board-lock-card">
+        <Link href="/register" className="mkt-board-lock-card mkt-board-lock-card--mobile">
           <span className="mkt-board-lock-icon" aria-hidden>
-            <LockKeyhole size={17} strokeWidth={1.9} />
+            <LockKeyhole size={14} strokeWidth={1.9} />
           </span>
-          <span className="mkt-board-lock-copy">
-            <span className="mkt-board-lock-title">Register to unlock all openings.</span>
-          </span>
+          <span className="mkt-board-lock-mobile-label">Register to unlock</span>
+        </Link>
+        <div className="mkt-board-lock-card mkt-board-lock-card--desktop">
+          <div className="mkt-board-lock-head">
+            <span className="mkt-board-lock-icon" aria-hidden>
+              <LockKeyhole size={17} strokeWidth={1.9} />
+            </span>
+            <p className="mkt-board-lock-title">Register to unlock all openings.</p>
+          </div>
           <Link href="/register" className="mkt-board-lock-link">
             Register
           </Link>

@@ -38,6 +38,9 @@ export function SeasonFilterSection({
   chipClassName,
   clearLabel = "Clear",
   alwaysShowClear = false,
+  hideTitle = false,
+  unstyled = false,
+  hideAction = false,
 }: {
   selected: ReadonlySet<FeedSeason>;
   onToggle: (season: FeedSeason) => void;
@@ -47,15 +50,22 @@ export function SeasonFilterSection({
   chipClassName?: string;
   clearLabel?: string;
   alwaysShowClear?: boolean;
+  hideTitle?: boolean;
+  unstyled?: boolean;
+  hideAction?: boolean;
 }) {
   return (
     <FilterSection
       title="Season"
       compact={compact}
+      hideTitle={hideTitle}
+      unstyled={unstyled}
       action={
-        selected.size > 0 || alwaysShowClear
-          ? { label: clearLabel, onClick: onClear }
-          : undefined
+        hideAction
+          ? undefined
+          : selected.size > 0 || alwaysShowClear
+            ? { label: clearLabel, onClick: onClear }
+            : undefined
       }
     >
       <div className={cn("flex flex-wrap", compact ? "gap-2" : "gap-2.5")}>

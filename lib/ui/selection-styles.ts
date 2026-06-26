@@ -11,6 +11,10 @@ export const UI_SELECTED_SUBTLE = "bg-[var(--selection-subtle-bg)]";
 export const UI_COUNT_BADGE =
   "inline-flex size-4 items-center justify-center rounded-full bg-[var(--count-badge-bg)] text-[10px] font-semibold text-[var(--count-badge-fg)]";
 
+/** Toolbar filter count — plain number on mobile, pill from md up. */
+export const UI_TOOLBAR_FILTER_COUNT =
+  "text-[10px] font-semibold tabular-nums text-foreground md:inline-flex md:size-4 md:items-center md:justify-center md:rounded-full md:bg-[var(--count-badge-bg)] md:text-[var(--count-badge-fg)]";
+
 /** Active chip / pill (rounded-full filters). */
 export const UI_CHIP_SELECTED =
   "border-[var(--selection-border)] bg-[var(--selection-bg)] text-[var(--selection-fg)]";

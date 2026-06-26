@@ -32,20 +32,8 @@ function stopLinkPropagation(event: MouseEvent<HTMLAnchorElement>) {
   event.stopPropagation();
 }
 
-function NewPostingMarker({ className }: { className?: string }) {
-  return (
-    <span className={cn("inline-flex shrink-0 items-center gap-1.5 leading-none", className)}>
-      <span className="text-muted-foreground" aria-hidden>
-        ·
-      </span>
-      <span className="text-[10px] font-medium text-primary">New</span>
-    </span>
-  );
-}
-
 export function PostingRecordRow({
   posting,
-  isNew = false,
   selected = false,
   onOpen,
   layout,
@@ -53,7 +41,6 @@ export function PostingRecordRow({
 }: {
   posting: FeedPosting;
   index?: number;
-  isNew?: boolean;
   selected?: boolean;
   onOpen?: () => void;
   layout: "desktop" | "mobile";
@@ -133,10 +120,7 @@ export function PostingRecordRow({
               size={24}
               lazy
             />
-            <span className="flex min-w-0 items-center gap-1.5">
-              <span className="truncate text-sm font-medium text-foreground">{posting.company}</span>
-              {isNew ? <NewPostingMarker /> : null}
-            </span>
+            <span className="truncate text-sm font-medium text-foreground">{posting.company}</span>
           </span>
         </TableCell>
         <TableCell>

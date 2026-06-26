@@ -11,8 +11,10 @@ import { cn } from "@/lib/utils";
 
 export function AlertsDailyBriefingToolbarButton({
   enabled: initialEnabled,
+  className,
 }: {
   enabled: boolean;
+  className?: string;
 }) {
   const router = useRouter();
   const hintId = useId();
@@ -26,16 +28,16 @@ export function AlertsDailyBriefingToolbarButton({
       const result = await updateDigestEnabled(next);
       if (result?.error) {
         setEnabled(previous);
-        toast.error("Couldn't update briefing", { description: result.error });
+        toast.error("Couldn't update daily email", { description: result.error });
         return;
       }
-      toast.success(next ? "Briefing on" : "Briefing off");
+      toast.success(next ? "Daily on" : "Daily off");
       router.refresh();
     });
   }
 
   return (
-    <div className="group/hint relative shrink-0" title={DAILY_BRIEFING_COPY.hint}>
+    <div className={cn("group/hint relative shrink-0", className)} title={DAILY_BRIEFING_COPY.hint}>
       <div
         className={cn(
           toolbarButtonClass(enabled, "gap-1.5 px-2"),
@@ -56,8 +58,8 @@ export function AlertsDailyBriefingToolbarButton({
         id={hintId}
         role="tooltip"
         className={cn(
-          "pointer-events-none absolute right-0 top-[calc(100%+6px)] z-50 hidden w-[min(16rem,calc(100vw-2rem))]",
-          "rounded-md border border-border bg-card px-3 py-2 text-xs leading-relaxed text-muted-foreground shadow-sm",
+          "pointer-events-none absolute right-0 top-[calc(100%+6px)] z-50 hidden w-[min(24rem,calc(100vw-1.5rem))]",
+          "rounded-md border border-border bg-card px-3 py-1.5 text-xs leading-snug text-muted-foreground shadow-sm",
           "group-hover/hint:block group-focus-within/hint:block",
         )}
       >

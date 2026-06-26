@@ -99,7 +99,13 @@ export function HeroKineticHeadline({
       <span className="sr-only">Land your dream internship at top companies.</span>
 
       <span className="mkt-hero-line" aria-hidden>
-        <span className="mkt-hero-copy">Land your dream internship at</span>
+        <span className="mkt-hero-copy">
+          <span className="mkt-hero-copy-mobile">
+            <span className="mkt-hero-copy-line">Land your dream</span>
+            <span className="mkt-hero-copy-line">internship at</span>
+          </span>
+          <span className="mkt-hero-copy-desktop">Land your dream internship at</span>
+        </span>
         <span
           className="mkt-hero-kinetic"
           style={{ width: kineticWidth ? `${kineticWidth}px` : undefined }}

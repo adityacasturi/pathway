@@ -1,6 +1,12 @@
 /** Total data rows shown across Fresh + Saved on the home postings card. */
 export const HOME_POSTINGS_TOTAL_ROWS = 12;
 
+/** Mobile: fewer rows, natural height — no viewport-filling slot grid. */
+export const HOME_MOBILE_POSTINGS_TOTAL_ROWS = 5;
+
+/** Mobile sidebar sections (hot companies + alerts). */
+export const HOME_MOBILE_SIDEBAR_TOTAL_ROWS = 4;
+
 /**
  * Split a fixed row budget between Fresh and Saved (always sums to `totalSlots`
  * when either side has items). Starts 50/50; when one side has fewer items

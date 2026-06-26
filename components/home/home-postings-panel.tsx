@@ -13,16 +13,23 @@ import {
 import {
   HOME_POSTINGS_GRID,
   HOME_POSTINGS_TABLE_HEADERS,
-  HOME_POSTING_ROW_HEIGHT,
-  homePostingsTableBodyHeight,
   HomeEmptyPostingRow,
   HomePostingRow,
   HomeTableHeaderCell,
 } from "@/components/home/home-postings-table";
+import { homeListBodyLayout } from "@/lib/home/list-body-layout";
 import type { FeedPosting } from "@/lib/feed/source";
 import { cn } from "@/lib/utils";
 
-function PostingsTableHeader({ headerRef }: { headerRef?: Ref<HTMLDivElement> }) {
+function PostingsTableHeader({
+  headerRef,
+  isWideLayout,
+}: {
+  headerRef?: Ref<HTMLDivElement>;
+  isWideLayout: boolean;
+}) {
+  if (!isWideLayout) return null;
+
   return (
     <div ref={headerRef} className={cn(HOME_POSTINGS_GRID, HOME_TABLE_COL_HEADER)}>
       {HOME_POSTINGS_TABLE_HEADERS.map((label) => (
@@ -38,37 +45,46 @@ function PostingsTableBody({
   idPrefix,
   tableHeaderRef,
   bodyHeightPx,
+  isWideLayout,
 }: {
   postings: FeedPosting[];
   slotCount: number;
   idPrefix: string;
   tableHeaderRef?: Ref<HTMLDivElement>;
   bodyHeightPx?: number;
+  isWideLayout: boolean;
 }) {
-  const paddingRows = slotCount - postings.length;
-  const bodyHeight =
-    bodyHeightPx && bodyHeightPx > 0
-      ? `${bodyHeightPx}px`
-      : homePostingsTableBodyHeight(slotCount);
-  const flexRows = Boolean(bodyHeightPx && bodyHeightPx > 0);
+  const { style, paddingRows, flexRows } = homeListBodyLayout({
+    isWideLayout,
+    slotCount,
+    itemCount: postings.length,
+    bodyHeightPx,
+  });
 
   return (
-    <div className="overflow-hidden">
-      <PostingsTableHeader headerRef={tableHeaderRef} />
+    <div className={cn(isWideLayout ? "overflow-hidden" : "min-w-0 overflow-x-hidden")}>
+      <PostingsTableHeader headerRef={tableHeaderRef} isWideLayout={isWideLayout} />
       <ul
-        className="grid overflow-hidden"
-        style={{
-          height: bodyHeight,
-          gridTemplateRows: flexRows
-            ? `repeat(${slotCount}, minmax(0, 1fr))`
-            : `repeat(${slotCount}, ${HOME_POSTING_ROW_HEIGHT})`,
-        }}
+        className={cn(
+          "w-full min-w-0 bg-card",
+          isWideLayout && "grid overflow-hidden",
+        )}
+        style={style}
       >
         {postings.map((posting) => (
-          <HomePostingRow key={posting.id} posting={posting} flexHeight={flexRows} />
+          <HomePostingRow
+            key={posting.id}
+            posting={posting}
+            flexHeight={flexRows}
+            isWideLayout={isWideLayout}
+          />
         ))}
         {Array.from({ length: paddingRows }, (_, index) => (
-          <HomeEmptyPostingRow key={`${idPrefix}-pad-${index}`} flexHeight={flexRows} />
+          <HomeEmptyPostingRow
+            key={`${idPrefix}-pad-${index}`}
+            flexHeight={flexRows}
+            isWideLayout={isWideLayout}
+          />
         ))}
       </ul>
     </div>
@@ -83,6 +99,7 @@ export function HomeRecentPostingsPanel({
   headerRef,
   tableHeaderRef,
   bodyHeightPx,
+  isWideLayout,
 }: {
   postings: FeedPosting[];
   slotCount: number;
@@ -91,12 +108,13 @@ export function HomeRecentPostingsPanel({
   headerRef?: Ref<HTMLDivElement>;
   tableHeaderRef?: Ref<HTMLDivElement>;
   bodyHeightPx?: number;
+  isWideLayout: boolean;
 }) {
   if (slotCount === 0 && recentTotal === 0) {
     return (
       <section className={cn(HOME_SECTION, splitBelow && HOME_SECTION_SPLIT_BELOW)}>
         <div className={HOME_SECTION_HEADER}>
-          <HomeSectionHeader title="Recent" description="No roles in the catalog yet." className="mb-0" />
+          <HomeSectionHeader title="Recent" className="mb-0" />
         </div>
       </section>
     );
@@ -109,7 +127,6 @@ export function HomeRecentPostingsPanel({
       <div ref={headerRef} className={HOME_SECTION_HEADER}>
         <HomeSectionHeader
           title="Recent"
-          description={`${recentTotal.toLocaleString()} roles across the catalog.`}
           actions={<HomeHeaderArrowLink href="/openings" label="View openings" />}
           className="mb-0"
         />
@@ -120,6 +137,7 @@ export function HomeRecentPostingsPanel({
         idPrefix="recent"
         tableHeaderRef={tableHeaderRef}
         bodyHeightPx={bodyHeightPx}
+        isWideLayout={isWideLayout}
       />
     </section>
   );
@@ -132,6 +150,7 @@ export function HomeSavedPostingsPanel({
   splitAbove = false,
   headerRef,
   bodyHeightPx,
+  isWideLayout,
 }: {
   postings: FeedPosting[];
   slotCount: number;
@@ -139,6 +158,7 @@ export function HomeSavedPostingsPanel({
   splitAbove?: boolean;
   headerRef?: Ref<HTMLDivElement>;
   bodyHeightPx?: number;
+  isWideLayout: boolean;
 }) {
   if (savedTotal === 0) return null;
 
@@ -149,7 +169,6 @@ export function HomeSavedPostingsPanel({
       <div ref={headerRef} className={HOME_SECTION_HEADER}>
         <HomeSectionHeader
           title="Saved for later"
-          description={`${savedTotal.toLocaleString()} roles`}
           actions={<HomeHeaderArrowLink href="/openings" label="View saved roles" />}
           className="mb-0"
         />
@@ -159,6 +178,7 @@ export function HomeSavedPostingsPanel({
         slotCount={slotCount}
         idPrefix="saved"
         bodyHeightPx={bodyHeightPx}
+        isWideLayout={isWideLayout}
       />
     </section>
   );

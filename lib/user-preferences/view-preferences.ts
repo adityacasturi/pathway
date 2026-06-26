@@ -6,7 +6,6 @@ const VALID_SEASONS = new Set<SeasonFilter>(SEASON_FILTER_OPTIONS.map((o) => o.v
 const VALID_FEED_SEASONS = new Set<FeedSeason>(FEED_SEASONS);
 
 export interface FeedViewPreferences {
-  lastSeenUnix: number;
   hideApplied: boolean;
   selectedSeasons: FeedSeason[];
 }
@@ -17,7 +16,6 @@ export interface ApplicationsViewPreferences {
 }
 
 export type FeedViewPreferencesPatch = {
-  lastSeenUnix?: number;
   hideApplied?: boolean;
   selectedSeasons?: FeedSeason[];
 };
@@ -28,7 +26,6 @@ export type ApplicationsViewPreferencesPatch = {
 };
 
 export type ParsedFeedViewPreferencesPatch = {
-  lastSeenAtIso?: string;
   hideApplied?: boolean;
   selectedSeasons?: FeedSeason[];
 };
@@ -39,7 +36,6 @@ export type ParsedApplicationsViewPreferencesPatch = {
 };
 
 export const DEFAULT_FEED_VIEW_PREFERENCES: FeedViewPreferences = {
-  lastSeenUnix: 0,
   hideApplied: true,
   selectedSeasons: [],
 };
@@ -93,18 +89,6 @@ export function parseFeedViewPreferencesPatch(
 
   const patch: ParsedFeedViewPreferencesPatch = {};
 
-  if ("lastSeenUnix" in value) {
-    const unix = value.lastSeenUnix;
-    if (typeof unix !== "number" || !Number.isFinite(unix) || unix < 0) {
-      return { error: "Invalid last-seen timestamp." };
-    }
-    const lastSeenAt = new Date(Math.floor(unix) * 1000);
-    if (Number.isNaN(lastSeenAt.getTime())) {
-      return { error: "Invalid last-seen timestamp." };
-    }
-    patch.lastSeenAtIso = lastSeenAt.toISOString();
-  }
-
   if ("hideApplied" in value) {
     if (typeof value.hideApplied !== "boolean") {
       return { error: "Invalid applied-postings preference." };
@@ -157,18 +141,12 @@ export function parseApplicationsViewPreferencesPatch(
 }
 
 export function feedViewPreferencesFromRow(row: {
-  live_last_seen_at?: string | null;
   live_hide_applied?: boolean | null;
   live_season_filter?: string | null;
 } | null): FeedViewPreferences {
   if (!row) return { ...DEFAULT_FEED_VIEW_PREFERENCES };
 
-  const lastSeenUnix = row.live_last_seen_at
-    ? Math.floor(new Date(row.live_last_seen_at).getTime() / 1000)
-    : 0;
-
   return {
-    lastSeenUnix: Number.isFinite(lastSeenUnix) ? lastSeenUnix : 0,
     hideApplied: row.live_hide_applied ?? DEFAULT_FEED_VIEW_PREFERENCES.hideApplied,
     selectedSeasons: parseSelectedSeasons(row.live_season_filter),
   };

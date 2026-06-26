@@ -10,36 +10,49 @@ export function FilterSection({
   action,
   children,
   compact = false,
+  hideTitle = false,
+  unstyled = false,
 }: {
   title: string;
   action?: { label: string; onClick: () => void };
   children: ReactNode;
   compact?: boolean;
+  hideTitle?: boolean;
+  unstyled?: boolean;
 }) {
+  const showHeader = (!hideTitle && title.length > 0) || action != null;
+
   return (
     <section
       className={cn(
-        compact ? "px-4 py-3.5" : "px-4 py-4",
-        !compact && "[&+section]:border-t",
+        unstyled ? "px-0 py-0" : compact ? "px-4 py-3.5" : "px-4 py-4",
+        !compact && !unstyled && "[&+section]:border-t",
       )}
-      style={compact ? undefined : { borderColor: "var(--rule)" }}
+      style={compact && !unstyled ? undefined : !unstyled ? { borderColor: "var(--rule)" } : undefined}
     >
-      <header className={cn("flex items-center justify-between", compact ? "mb-3" : "mb-4")}>
-        <h3 className="text-base font-semibold text-foreground">
-          {title}
-        </h3>
-        {action && (
-          <Button
-            type="button"
-            onClick={action.onClick}
-            variant="ghost"
-            size="xs"
-            className="text-xs text-muted-foreground"
-          >
-            {action.label}
-          </Button>
-        )}
-      </header>
+      {showHeader ? (
+        <header
+          className={cn(
+            "flex items-center justify-between",
+            hideTitle ? "mb-0" : compact ? "mb-3" : "mb-4",
+          )}
+        >
+          {hideTitle ? <span aria-hidden /> : (
+            <h3 className="text-base font-semibold text-foreground">{title}</h3>
+          )}
+          {action ? (
+            <Button
+              type="button"
+              onClick={action.onClick}
+              variant="ghost"
+              size="xs"
+              className="text-xs text-muted-foreground"
+            >
+              {action.label}
+            </Button>
+          ) : null}
+        </header>
+      ) : null}
       {children}
     </section>
   );
