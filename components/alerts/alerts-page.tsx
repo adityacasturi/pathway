@@ -36,6 +36,7 @@ import {
   type AlertFiltersView,
 } from "@/lib/alerts/filters";
 import { sortAlertSubscriptions } from "@/lib/alerts/subscription-sort";
+import { ALERT_DEFAULTS_SAVE_DEBOUNCE_MS } from "@/lib/config/alerts";
 import { useFocusSearchShortcut } from "@/lib/ui/focus-search-shortcut";
 import { getSearchTerms } from "@/lib/search-terms";
 
@@ -93,51 +94,33 @@ export function AlertsPage({
   );
   const [savedGlobalFilterView, setSavedGlobalFilterView] = useState(globalFilterView);
   const [globalFiltersError, setGlobalFiltersError] = useState<string | null>(null);
-  const [isGlobalFiltersPending, startGlobalFiltersTransition] = useTransition();
-  const globalSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const globalFilterViewRef = useRef(globalFilterView);
+  globalFilterViewRef.current = globalFilterView;
 
   const searchInputRef = useRef<HTMLDivElement | null>(null);
   useFocusSearchShortcut(searchInputRef);
-
-  useEffect(() => {
-    return () => {
-      if (globalSaveTimerRef.current) {
-        clearTimeout(globalSaveTimerRef.current);
-      }
-    };
-  }, []);
 
   useEffect(() => {
     if (JSON.stringify(globalFilterView) === JSON.stringify(savedGlobalFilterView)) {
       return;
     }
 
-    if (globalSaveTimerRef.current) {
-      clearTimeout(globalSaveTimerRef.current);
-    }
-
-    globalSaveTimerRef.current = setTimeout(() => {
+    const timer = window.setTimeout(() => {
+      const viewToSave = globalFilterViewRef.current;
       setGlobalFiltersError(null);
-      startGlobalFiltersTransition(async () => {
-        const result = await updateAlertGlobalFilters(globalFilterView);
+      void updateAlertGlobalFilters(viewToSave).then((result) => {
         if (result?.error) {
           setGlobalFiltersError(result.error);
           setGlobalFilterView(savedGlobalFilterView);
           toast.error("Couldn't save alert defaults", { description: result.error });
           return;
         }
-        setSavedGlobalFilterView(globalFilterView);
-        toast.success("Alert defaults updated");
-        router.refresh();
+        setSavedGlobalFilterView(viewToSave);
       });
-    }, 400);
+    }, ALERT_DEFAULTS_SAVE_DEBOUNCE_MS);
 
-    return () => {
-      if (globalSaveTimerRef.current) {
-        clearTimeout(globalSaveTimerRef.current);
-      }
-    };
-  }, [globalFilterView, router, savedGlobalFilterView]);
+    return () => window.clearTimeout(timer);
+  }, [globalFilterView, savedGlobalFilterView]);
 
   const followedSectorSlugs = useMemo(
     () =>
@@ -339,7 +322,6 @@ export function AlertsPage({
                 onSearchFocusChange={setSearchFocused}
                 globalFilters={globalFilterView}
                 onGlobalFiltersChange={setGlobalFilterView}
-                globalFiltersPending={isGlobalFiltersPending}
                 briefingEnabled={briefingEnabled}
                 onOpenAddPanel={() => setAddPanelOpen(true)}
               />

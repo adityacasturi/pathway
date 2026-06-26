@@ -7,6 +7,9 @@ export type AlertCadence = (typeof ALERT_CADENCES)[number];
 export const ALERT_CHANNELS = ["instant", "digest"] as const;
 export type AlertChannel = (typeof ALERT_CHANNELS)[number];
 
+/** Debounce before persisting alert default season/location filters from the toolbar. */
+export const ALERT_DEFAULTS_SAVE_DEBOUNCE_MS = 600;
+
 export const INSTANT_ALERT_LOOKBACK_MS = 90 * 60 * 1000;
 export const DIGEST_LOOKBACK_MS = 24 * 60 * 60 * 1000;
 export const DIGEST_MAX_POSTINGS = 20;

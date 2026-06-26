@@ -10,7 +10,7 @@ Pathway is a Next.js 16 App Router app backed by Supabase Auth and Postgres. Stu
 | Styling | Tailwind CSS v4 (`app/globals.css` tokens) |
 | UI | HeroUI-backed primitives in `components/ui/`, design-system surfaces, TanStack Table, Recharts, Framer Motion, Lucide icons, Sonner |
 | Data | Supabase Auth, Postgres, RLS, SQL functions/triggers |
-| Scraping | Node scripts + Vercel Cron + Next route handlers (`lib/scraping/`) |
+| Scraping | Node scripts + GitHub Actions (`lib/scraping/`) |
 | Tests | Node test runner (unit), Playwright public smoke (e2e) |
 | Runtime | Node.js 22.x |
 
@@ -35,11 +35,8 @@ Before changing routing, caching, `proxy.ts`, or Server Components, read the rel
 | `/settings/appearance` | Auth | Accent color and theme |
 | `/alerts/unsubscribe` | Public | One-click email unsubscribe (signed token) |
 | `/api/logo` | Auth | Logo.dev proxy (not a public CDN) |
-| `/api/cron/scrape-postings` | Cron | Sharded scrape handler (`Authorization: Bearer CRON_SECRET`) |
-| `/api/cron/send-instant-alerts` | Cron | Instant alert handler (`Authorization: Bearer CRON_SECRET`) |
-| `/api/cron/send-alert-digests` | Cron | Digest handler (`Authorization: Bearer CRON_SECRET`; not scheduled) |
 
-`proxy.ts` gates routes: unauthenticated users on protected routes go to `/login?next=<path>`; authenticated users on `/`, `/login`, or `/register` go to `/home`. Public routes include landing, auth, unsubscribe, cron handlers, and static logo assets under `/company-logos/`.
+`proxy.ts` gates routes: unauthenticated users on protected routes go to `/login?next=<path>`; authenticated users on `/`, `/login`, or `/register` go to `/home`. Public routes include landing, auth, unsubscribe, and static logo assets under `/company-logos/`.
 
 ## Authentication and signup
 
@@ -64,7 +61,7 @@ User-owned (RLS via `auth.uid()`):
 | `alert_digest_state` | Last digest send timestamp per user |
 | `alert_curated_sectors` | Industry bundle labels/metadata; `alert_curated_sector_companies` maps bundle → company slugs |
 | `alert_unsubscribe_nonces` | Single-use unsubscribe nonces (service-role only) |
-Shared scrape catalog (authenticated read; writes via service role / cron):
+Shared scrape catalog (authenticated read; writes via service role / scripts):
 
 | Table | Role |
 | --- | --- |
@@ -109,7 +106,7 @@ Pattern: validate input → Supabase server client or scoped service-role write 
 | --- | --- |
 | `lib/supabase/server.ts` | Cookie-aware server client (RLS as user) |
 | `lib/supabase/auth.ts` | `getUser()` helper for server components |
-| `lib/supabase/admin.ts` | Service role — scrapes, cron, alert writes, discover CLI. Server/CLI only. |
+| `lib/supabase/admin.ts` | Service role — scrapes, alert writes, discover CLI. Server/CLI only. |
 
 ## Home (`/home`)
 
@@ -142,20 +139,20 @@ Loader: `lib/discover/companies.ts`. UI: `components/companies/companies-page.ts
 ## Email alerts
 
 - UI: `app/alerts/page.tsx`, `components/alerts/alerts-page.tsx` (and related `components/alerts/*`).
-- **Daily briefing** — `alert_preferences.digest_enabled` + `/api/cron/send-alert-digests` (once daily, 13:00 UTC). Toggle via **Daily briefing** on the `/alerts` toolbar. Sends every open role posted in the last 24 hours (no filters).
+- **Daily briefing** — `alert_preferences.digest_enabled` + GitHub Actions `daily-digest.yml` (`0 13 * * *` UTC). Toggle via **Daily briefing** on the `/alerts` toolbar. Sends every open role posted in the last 24 hours (no filters).
 - **As-posted alerts** — `alert_preferences.emails_enabled` + company/industry bundle subscriptions in `alert_subscriptions`.
 - Filter semantics: [alerts-filters.md](./alerts-filters.md).
 - Matching: `lib/alerts/match-postings.ts` (`posted_at` for new or republished roles).
-- Send: Resend via `lib/email/resend-client.ts`; instant alerts run after Vercel Cron scrape shards complete; daily briefing runs at 13:00 UTC.
+- Send: Resend via `lib/email/resend-client.ts`; instant alerts run after the hourly GitHub Actions scrape; daily briefing runs at 13:00 UTC.
 - Env: `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `ALERT_UNSUBSCRIBE_SECRET`.
 - Unsubscribe: `GET /alerts/unsubscribe` confirm form; `POST` performs disable. HMAC token + single-use nonce.
 - Writes: server actions authenticate the user, then perform scoped service-role writes; direct client alert table writes are revoked.
 
 ## Scraping (summary)
 
-- Cron: `vercel.json` → `/api/cron/scrape-postings` → `runAllScrapes` → adapter registry → `upsert.ts` + `posted-at.ts`. Same path as `npm run scrape`. On Hobby, four daily UTC windows (00/06/12/18) with two shards each; instant alerts 30 minutes later. Pro can use `*/6` with four shards. No active QStash production schedules.
+- Scheduled: GitHub Actions `scrape-and-alerts.yml` → `npm run scrape` → `runAllScrapes` → adapter registry → `upsert.ts` + `posted-at.ts`. Same path as local `npm run scrape`. Hourly, unsharded.
 - HTTP: native `fetch` + per-adapter parsers (not Crawlee/Playwright at runtime).
-- Local: `npm run scrape` and `npm run alerts:instant` (need `SUPABASE_SERVICE_ROLE_KEY`; alerts also need Resend env vars to send email).
+- Local: `npm run scrape`, `npm run alerts:instant`, and `npm run alerts:digest` (need `SUPABASE_SERVICE_ROLE_KEY`; alerts also need Resend env vars to send email).
 - Adapters: `lib/scraping/registry.ts` keyed by `company_sources.source_type`.
 - Full detail: [scraping.md](./scraping.md).
 

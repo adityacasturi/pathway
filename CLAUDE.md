@@ -29,16 +29,16 @@ npm run test:unit:coverage
 npm run test:e2e         # Playwright public smoke (no credentials)
 npm run test:preprod     # typecheck + audit + unit + build
 npm run test:preprod:full # lint + test:preprod + e2e
-npm run scrape           # scrape → scraped_postings (same runAllScrapes path as cron; native fetch adapters)
+npm run scrape           # scrape → scraped_postings (same runAllScrapes path as GHA; native fetch adapters)
 npm run alerts:instant   # send instant alert email for new matching postings
+npm run alerts:digest    # send daily briefing (digest) emails
 npm run company-logos    # static PNGs in public/company-logos + manifest
 npm run discover-company # one-off company onboarding CLI
 npm run discover-queue   # bulk onboarding queue CLI
-npm run qstash:cron      # cleanup/list retired QStash schedules
 npm run verify           # lint + test:preprod
 ```
 
-Scrape/alerts cron: Vercel Cron (`vercel.json`). Hobby: four daily UTC windows (00/06/12/18) with two scrape shards + delayed instant alerts (no `*/6` — Hobby allows once-per-day expressions only). Pro: can use `7 */6 * * *` with four shards. Required Vercel Production env: `CRON_SECRET`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `ALERT_UNSUBSCRIBE_SECRET`.
+Scrape/alerts schedule: GitHub Actions (`.github/workflows/scrape-and-alerts.yml` hourly, `.github/workflows/daily-digest.yml` daily). Vercel production env: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `ALERT_UNSUBSCRIBE_SECRET`. GHA secrets for scrape/alerts: same Supabase, Resend, site URL, and unsubscribe secret vars.
 
 ## Next.js 16
 
@@ -63,11 +63,8 @@ Public signup (any valid email) · **Home** briefing · application tracker with
 | `/settings/account`, `/settings/appearance` | Account and theme |
 | `/alerts/unsubscribe` | One-click unsubscribe (signed token, public) |
 | `/api/logo` | Authenticated logo proxy (logo.dev) |
-| `/api/cron/scrape-postings` | Sharded scrape handler (cron secret) |
-| `/api/cron/send-instant-alerts` | Instant alert handler (cron secret) |
-| `/api/cron/send-alert-digests` | Digest handler (cron secret; not scheduled) |
 
-`proxy.ts`: unauthenticated users on protected routes → `/login?next=<path>`; authenticated users on `/`, `/login`, `/register` → `/home`. Public assets include `/company-logos/*` and cron routes.
+`proxy.ts`: unauthenticated users on protected routes → `/login?next=<path>`; authenticated users on `/`, `/login`, `/register` → `/home`. Public assets include `/company-logos/*`.
 
 ## Data (Supabase)
 
@@ -77,13 +74,13 @@ Public signup (any valid email) · **Home** briefing · application tracker with
 - Status from events: `lib/config/events.ts`
 - Alert writes: scoped server actions in `lib/actions/alerts.ts` (direct client table writes revoked).
 
-Clients: `lib/supabase/server.ts` (user, RLS), `lib/supabase/admin.ts` (service role, bypasses RLS — server/cron/scripts only).
+Clients: `lib/supabase/server.ts` (user, RLS), `lib/supabase/admin.ts` (service role, bypasses RLS — server/scripts only).
 
 ## Feeds
 
 - **Openings:** `lib/feed/scraped-postings.ts` — `feed_interactions`, hide applied URLs, refresh does not scrape.
 - **Companies:** `lib/discover/companies.ts` + `lib/discover/catalog.ts` — same scrape store; industries from `discover_industries`.
-- **Alerts:** `lib/alerts/*` — match new postings to subscriptions, instant emails after Vercel Cron scrape, Resend delivery.
+- **Alerts:** `lib/alerts/*` — match new postings to subscriptions, instant emails after GitHub Actions scrape, Resend delivery.
 
 ## Database
 

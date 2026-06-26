@@ -11,6 +11,9 @@ npm run scrape
 # Send instant alerts for newly scraped matching roles
 npm run alerts:instant
 
+# Send daily briefing (digest) emails
+npm run alerts:digest
+
 # One company
 npm run scrape -- stripe
 
@@ -30,17 +33,16 @@ Environment:
 | `RESEND_API_KEY` | Required by `npm run alerts:instant` to send email |
 | `RESEND_FROM_EMAIL` | Verified sender for alert email |
 | `ALERT_UNSUBSCRIBE_SECRET` | Required to sign unsubscribe links |
-| `CRON_SECRET` | Required for Vercel Cron auth on `/api/cron/*` |
 | `SCRAPER_VERBOSE=1` | Same as `--verbose` |
 | `SCRAPE_COMPANY_CONCURRENCY` | Parallel companies (default 8, max 16) |
 
-Cron (production): `vercel.json` schedules scrape and instant alerts via Vercel Cron (`Authorization: Bearer $CRON_SECRET`). On **Hobby**, each cron expression runs at most once per day — Pathway uses four UTC windows (00:07, 06:07, 12:07, 18:07) with two scrape shards per window (`shards=2`) and instant alerts 30 minutes later. On **Pro**, you can use `7 */6 * * *` with four shards (`shards=4`) instead. Manual/local scrapes use the same `runAllScrapes` path as cron: `npm run scrape -- <slug>`.
+Cron (production): GitHub Actions in `.github/workflows/` — hourly unsharded `npm run scrape` then `npm run alerts:instant` (`7 * * * *` UTC), plus daily briefing via `npm run alerts:digest` (`0 13 * * *` UTC). Manual/local scrapes use the same `runAllScrapes` path: `npm run scrape -- <slug>`.
 
-`company_sources.scrape_interval_minutes` (default 15 on onboard) is catalog metadata only — production cadence is controlled by `vercel.json` sharding, not that column.
+`company_sources.scrape_interval_minutes` (default 15 on onboard) is catalog metadata only — production cadence is the GitHub Actions scrape workflow, not that column.
 
 ## HTTP stack
 
-Adapters use native `fetch` with retries and timeouts (`lib/scraping/adapters/shared.ts`). JSON ATS boards parse response bodies directly; HTML snippets go through `lib/scraping/plain-text.ts` and `lib/scraping/html-utils.ts`. There is no Crawlee/Playwright runtime in the scrape path — cron and `npm run scrape` share the same adapter registry and upsert pipeline.
+Adapters use native `fetch` with retries and timeouts (`lib/scraping/adapters/shared.ts`). JSON ATS boards parse response bodies directly; HTML snippets go through `lib/scraping/plain-text.ts` and `lib/scraping/html-utils.ts`. There is no Crawlee/Playwright runtime in the scrape path — GitHub Actions and `npm run scrape` share the same adapter registry and upsert pipeline.
 
 ## Location normalization (global)
 
@@ -83,7 +85,7 @@ Requires `LOGO_DEV_TOKEN`. After Discover onboarding, run per slug. The app serv
 
 ```text
 company_sources (enabled)
-    → runAllScrapes() in lib/scraping/run-all.ts     # cron + npm run scrape
+    → runAllScrapes() in lib/scraping/run-all.ts     # GHA + npm run scrape
     → buildScrapeAdapter() in lib/scraping/registry.ts
     → adapter.fetchRoles()                          # fetch + extract only
     → classifyForSource()                           # central relevance decision (explainable)
@@ -250,7 +252,25 @@ Bulk worker instructions remain available for large batches: [discover-queue/REA
 
 ## Tesla note
 
-Use `source_type` `tesla` and `tesla.com` careers APIs — not `tesla.wd1.myworkdayjobs.com` (maintenance redirect / CXS 422). Cron IPs may hit Akamai rate limits; adapter retries `429` only. As of hosted migration `triage_failing_discover_sources` (2026-06-02), the Tesla source is disabled until a collection path that avoids persistent 429s is implemented.
+Use `source_type` `tesla` and the public careers state snapshot at
+`https://www.tesla.com/cua-api/apps/careers/state`. The payload contains global
+`lookup` maps and compact `listings`; posting URLs are derived as
+`https://www.tesla.com/careers/search/job/<slug>-<id>` when no explicit URL is
+present. Do not use `tesla.wd1.myworkdayjobs.com`: the Workday CXS path returns
+`422`, and the tenant page returns a Workday application error.
+
+Tesla's Akamai edge can block scraper/serverless egress with `403 Access Denied`
+before application code runs. The adapter fetches the state snapshot directly
+and reports that condition explicitly. If production/Vercel egress is blocked,
+run the Tesla fetch from an allowed egress path or ingest a cached state
+snapshot from one.
+
+## ASML note
+
+Use `source_type` `asml` with `source_url` `https://www.asml.com/en/careers/find-your-job`.
+ASML's public Workday tenant (`asml.wd1.myworkdayjobs.com`) returns `422`/`500` for
+CXS and the careers page; the adapter instead reads `/api/job-posting-sitemap` and
+fetches each job detail page's embedded `__NEXT_DATA__.props.pageProps.jobData`.
 
 ## Posted dates
 

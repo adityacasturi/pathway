@@ -40,7 +40,7 @@ Internship search and application tracking for students. **Home** briefing, **Ap
    NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
    NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
-   # Scraping (required for npm run scrape and cron parity)
+   # Scraping (required for npm run scrape)
    SUPABASE_SERVICE_ROLE_KEY=eyJ...
 
    # Email alerts (required for outbound alert email)
@@ -88,13 +88,13 @@ You do **not** need to run SQL files from git — the hosted database is already
 | `npm run test:e2e:ui` | Playwright UI mode |
 | `npm run test:preprod:full` | lint + verify + e2e |
 | `npm run verify` | lint + typecheck + audit + unit + build |
-| `npm run scrape` | Scrape boards → `scraped_postings` (same pipeline as production cron) |
+| `npm run scrape` | Scrape boards → `scraped_postings` (same pipeline as GitHub Actions) |
 | `npm run scrape:audit-posted-dates` | Audit `posted_at` / republish semantics |
 | `npm run alerts:instant` | Send instant alert email for new matching postings |
+| `npm run alerts:digest` | Send daily briefing emails |
 | `npm run discover-company` | Onboard one company (dry-run or `--apply --scrape`) |
 | `npm run discover-queue` | Bulk Discover onboarding queue CLI |
 | `npm run company-logos` | Download static PNGs + manifest |
-| `npm run qstash:cron` | Cleanup/list retired QStash schedules |
 
 ### E2E
 
@@ -103,7 +103,7 @@ You do **not** need to run SQL files from git — the hosted database is already
 ## Project layout
 
 ```text
-app/                    Routes, layouts, cron + logo API
+app/                    Routes, layouts, logo API
 components/             Product UI (app-shell/, home/, openings/, companies/, landing/, …)
 components/ui/          Shared UI primitives
 lib/actions/            Server Actions
@@ -127,7 +127,7 @@ tests/unit/             Node unit tests
 - Public signup: open to any valid email. App-level hygiene (format + disposable-domain blocklist) lives in `lib/auth/validation.ts`. To restrict the audience later, enforce both in app code and at the Auth layer — see [docs/production-runbook.md](docs/production-runbook.md).
 - Default post-login route: **Home** (`/home`). Default accent: **midnight** (`user_preferences`).
 - Openings hides postings you already applied to (by normalized posting URL).
-- Scrape ingestion: Vercel Cron runs sharded `/api/cron/scrape-postings` + `/api/cron/send-instant-alerts` (four times daily on Hobby; `*/6` on Pro); local `npm run scrape`.
+- Scrape ingestion: GitHub Actions hourly (`scrape-and-alerts.yml`); local `npm run scrape`.
 - Email alerts (`/alerts`) send when `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and `ALERT_UNSUBSCRIBE_SECRET` are configured.
 
 ## Agents and database work

@@ -2,10 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 
 /**
  * Service-role Supabase client. This bypasses RLS and must only ever run in a
- * trusted server context (Route Handlers, cron, server-only modules, and CLI
- * scripts). The tripwire below is a runtime guard: it is a no-op under Node and
- * React Server Components (no `window`) but throws immediately if this is ever
- * reached from a browser bundle, where the service-role key must never appear.
+ * trusted server context (Route Handlers, server-only modules, and CLI scripts).
  */
 export function createAdminClient() {
   if (typeof window !== "undefined") {

@@ -16,7 +16,7 @@ export interface RunAllScrapesOptions {
   onProgress?: ScrapeProgressHandler;
   /** Override `SCRAPE_COMPANY_CONCURRENCY` for this run. */
   companyConcurrency?: number;
-  /** Deterministically run only a subset of sources for distributed cron jobs. */
+  /** Deterministically run only a subset of sources (optional parallel jobs). */
   sourceShard?: ScrapeSourceShard;
 }
 

@@ -53,8 +53,7 @@ export function createTeslaAdapter(source: CompanySourceConfig): ScrapeAdapter {
   return {
     source: resolvedSource,
     async fetchRoles() {
-      const session = await fetchTeslaSession(board.referer);
-      const state = await fetchTeslaCareersState(board.referer, session.cookie);
+      const state = await fetchTeslaCareersState(board.referer);
       const candidates = state.listings.filter((listing) => isTeslaListCandidate(listing));
       return parseTeslaJobs(candidates, state.lookup, resolvedSource, state.listings.length);
     },
@@ -270,6 +269,11 @@ export async function fetchTeslaCareersState(
   });
 
   if (!res.ok) {
+    if (res.status === 403) {
+      throw new Error(
+        `Tesla careers state blocked by Tesla edge/Akamai (403) for ${TESLA_CAREERS_STATE_URL}; run from an allowed egress path or ingest a cached state snapshot`,
+      );
+    }
     throw new Error(`Tesla careers state returned ${res.status} for ${TESLA_CAREERS_STATE_URL}`);
   }
 
@@ -290,4 +294,3 @@ async function fetchWithTeslaTimeout(url: string, init: RequestInit): Promise<Re
     clearTimeout(timeout);
   }
 }
-

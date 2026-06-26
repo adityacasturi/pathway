@@ -1111,5 +1111,102 @@
       "greenhouse"
     ],
     "priority": 6
+  },
+  {
+    "slug": "stoke-space",
+    "name": "Stoke Space",
+    "websiteUrl": "https://www.stokespace.com",
+    "industry": "space",
+    "hints": [
+      "greenhouse"
+    ],
+    "notes": "Greenhouse token stokespacetechnologies",
+    "priority": 9
+  },
+  {
+    "slug": "zipline",
+    "name": "Zipline",
+    "websiteUrl": "https://www.zipline.com",
+    "industry": "drones",
+    "hints": [
+      "greenhouse"
+    ],
+    "notes": "Greenhouse token flyzipline",
+    "priority": 9
+  },
+  {
+    "slug": "activision",
+    "name": "Activision",
+    "websiteUrl": "https://www.activision.com",
+    "industry": "gaming",
+    "hints": [
+      "workday"
+    ],
+    "notes": "Microsoft Gaming Workday tenant xboxgaming, site External",
+    "priority": 8
+  },
+  {
+    "slug": "nintendo",
+    "name": "Nintendo",
+    "websiteUrl": "https://www.nintendo.com",
+    "industry": "gaming",
+    "hints": [
+      "greenhouse"
+    ],
+    "priority": 8
+  },
+  {
+    "slug": "wing",
+    "name": "Wing",
+    "websiteUrl": "https://wing.com",
+    "industry": "drones",
+    "hints": [
+      "greenhouse"
+    ],
+    "priority": 8
+  },
+  {
+    "slug": "boston-dynamics",
+    "name": "Boston Dynamics",
+    "websiteUrl": "https://bostondynamics.com",
+    "industry": "robotics",
+    "hints": [
+      "workday"
+    ],
+    "notes": "Workday tenant bostondynamics, site Boston_Dynamics",
+    "priority": 8
+  },
+  {
+    "slug": "asml",
+    "name": "ASML",
+    "websiteUrl": "https://www.asml.com",
+    "industry": "semiconductor",
+    "hints": [
+      "workday"
+    ],
+    "notes": "Custom adapter: public job-posting sitemap + Next.js jobData pages",
+    "priority": 9
+  },
+  {
+    "slug": "archer-aviation",
+    "name": "Archer Aviation",
+    "websiteUrl": "https://www.archer.com",
+    "industry": "aviation",
+    "hints": [
+      "greenhouse"
+    ],
+    "notes": "Greenhouse token archer56; avoid unrelated veterinary clinic token archer",
+    "priority": 9
+  },
+  {
+    "slug": "kraken",
+    "name": "Kraken",
+    "websiteUrl": "https://www.kraken.com",
+    "industry": "crypto",
+    "hints": [
+      "ashby"
+    ],
+    "notes": "Ashby board token kraken.com; plain kraken Ashby/Lever tokens are misleading empty boards",
+    "priority": 9
   }
 ]

@@ -48,7 +48,7 @@ export async function loadCuratedAlertSectors(
   }));
 }
 
-/** For alert matching in cron — sector slug → set of company slugs. */
+/** For alert matching — sector slug → set of company slugs. */
 export async function loadCuratedSectorCompanyMap(
   supabase: SupabaseClient,
 ): Promise<Map<string, Set<string>>> {

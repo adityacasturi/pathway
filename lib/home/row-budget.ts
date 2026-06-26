@@ -3,14 +3,10 @@ import { splitHomePostingSlots } from "@/lib/home/posting-slots";
 export const HOME_POSTING_ROW_REM = 2.25;
 export const HOME_POSTING_TABLE_HEADER_REM = 2.25;
 export const HOME_SIDEBAR_ROW_REM = 3;
-/** @deprecated Use HOME_SIDEBAR_ROW_REM */
-export const HOME_HOT_COMPANY_ROW_REM = HOME_SIDEBAR_ROW_REM;
 /** Fallback when column gap cannot be measured yet (split layout uses 0). */
 export const HOME_COLUMN_GAP_PX = 0;
 /** Hairline between stacked sections in the same column. */
 export const HOME_SECTION_SPLIT_PX = 1;
-/** @deprecated Use HOME_SECTION_SPLIT_PX */
-export const HOME_STACKED_PANEL_BORDER_PX = HOME_SECTION_SPLIT_PX;
 
 /** Largest row count that fits in `areaPx` at `rowPx` per row. */
 export function maxRowSlots(areaPx: number, rowPx: number): number {
@@ -165,28 +161,3 @@ export function computeHomeDashboardLayout(input: {
     alertActivityBodyHeightPx: sidebar.bottomBodyHeightPx,
   };
 }
-
-/** @deprecated Use computeHomeDashboardLayout */
-export function computeHomePostingRowBudget(input: {
-  columnHeightPx: number;
-  recentHeaderPx: number;
-  savedHeaderPx: number;
-  postingRowPx: number;
-  postingTableHeaderPx: number;
-  columnGapPx: number;
-  recentAvailable: number;
-  savedAvailable: number;
-}) {
-  const layout = computeHomeDashboardLayout({
-    ...input,
-    hotHeaderPx: 0,
-    alertActivityHeaderPx: 0,
-    sidebarRowPx: 1,
-    hotCompaniesAvailable: 0,
-    alertActivityAvailable: 0,
-  });
-  return { freshSlots: layout.freshSlots, savedSlots: layout.savedSlots };
-}
-
-/** @deprecated Use HOME_STACKED_PANEL_BORDER_PX */
-export const HOME_PANEL_VERTICAL_BORDER_PX = HOME_STACKED_PANEL_BORDER_PX;

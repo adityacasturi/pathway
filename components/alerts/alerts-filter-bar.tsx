@@ -25,7 +25,6 @@ export function AlertsFilterBar({
   onSearchFocusChange,
   globalFilters,
   onGlobalFiltersChange,
-  globalFiltersPending,
   briefingEnabled,
   onOpenAddPanel,
 }: {
@@ -36,7 +35,6 @@ export function AlertsFilterBar({
   onSearchFocusChange: (focused: boolean) => void;
   globalFilters: AlertFiltersView;
   onGlobalFiltersChange: (next: AlertFiltersView) => void;
-  globalFiltersPending: boolean;
   briefingEnabled: boolean;
   onOpenAddPanel: () => void;
 }) {
@@ -108,7 +106,6 @@ export function AlertsFilterBar({
               <AlertsDefaultsPanel
                 globalFilters={globalFilters}
                 onGlobalFiltersChange={onGlobalFiltersChange}
-                globalFiltersPending={globalFiltersPending}
                 className="absolute right-0 top-full z-40 mt-1.5 hidden w-[min(24rem,calc(100vw-2.5rem))] shadow-sm md:flex"
               />
             ) : null}
@@ -122,7 +119,6 @@ export function AlertsFilterBar({
               <AlertsDefaultsPanel
                 globalFilters={globalFilters}
                 onGlobalFiltersChange={onGlobalFiltersChange}
-                globalFiltersPending={globalFiltersPending}
                 className="shadow-sm"
               />
             </div>
@@ -136,12 +132,10 @@ export function AlertsFilterBar({
 function AlertsDefaultsPanel({
   globalFilters,
   onGlobalFiltersChange,
-  globalFiltersPending,
   className,
 }: {
   globalFilters: AlertFiltersView;
   onGlobalFiltersChange: (next: AlertFiltersView) => void;
-  globalFiltersPending: boolean;
   className?: string;
 }) {
   return (
@@ -155,11 +149,7 @@ function AlertsDefaultsPanel({
         <AlertDefaultsActiveRail value={globalFilters} onChange={onGlobalFiltersChange} />
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:thin]">
-        <AlertFiltersEditor
-          value={globalFilters}
-          onChange={onGlobalFiltersChange}
-          disabled={globalFiltersPending}
-        />
+        <AlertFiltersEditor value={globalFilters} onChange={onGlobalFiltersChange} />
       </div>
     </SectionStack>
   );

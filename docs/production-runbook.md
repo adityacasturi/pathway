@@ -29,62 +29,40 @@ Emergency SQL in the dashboard must be followed by `apply_migration` if the chan
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 NEXT_PUBLIC_SITE_URL=https://...
-SUPABASE_SERVICE_ROLE_KEY=...   # server/cron only — never NEXT_PUBLIC_
+SUPABASE_SERVICE_ROLE_KEY=...   # server/scripts only — never NEXT_PUBLIC_
 RESEND_API_KEY=...              # Email alerts (Resend)
 RESEND_FROM_EMAIL=...           # Verified sender, e.g. Pathway Alerts <alerts@yourdomain.com>
 ALERT_UNSUBSCRIBE_SECRET=...    # Random secret for signed unsubscribe tokens
-CRON_SECRET=...                 # Vercel Cron auth (Bearer token for /api/cron/*)
 ```
+
+Vercel production env still needs `SUPABASE_SERVICE_ROLE_KEY` for server routes. Scrape and alert **scheduling** uses GitHub Actions secrets (see below).
 
 **Alerts email delivery:** requires `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and `ALERT_UNSUBSCRIBE_SECRET`. The instant-alert script skips outbound email when Resend is not configured.
 
-**Vercel Cron (scrape + instant alerts):**
+**GitHub Actions (scrape + alerts):**
 
-Production scraping and instant alerts are scheduled in `vercel.json`. Vercel sends `Authorization: Bearer $CRON_SECRET` on each invocation.
+Production scraping and instant alerts run in `.github/workflows/scrape-and-alerts.yml` (hourly at `:07` UTC, unsharded). Daily briefing emails run in `.github/workflows/daily-digest.yml` (`0 13 * * *` UTC). Configure these repository secrets:
 
-**Hobby plan (current):** each cron expression may run at most once per day. Sub-hourly schedules such as `7 */6 * * *` fail deployment. Pathway uses four daily windows (00:07, 06:07, 12:07, 18:07 UTC) with two scrape shards per window and instant alerts 30 minutes later:
+| Secret | Purpose |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | Scrape writes + alert ledger |
+| `NEXT_PUBLIC_SITE_URL` | Links in alert emails |
+| `RESEND_API_KEY` | Outbound email |
+| `RESEND_FROM_EMAIL` | Verified sender |
+| `ALERT_UNSUBSCRIBE_SECRET` | Signed unsubscribe tokens |
 
-| Window (UTC) | Scrape shards | Instant alerts |
-| --- | --- | --- |
-| `7 0 * * *` | `shard=0&shards=2`, `shard=1&shards=2` | `37 0 * * *` |
-| `7 6 * * *` | same | `37 6 * * *` |
-| `7 12 * * *` | same | `37 12 * * *` |
-| `7 18 * * *` | same | `37 18 * * *` |
-
-Hobby timing is hourly-precision (±59 min within the scheduled hour).
-
-**Pro plan:** you can switch to five crons with `7 */6 * * *` (four `shards=4` scrape jobs + `37 */6 * * *` instant alerts) for per-minute scheduling and more shards.
-
-Manual fallback (local or one-off) — same `runAllScrapes` adapter pipeline as cron (native `fetch`, not Crawlee):
+Manual runs: use **Actions → workflow → Run workflow**, or locally:
 
 ```bash
 npm run scrape
 npm run alerts:instant
+npm run alerts:digest
 ```
 
 If a specific source needs immediate attention, run `npm run scrape -- <slug>` locally to reproduce and refresh it.
 
-**QStash cleanup:**
-
-QStash no longer owns production scrape or alert schedules. The `qstash:cron` command remains only to list/delete retired Pathway schedules during cleanup. Add these local-only values to `.env.local` if you need to clean QStash:
-
-| Variable | Example | Purpose |
-| --- | --- | --- |
-| `QSTASH_TOKEN` | `qstash_...` | Upstash QStash API token |
-| `QSTASH_URL` | `https://qstash-us-east-1.upstash.io` | QStash regional API URL; use this when the default region returns 404 |
-
-Manage schedules from the repo:
-
-```bash
-npm run qstash:cron -- list
-npm run qstash:cron -- upsert
-npm run qstash:cron -- delete
-```
-
-For US-region QStash tokens, set `QSTASH_URL=https://qstash-us-east-1.upstash.io`. For EU-region tokens, omit `QSTASH_URL` or set `https://qstash-eu-central-1.upstash.io`.
-`upsert` creates no active schedules and deletes retired Pathway schedule IDs.
-
-**Optional:**
+**Optional (Vercel):**
 
 ```bash
 LOGO_DEV_TOKEN=...              # /api/logo — publishable pk_ for img.logo.dev
@@ -112,9 +90,8 @@ Via MCP or dashboard:
 
 ### Known advisor findings
 
-- **`alert_unsubscribe_nonces` has RLS enabled with no policy** — intentional (service-role writes only; deny-all to clients). No action needed.
+- **`alert_unsubscribe_nonces` has RLS enabled with no policy** — intentional (service-role writes only). No action needed.
 - **Leaked-password protection disabled** — enable in the Auth dashboard (see above).
-- Alert write hardening (`drop_legacy_alert_write_rpcs_after_service_actions`, `harden_alert_validator_search_path`, `harden_chat_table_grants`, `drop_unused_billing_and_index`) was applied remotely on 2026-06-06. Re-run advisors after new schema changes.
 
 ## Supabase dashboard (manual)
 
@@ -154,10 +131,10 @@ Public smoke only (landing, auth, redirects, security headers). No credentials r
 ### Empty or stale Openings / Companies
 
 1. **Openings and Companies read `scraped_postings`** — UI refresh does not scrape.
-2. Check Vercel Cron logs for `/api/cron/scrape-postings` and `/api/cron/send-instant-alerts`. If needed, run `npm run scrape` locally with `SUPABASE_SERVICE_ROLE_KEY`.
+2. Check GitHub Actions logs for **Scrape and alerts** (`.github/workflows/scrape-and-alerts.yml`). If needed, run `npm run scrape` locally with `SUPABASE_SERVICE_ROLE_KEY`.
 3. Inspect `company_sources.last_success_at` / `last_failure_at` for failing companies.
 4. Run `npm run scrape -- --verbose <slug>` locally with service role to reproduce.
-5. After deploy, run `npm run scrape` once if data is needed before the next cron tick.
+5. After deploy, run `npm run scrape` once if data is needed before the next scheduled run, or trigger the workflow manually in GitHub Actions.
 
 ### Company industry labels / grouping
 

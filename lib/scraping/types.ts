@@ -74,6 +74,7 @@ export const SOURCE_TYPES = [
   "rippling",
   "clearcompany",
   "icims",
+  "asml",
 ] as const;
 
 export type SourceType = (typeof SOURCE_TYPES)[number];

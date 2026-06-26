@@ -73,6 +73,7 @@ import { createPinpointAdapter } from "./adapters/pinpoint.ts";
 import { createRipplingAdapter } from "./adapters/rippling.ts";
 import { createClearCompanyAdapter } from "./adapters/clearcompany.ts";
 import { createIcimsAdapter } from "./adapters/icims.ts";
+import { createAsmlAdapter } from "./adapters/asml.ts";
 import type { CompanySourceConfig, ScrapeAdapter, SourceType } from "./types.ts";
 
 type AdapterFactory = (source: CompanySourceConfig) => ScrapeAdapter;
@@ -153,6 +154,7 @@ const ADAPTER_FACTORIES = {
   rippling: createRipplingAdapter,
   clearcompany: createClearCompanyAdapter,
   icims: createIcimsAdapter,
+  asml: createAsmlAdapter,
 } satisfies Record<SourceType, AdapterFactory>;
 
 export const REGISTERED_SOURCE_TYPES = Object.keys(ADAPTER_FACTORIES) as SourceType[];

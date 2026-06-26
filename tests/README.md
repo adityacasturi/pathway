@@ -4,16 +4,7 @@ Focused unit tests and public Playwright smoke tests. No authenticated e2e or cr
 
 ## Unit (`npm run test:unit`)
 
-Node’s built-in test runner with TypeScript stripping (`tests/run-unit.mjs`). **24 test files**, ~130 assertions covering:
-
-| Area | Files |
-| --- | --- |
-| Auth | `auth-validation.test.ts`, `auth-redirect.test.ts` |
-| Alerts | `alert-filters.test.ts`, `alert-match-postings.test.ts`, `subscription-filters.test.ts`, `alert-unsubscribe-token.test.ts`, `alert-email-template.test.ts` |
-| Scrape | `scrape-classify.test.ts`, `scrape-upsert.test.ts`, `scrape-shard.test.ts`, `adapter-parse.test.ts`, `role-parse-result.test.ts`, `ats-postal-address.test.ts` |
-| Feed / Discover | `feed-visibility.test.ts`, `feed-interactions.test.ts`, `discover-posting-visibility.test.ts` |
-| Applications | `application-state.test.ts`, `application-events.test.ts` |
-| Infra | `cron-auth.test.ts`, `rate-limit.test.ts`, `qstash-schedules.test.ts`, `geo-resolve.test.ts`, `url-validation.test.ts`, `build-track-form-data.test.ts` |
+Node’s built-in test runner with TypeScript stripping (`tests/run-unit.mjs`). Covers auth, alerts, scrape, feed, discover, applications, geo, and rate limiting.
 
 No env vars required. Optional coverage: `npm run test:unit:coverage`.
 

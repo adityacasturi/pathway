@@ -19,6 +19,7 @@ const HOST_CONCURRENCY_LIMITS: Record<string, number> = {
   "www.linkedin.com": 1,
   "www.tesla.com": 2,
   "www.uber.com": 2,
+  "www.asml.com": 2,
   "www.citadel.com": 2,
   "www.twosigma.com": 2,
 };
