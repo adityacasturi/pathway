@@ -3,13 +3,17 @@ import { stripHtml } from "../html-utils.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonPayloadWithTimeout, isHttpUrl, resolveBoardToken } from "./shared.ts";
+import { fetchJsonPayloadWithTimeout, isHttpUrl, resolveBoardToken, scraperDelay } from "./shared.ts";
 
 /** Public ClearCompany career-site API (no auth); board_token is the site id. */
 export const CLEARCOMPANY_API_ORIGIN = "https://careers-api.clearcompany.com";
 
 const DESCRIPTION_MAX_LENGTH = 4000;
 const CLEARCOMPANY_HEADERS = { "accept-encoding": "identity" };
+/** Full-board payloads (~1MB+) are flaky; paginate to keep each response small. */
+const CLEARCOMPANY_PAGE_SIZE = 25;
+const CLEARCOMPANY_MAX_PAGES = 80;
+const CLEARCOMPANY_PAGE_DELAY_MS = 100;
 
 export interface ClearCompanyLocation {
   city?: string | null;
@@ -41,18 +45,75 @@ export function createClearCompanyAdapter(source: CompanySourceConfig): ScrapeAd
   return {
     source: resolvedSource,
     async fetchRoles() {
-      const url = `${CLEARCOMPANY_API_ORIGIN}/v1/${siteId}`;
-      const { response: res, data: payload } = await fetchJsonPayloadWithTimeout<ClearCompanyResponse>(url, {
-        headers: CLEARCOMPANY_HEADERS,
-      });
-      if (!res.ok) {
-        throw new Error(`ClearCompany returned ${res.status} for ${url}`);
-      }
-
-      const jobs = Array.isArray(payload.results) ? payload.results : [];
+      const jobs = await fetchAllClearCompanyJobs(siteId);
       return parseClearCompanyJobs(jobs, resolvedSource);
     },
   };
+}
+
+export function buildClearCompanyListUrl(
+  siteId: string,
+  pageIndex: number,
+  pageSize = CLEARCOMPANY_PAGE_SIZE,
+): string {
+  const url = new URL(`${CLEARCOMPANY_API_ORIGIN}/v1/${siteId}`);
+  url.searchParams.set("pageIndex", String(pageIndex));
+  url.searchParams.set("pageSize", String(pageSize));
+  return url.toString();
+}
+
+export function mergeClearCompanyJobPages(pages: readonly ClearCompanyJob[][]): ClearCompanyJob[] {
+  const merged: ClearCompanyJob[] = [];
+  const seen = new Set<string>();
+
+  for (const page of pages) {
+    for (const job of page) {
+      const key =
+        job.id?.trim() ||
+        normalizeClearCompanyPostingUrl(job.applyLink ?? "") ||
+        job.positionTitle?.trim() ||
+        "";
+      if (!key || seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      merged.push(job);
+    }
+  }
+
+  return merged;
+}
+
+async function fetchAllClearCompanyJobs(siteId: string): Promise<ClearCompanyJob[]> {
+  const pages: ClearCompanyJob[][] = [];
+  let totalCount: number | null = null;
+
+  for (let pageIndex = 0; pageIndex < CLEARCOMPANY_MAX_PAGES; pageIndex += 1) {
+    const url = buildClearCompanyListUrl(siteId, pageIndex);
+    const { response: res, data: payload } = await fetchJsonPayloadWithTimeout<ClearCompanyResponse>(url, {
+      headers: CLEARCOMPANY_HEADERS,
+    });
+    if (!res.ok) {
+      throw new Error(`ClearCompany returned ${res.status} for ${url}`);
+    }
+
+    const batch = Array.isArray(payload.results) ? payload.results : [];
+    if (totalCount === null && typeof payload.totalCount === "number") {
+      totalCount = payload.totalCount;
+    }
+    pages.push(batch);
+
+    if (batch.length < CLEARCOMPANY_PAGE_SIZE) {
+      break;
+    }
+    if (totalCount !== null && mergeClearCompanyJobPages(pages).length >= totalCount) {
+      break;
+    }
+
+    await scraperDelay(CLEARCOMPANY_PAGE_DELAY_MS);
+  }
+
+  return mergeClearCompanyJobPages(pages);
 }
 
 export function resolveClearCompanySiteId(source: CompanySourceConfig): string {

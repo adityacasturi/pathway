@@ -1,6 +1,7 @@
 import { gzipSync } from "node:zlib";
 
 import { classifyForSource } from "../adapter-parse.ts";
+import { accumulateCookieHeaders } from "../http-utils.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import { htmlToPlainText } from "../plain-text.ts";
@@ -12,7 +13,6 @@ import {
   isHttpUrl,
   resolveBoardToken,
   scraperDelay,
-  scraperHtmlHeaders,
 } from "./shared.ts";
 
 /**
@@ -83,6 +83,35 @@ export interface GeneralDynamicsApiAuth {
   timestamp: string;
 }
 
+export interface GeneralDynamicsSession {
+  cookie: string | null;
+  referer: string;
+}
+
+export function generalDynamicsBrowserHeaders(
+  referer: string,
+  cookie?: string | null,
+): HeadersInit {
+  return {
+    accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "accept-language": "en-US,en;q=0.9",
+    "cache-control": "no-cache",
+    pragma: "no-cache",
+    referer,
+    "sec-ch-ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"macOS"',
+    "sec-fetch-dest": "document",
+    "sec-fetch-mode": "navigate",
+    "sec-fetch-site": "same-origin",
+    "sec-fetch-user": "?1",
+    "upgrade-insecure-requests": "1",
+    "user-agent":
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    ...(cookie ? { cookie } : {}),
+  };
+}
+
 export function createGeneralDynamicsAdapter(source: CompanySourceConfig): ScrapeAdapter {
   const board = resolveGeneralDynamicsBoard(source);
   const resolvedSource =
@@ -91,9 +120,9 @@ export function createGeneralDynamicsAdapter(source: CompanySourceConfig): Scrap
   return {
     source: resolvedSource,
     async fetchRoles() {
-      const listings = await fetchAllGeneralDynamicsListings(board);
+      const { listings, session } = await fetchAllGeneralDynamicsListings(board);
       const candidates = listings.filter(isGeneralDynamicsListCandidate);
-      const enriched = await enrichGeneralDynamicsListings(candidates);
+      const enriched = await enrichGeneralDynamicsListings(candidates, session);
       return parseGeneralDynamicsJobs(enriched, resolvedSource, listings.length);
     },
   };
@@ -352,8 +381,10 @@ export function parseGeneralDynamicsApiAuthFromHtml(html: string): GeneralDynami
 
 async function fetchAllGeneralDynamicsListings(
   board: GeneralDynamicsBoardConfig,
-): Promise<GeneralDynamicsListing[]> {
+): Promise<{ listings: GeneralDynamicsListing[]; session: GeneralDynamicsSession }> {
   const all: GeneralDynamicsListing[] = [];
+  const session = await warmGeneralDynamicsSession(board);
+  let auth = await fetchGeneralDynamicsApiAuth(board, session);
 
   for (const keyword of board.searchKeywords) {
     let pageCount = 1;
@@ -363,7 +394,14 @@ async function fetchAllGeneralDynamicsListings(
         break;
       }
 
-      const { response } = await fetchGeneralDynamicsCareerSearchPage(board, keyword, page);
+      const { response, auth: nextAuth } = await fetchGeneralDynamicsCareerSearchPage(
+        board,
+        keyword,
+        page,
+        session,
+        auth,
+      );
+      auth = nextAuth;
       if (response.IsLogicError) {
         throw new Error(`General Dynamics CareerSearch logic error for keyword ${keyword}`);
       }
@@ -380,40 +418,81 @@ async function fetchAllGeneralDynamicsListings(
     }
   }
 
-  return dedupeListingsByUrl(all);
+  return { listings: dedupeListingsByUrl(all), session };
+}
+
+export async function warmGeneralDynamicsSession(
+  board: GeneralDynamicsBoardConfig,
+): Promise<GeneralDynamicsSession> {
+  let cookie: string | null = null;
+  const careersReferer = `${board.careersOrigin}/careers`;
+  const warmupSteps = [
+    { url: board.careersOrigin, referer: board.careersOrigin },
+    { url: careersReferer, referer: board.careersOrigin },
+  ];
+
+  for (const step of warmupSteps) {
+    const { response } = await fetchGeneralDynamicsHtmlResponse(step.url, {
+      referer: step.referer,
+      cookie,
+    });
+    cookie = accumulateCookieHeaders(cookie, response.headers.getSetCookie?.() ?? []);
+    if (!response.ok) {
+      throw new Error(`General Dynamics careers warmup returned ${response.status} for ${step.url}`);
+    }
+  }
+
+  return { cookie, referer: careersReferer };
 }
 
 async function fetchGeneralDynamicsCareerSearchPage(
   board: GeneralDynamicsBoardConfig,
   keyword: string,
   page: number,
+  session: GeneralDynamicsSession,
+  auth: GeneralDynamicsApiAuth,
 ): Promise<{ response: GeneralDynamicsCareerSearchResponse; auth: GeneralDynamicsApiAuth }> {
-  const auth = await fetchGeneralDynamicsApiAuth(board.jobSearchUrl);
   const payload = buildGeneralDynamicsCareerSearchPayload(keyword, page);
   const request = encodeGeneralDynamicsCareerSearchRequest(payload);
   const url = `${GENERAL_DYNAMICS_CAREER_SEARCH_API}?${new URLSearchParams({ request }).toString()}`;
 
-  const res = await fetchJsonWithTimeout(url, {
-    headers: {
-      accept: "application/json, text/javascript, */*; q=0.01",
-      referer: board.jobSearchUrl,
-      "api-auth-nonce": auth.nonce,
-      "api-auth-signature": auth.signature,
-      "api-auth-timestamp": auth.timestamp,
-    },
-  });
+  const attemptSearch = async (activeAuth: GeneralDynamicsApiAuth) => {
+    const res = await fetchJsonWithTimeout(url, {
+      headers: {
+        accept: "application/json, text/javascript, */*; q=0.01",
+        referer: board.jobSearchUrl,
+        "api-auth-nonce": activeAuth.nonce,
+        "api-auth-signature": activeAuth.signature,
+        "api-auth-timestamp": activeAuth.timestamp,
+        ...(session.cookie ? { cookie: session.cookie } : {}),
+      },
+    });
+    return res;
+  };
+
+  let res = await attemptSearch(auth);
+  let activeAuth = auth;
+
+  if (res.status === 401 || res.status === 403) {
+    activeAuth = await fetchGeneralDynamicsApiAuth(board, session);
+    res = await attemptSearch(activeAuth);
+  }
 
   if (!res.ok) {
     throw new Error(`General Dynamics CareerSearch returned ${res.status} for ${keyword} page ${page}`);
   }
 
   const response = (await res.json()) as GeneralDynamicsCareerSearchResponse;
-  return { response, auth };
+  return { response, auth: activeAuth };
 }
 
-async function fetchGeneralDynamicsApiAuth(jobSearchUrl: string): Promise<GeneralDynamicsApiAuth> {
-  const { response: res, data: html } = await fetchTextPayloadWithTimeout(jobSearchUrl, {
-    headers: scraperHtmlHeaders(),
+export async function fetchGeneralDynamicsApiAuth(
+  board: GeneralDynamicsBoardConfig,
+  session: GeneralDynamicsSession,
+): Promise<GeneralDynamicsApiAuth> {
+  const { response: res, data: html } = await fetchGeneralDynamicsHtmlResponse(board.jobSearchUrl, {
+    referer: session.referer,
+    cookie: session.cookie,
   });
   if (!res.ok) {
     throw new Error(`General Dynamics job search page returned ${res.status}`);
@@ -425,8 +504,18 @@ async function fetchGeneralDynamicsApiAuth(jobSearchUrl: string): Promise<Genera
   return auth;
 }
 
+async function fetchGeneralDynamicsHtmlResponse(
+  url: string,
+  session: Pick<GeneralDynamicsSession, "referer" | "cookie">,
+): Promise<Awaited<ReturnType<typeof fetchTextPayloadWithTimeout>>> {
+  return fetchTextPayloadWithTimeout(url, {
+    headers: generalDynamicsBrowserHeaders(session.referer, session.cookie),
+  });
+}
+
 async function enrichGeneralDynamicsListings(
   listings: GeneralDynamicsListing[],
+  session: GeneralDynamicsSession,
 ): Promise<GeneralDynamicsListing[]> {
   if (listings.length === 0) {
     return listings;
@@ -443,7 +532,7 @@ async function enrichGeneralDynamicsListings(
         continue;
       }
       try {
-        const html = await fetchGeneralDynamicsHtml(current.postingUrl);
+        const html = await fetchGeneralDynamicsHtml(current.postingUrl, session);
         details.set(current.postingUrl, parseGeneralDynamicsJobDetailFields(html));
       } catch {
         details.set(current.postingUrl, {
@@ -483,10 +572,13 @@ async function enrichGeneralDynamicsListings(
   return enriched;
 }
 
-async function fetchGeneralDynamicsHtml(url: string): Promise<string> {
-  const careersOrigin = parseGeneralDynamicsCareersOrigin(url) ?? GENERAL_DYNAMICS_CAREERS_ORIGIN;
-  const { response: res, data: html } = await fetchTextPayloadWithTimeout(url, {
-    headers: scraperHtmlHeaders(`${careersOrigin}/careers/job-search`),
+async function fetchGeneralDynamicsHtml(
+  url: string,
+  session: GeneralDynamicsSession,
+): Promise<string> {
+  const { response: res, data: html } = await fetchGeneralDynamicsHtmlResponse(url, {
+    referer: session.referer,
+    cookie: session.cookie,
   });
   if (!res.ok) {
     throw new Error(`General Dynamics careers returned ${res.status} for ${url}`);

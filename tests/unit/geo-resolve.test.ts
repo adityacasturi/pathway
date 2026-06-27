@@ -171,3 +171,18 @@ test("user-assigned ISO codes are not countries", () => {
   const result = resolveScrapedLocations(["Springfield, ZZ"]);
   assert.equal(result.countries.includes("ZZ"), false);
 });
+
+test("resolveScrapedLocations infers US for SpaceX flexible-site labels", () => {
+  const result = resolveScrapedLocations(["Flexible - Any SpaceX Site"], {
+    companyName: "SpaceX",
+    companySlug: "spacex",
+  });
+  assert.deepEqual(result.countries, ["US"]);
+  assert.equal(result.display, "United States");
+});
+
+test("resolveScrapedLocations does not infer a country from generic flexible-site labels", () => {
+  const result = resolveScrapedLocations(["Flexible - Any Site"]);
+  assert.equal(result.places.length, 0);
+  assert.deepEqual(result.countries, []);
+});

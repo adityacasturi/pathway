@@ -54,3 +54,11 @@ test("posting URL canonicalization is stable across param order", () => {
   const b = canonicalizePostingUrl("https://jobs.example.com/job?dept=eng&id=1");
   assert.equal(a, b);
 });
+
+test("spacex flexible-site labels resolve to US at scrape time", () => {
+  const resolved = resolveScrapedLocations(["Flexible - Any SpaceX Site"], {
+    companyName: "SpaceX",
+    companySlug: "spacex",
+  });
+  assert.deepEqual(resolved.countries, ["US"]);
+});

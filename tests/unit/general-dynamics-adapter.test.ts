@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  parseGeneralDynamicsApiAuthFromHtml,
   parseGeneralDynamicsJobDetailFields,
   parseGeneralDynamicsJobs,
 } from "@/lib/scraping/adapters/general-dynamics";
+import { accumulateCookieHeaders } from "@/lib/scraping/http-utils";
 import type { CompanySourceConfig } from "@/lib/scraping/types";
 
 const source: CompanySourceConfig = {
@@ -71,4 +73,23 @@ test("parseGeneralDynamicsJobs resolves Other / Non-US, CA as Canada", () => {
   assert.deepEqual(result.roles[0]?.countries, ["CA"]);
   assert.match(result.roles[0]?.location ?? "", /Cole Harbour/);
   assert.doesNotMatch(result.roles[0]?.location ?? "", /United States/);
+});
+
+test("parseGeneralDynamicsApiAuthFromHtml reads CareerSearch API auth attributes", () => {
+  const auth = parseGeneralDynamicsApiAuthFromHtml(`
+    <div data-nonce="abc123" data-signature="sig456" data-timestamp="1710000000"></div>
+  `);
+
+  assert.deepEqual(auth, {
+    nonce: "abc123",
+    signature: "sig456",
+    timestamp: "1710000000",
+  });
+});
+
+test("accumulateCookieHeaders replaces same-name cookies and preserves others", () => {
+  assert.equal(
+    accumulateCookieHeaders("foo=1; bar=2", ["bar=3; Path=/", "baz=4; HttpOnly"]),
+    "foo=1; bar=3; baz=4",
+  );
 });

@@ -276,7 +276,7 @@ async function fetchResponsePayloadWithTimeout<T>(
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const response = await fetchJsonWithTimeout(url, init, {
+      const response = await fetchWithTimeout(url, init, {
         ...options,
         maxAttempts: 1,
       });

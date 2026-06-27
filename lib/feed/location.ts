@@ -291,6 +291,35 @@ function normalizeToken(token: string): string {
 // "Remote US" / "Hybrid SF" resolve correctly.
 const WORK_MODE_WORDS = /\b(remote|wfh|virtual|onsite|on-site|hybrid|in-office|in office|in-person|in person)\b/gi;
 
+export type EmployerSiteCountryContext = {
+  companySlug?: string | null;
+  companyName?: string | null;
+};
+
+/**
+ * Employer-specific site labels that are not geographic strings but still imply
+ * a country for feed filters and scrape ingest.
+ */
+export function inferEmployerSiteCountries(
+  raw: string,
+  context: EmployerSiteCountryContext = {},
+): string[] {
+  const normalized = normalizeToken(raw.trim());
+  if (!normalized) return [];
+
+  const slug = context.companySlug?.trim().toLowerCase();
+
+  if (
+    /\bany spacex site\b/.test(normalized) ||
+    (/\bflexible\b/.test(normalized) && /\bspacex\b/.test(normalized)) ||
+    (slug === "spacex" && /\bflexible\b/.test(normalized) && /\bany\b/.test(normalized))
+  ) {
+    return ["US"];
+  }
+
+  return [];
+}
+
 /**
  * Resolve country codes from a single segment ("San Francisco, CA",
  * "Toronto, ON, Canada", "Remote in US", "Remote (UK)").
@@ -308,11 +337,9 @@ function classifySegment(segment: string): string[] {
   if (!trimmed) return [];
 
   const normalizedSegment = normalizeToken(trimmed);
-  if (
-    /\bany spacex site\b/.test(normalizedSegment) ||
-    (/\bflexible\b/.test(normalizedSegment) && /\bspacex\b/.test(normalizedSegment))
-  ) {
-    return ["US"];
+  const employerCountries = inferEmployerSiteCountries(trimmed);
+  if (employerCountries.length > 0) {
+    return employerCountries;
   }
 
   // Ashby / enterprise boards: US-CA-Menlo Park, US-WA-Bellevue; PCSX: IN-KA-Hyderabad

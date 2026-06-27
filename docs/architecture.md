@@ -58,7 +58,6 @@ User-owned (RLS via `auth.uid()`):
 | `alert_preferences` | Email alerts master switch, global filter defaults |
 | `alert_subscriptions` | Per-company or bundle alert follows |
 | `alert_sent_postings` | Dedup ledger for sent alert emails |
-| `alert_digest_state` | Legacy digest send timestamps (unused) |
 | `alert_curated_sectors` | Industry bundle labels/metadata; `alert_curated_sector_companies` maps bundle → company slugs |
 | `alert_unsubscribe_nonces` | Single-use unsubscribe nonces (service-role only) |
 Shared scrape catalog (authenticated read; writes via service role / scripts):

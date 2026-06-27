@@ -68,7 +68,7 @@ Public signup (any valid email) · **Home** briefing · application tracker with
 ## Data (Supabase)
 
 - User: `applications`, `application_events`, `feed_interactions`, `discover_company_favorites`, `user_preferences`
-- Alerts: `alert_preferences`, `alert_subscriptions`, `alert_sent_postings`, `alert_digest_state`, `alert_curated_sectors`, `alert_unsubscribe_nonces`
+- Alerts: `alert_preferences`, `alert_subscriptions`, `alert_sent_postings`, `alert_curated_sectors`, `alert_unsubscribe_nonces`
 - Scrape catalog: `companies` (`industry` → `discover_industries`), `company_sources`, `scraped_postings`, `scrape_runs` (per-run health summary, service-role only)
 - Status from events: `lib/config/events.ts`
 - Alert writes: scoped server actions in `lib/actions/alerts.ts` (direct client table writes revoked).

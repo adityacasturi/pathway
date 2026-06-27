@@ -1,6 +1,6 @@
-import { detectCountriesAcross } from "../feed/location.ts";
+import { detectCountriesAcross, inferEmployerSiteCountries } from "../feed/location.ts";
 import { countriesFromPlaces } from "./countries.ts";
-import { minConfidence } from "./confidence.ts";
+import { minConfidence, scoreFromProvider } from "./confidence.ts";
 import { canonicalPlacesToField } from "./format.ts";
 import {
   canonicalizeLocationParts,
@@ -167,6 +167,40 @@ export function isStructuredPlaceInput(value: LocationInput): value is Structure
   return typeof value === "object" && value !== null;
 }
 
+function collectRawLocationStrings(inputs: readonly LocationInput[]): string[] {
+  const out: string[] = [];
+  for (const input of inputs) {
+    if (typeof input === "string") {
+      const trimmed = input.trim();
+      if (trimmed) out.push(trimmed);
+      continue;
+    }
+    const label = input.rawLabel?.trim();
+    if (label) out.push(label);
+  }
+  return out;
+}
+
+/** Country-only inference for employer-specific location labels the gazetteer cannot parse. */
+function inferCountryOnlyPlaces(
+  rawStrings: readonly string[],
+  context: ScrapedLocationContext,
+): CanonicalPlace[] {
+  const countries = new Set<string>();
+  for (const raw of rawStrings) {
+    for (const countryCode of inferEmployerSiteCountries(raw, context)) {
+      countries.add(countryCode);
+    }
+  }
+  const remote = rawStrings.some((value) => /\bremote\b/i.test(value));
+  return [...countries].map((countryCode) => ({
+    city: null,
+    region: null,
+    countryCode,
+    remote,
+  }));
+}
+
 export function resolveScrapedLocations(
   inputs: readonly LocationInput[],
   context: ScrapedLocationContext = {},
@@ -213,13 +247,23 @@ export function resolveScrapedLocations(
     }
   }
 
-  const places: CanonicalPlace[] = resolved.map((r) => r.place);
+  let places: CanonicalPlace[] = resolved.map((r) => r.place);
+  let minConf = minConfidence(resolved);
+
+  if (places.length === 0) {
+    const inferred = inferCountryOnlyPlaces(collectRawLocationStrings(inputs), context);
+    if (inferred.length > 0) {
+      places = inferred;
+      minConf = scoreFromProvider("parser", false);
+    }
+  }
+
   const display = canonicalPlacesToField(places);
   const countries = countriesFromPlaces(places);
 
   return {
     places,
-    minConfidence: minConfidence(resolved),
+    minConfidence: minConf,
     display,
     countries,
   };

@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  buildClearCompanyListUrl,
   createClearCompanyAdapter,
   formatClearCompanyLocation,
+  mergeClearCompanyJobPages,
   normalizeClearCompanyPostingUrl,
   parseClearCompanyJobs,
   resolveClearCompanySiteId,
@@ -86,6 +88,61 @@ test("parseClearCompanyJobs keeps internships and rejects senior roles", () => {
     "https://firefly.clearcompany.com/careers/jobs/job-1",
   );
   assert.equal(result.stats.rejected.length, 1);
+});
+
+test("buildClearCompanyListUrl requests paginated payloads", () => {
+  assert.equal(
+    buildClearCompanyListUrl("abc-123", 2),
+    "https://careers-api.clearcompany.com/v1/abc-123?pageIndex=2&pageSize=25",
+  );
+});
+
+test("mergeClearCompanyJobPages dedupes jobs across pages", () => {
+  const merged = mergeClearCompanyJobPages([
+    [{ id: "job-1", positionTitle: "Intern" }],
+    [
+      { id: "job-1", positionTitle: "Intern" },
+      { id: "job-2", positionTitle: "Engineer" },
+    ],
+  ]);
+
+  assert.deepEqual(
+    merged.map((job) => job.id),
+    ["job-1", "job-2"],
+  );
+});
+
+test("createClearCompanyAdapter paginates until a short page", async () => {
+  const originalFetch = globalThis.fetch;
+  const urls: string[] = [];
+
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    const url = String(input);
+    urls.push(url);
+    const page = Number(new URL(url).searchParams.get("pageIndex") ?? "0");
+    const results =
+      page === 0
+        ? Array.from({ length: 25 }, (_, index) => ({
+            id: `job-${index}`,
+            positionTitle: index === 0 ? "Internship - Electrical Engineering - Fall 2026" : `Role ${index}`,
+            applyLink: `https://firefly.clearcompany.com/careers/jobs/job-${index}/apply`,
+            locations: [{ city: "Cedar Park", subdivision: "TX", country: "US" }],
+          }))
+        : [{ id: "job-25", positionTitle: "Principal Engineer", applyLink: "https://firefly.clearcompany.com/careers/jobs/job-25/apply" }];
+    return Response.json({ results, totalCount: 26 });
+  }) as typeof fetch;
+
+  try {
+    const adapter = createClearCompanyAdapter(source);
+    const result = await adapter.fetchRoles();
+    assert.equal(urls.length, 2);
+    assert.match(urls[0] ?? "", /pageIndex=0&pageSize=25/);
+    assert.match(urls[1] ?? "", /pageIndex=1&pageSize=25/);
+    assert.equal(result.stats.fetched, 26);
+    assert.equal(result.roles.length, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("createClearCompanyAdapter requests identity encoding", async () => {
