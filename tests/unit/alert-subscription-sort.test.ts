@@ -11,7 +11,6 @@ function sub(
     companyId: null,
     companySlug: null,
     sectorSlug: null,
-    feedSlug: null,
     websiteUrl: null,
     filterOverride: null,
     paused: false,

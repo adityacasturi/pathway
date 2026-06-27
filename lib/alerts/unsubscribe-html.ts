@@ -25,7 +25,7 @@ export function unsubscribePageHtml(options: {
     Unsubscribe from all Pathway emails
   </button>
 </form>
-<p style="margin:12px 0 0;font-size:13px;color:#666;">This stops as-posted alerts and your daily briefing.</p>`
+<p style="margin:12px 0 0;font-size:13px;color:#666;">This stops all Pathway alert emails.</p>`
       : "";
 
   return `<!DOCTYPE html>

@@ -11,8 +11,8 @@ npm run scrape
 # Send instant alerts for newly scraped matching roles
 npm run alerts:instant
 
-# Send daily briefing (digest) emails
-npm run alerts:digest
+# Send instant alert emails (after scrape)
+npm run alerts:instant
 
 # One company
 npm run scrape -- stripe
@@ -37,7 +37,7 @@ Environment:
 | `SCRAPE_COMPANY_CONCURRENCY` | Parallel companies (default 8, max 16) |
 | `SCRAPE_SHARD_INDEX` / `SCRAPE_SHARD_COUNT` | Deterministic subset for parallel scrape jobs (e.g. `0` / `5`) |
 
-Cron (production): GitHub Actions in `.github/workflows/` — hourly **five parallel scrape shards** (`SCRAPE_SHARD_COUNT=5`, `SCRAPE_COMPANY_CONCURRENCY=16`) then one `npm run alerts:instant` (`7 * * * *` UTC), plus daily briefing via `npm run alerts:digest` (`0 13 * * *` UTC). Manual/local scrapes use the same `runAllScrapes` path: `npm run scrape -- <slug>` or `npm run scrape -- --shard 2/5`.
+Cron (production): GitHub Actions in `.github/workflows/` — hourly **five parallel scrape shards** (`SCRAPE_SHARD_COUNT=5`, `SCRAPE_COMPANY_CONCURRENCY=16`) then one `npm run alerts:instant` (`7 * * * *` UTC). Manual/local scrapes use the same `runAllScrapes` path: `npm run scrape -- <slug>` or `npm run scrape -- --shard 2/5`.
 
 `company_sources.scrape_interval_minutes` (default 15 on onboard) is catalog metadata only — production cadence is the GitHub Actions scrape workflow, not that column.
 

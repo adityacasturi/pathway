@@ -1,6 +1,5 @@
 import type { AlertCompanyOption, CuratedSectorView } from "@/components/alerts/types";
 import type { AlertTypeFilter } from "@/components/alerts/types";
-import type { AlertFeedDefinition } from "@/lib/config/alert-feeds";
 import { ALERT_FEATURED_INDUSTRY_SLUGS } from "@/lib/config/alerts";
 import { companyMatchesSearch, getDiscoverSearchTerms } from "@/lib/discover/search";
 import { getSearchTerms } from "@/lib/search-terms";
@@ -72,21 +71,6 @@ export function partitionIndustrySectorsForAddDialog(
   );
 
   return { featured, remaining };
-}
-
-export function filterFeedsByQuery(
-  feeds: AlertFeedDefinition[],
-  query: string,
-): AlertFeedDefinition[] {
-  const terms = getSearchTerms(query);
-  if (terms.length === 0) {
-    return feeds;
-  }
-
-  return feeds.filter((feed) => {
-    const haystack = [feed.label, feed.description, feed.slug].join(" ").toLowerCase();
-    return terms.every((term) => haystack.includes(term));
-  });
 }
 
 export function getPopularAddableCompanies(

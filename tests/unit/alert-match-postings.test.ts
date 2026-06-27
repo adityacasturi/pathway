@@ -4,8 +4,6 @@ import { enrichAlertPostingCandidate } from "../../lib/alerts/enrich-posting.ts"
 import { DEFAULT_ALERT_FILTERS } from "../../lib/alerts/filters.ts";
 import {
   isAlertEligiblePosting,
-  matchBriefingPostingsToUsers,
-  matchFeedDigestPostingsToUsers,
   matchPostingsToUsers,
 } from "../../lib/alerts/match-postings.ts";
 import type { AlertSubscription } from "../../lib/alerts/types.ts";
@@ -33,7 +31,6 @@ function matchOptions(overrides: Partial<Parameters<typeof matchPostingsToUsers>
   return {
     enabledUserIds: new Set(["u1"]),
     sentKeys: new Set<string>(),
-    channel: "instant" as const,
     globalFiltersByUserId,
     ...overrides,
   };
@@ -104,42 +101,9 @@ test("matchPostingsToUsers skips invalid industry rows", () => {
       cadence: "instant",
       filterOverride: null,
     },
-    {
-      id: "s2",
-      userId: "u1",
-      targetType: "industry",
-      targetId: "quant",
-      cadence: "digest",
-      filterOverride: null,
-    },
   ] as unknown as AlertSubscription[];
-  const matches = matchPostingsToUsers([posting], subs, quantSectorMembers, {
-    ...matchOptions(),
-    channel: "digest",
-    subscriptionCadences: ["instant", "digest"],
-  });
+  const matches = matchPostingsToUsers([posting], subs, quantSectorMembers, matchOptions());
   assert.equal(matches.length, 0);
-});
-
-test("matchPostingsToUsers matches instant follows for digest channel", () => {
-  const subs: AlertSubscription[] = [
-    {
-      id: "s1",
-      userId: "u1",
-      targetType: "company",
-      targetId: "c1",
-      cadence: "instant",
-      filterOverride: null,
-      paused: false,
-    },
-  ];
-  const matches = matchPostingsToUsers([posting], subs, quantSectorMembers, {
-    ...matchOptions(),
-    channel: "digest",
-    subscriptionCadences: ["instant", "digest"],
-  });
-  assert.equal(matches.length, 1);
-  assert.equal(matches[0].channel, "digest");
 });
 
 test("matchPostingsToUsers skips disabled users and already sent", () => {
@@ -158,7 +122,6 @@ test("matchPostingsToUsers skips disabled users and already sent", () => {
   const matches = matchPostingsToUsers([posting], subs, quantSectorMembers, {
     enabledUserIds: new Set(["u2"]),
     sentKeys,
-    channel: "instant",
     globalFiltersByUserId,
   });
   assert.equal(matches.length, 0);
@@ -219,94 +182,5 @@ test("matchPostingsToUsers skips paused subscriptions", () => {
     },
   ];
   const matches = matchPostingsToUsers([posting], subs, quantSectorMembers, matchOptions());
-  assert.equal(matches.length, 0);
-});
-
-test("matchFeedDigestPostingsToUsers applies filters and skips paused feeds", () => {
-  const subs: AlertSubscription[] = [
-    {
-      id: "s1",
-      userId: "u1",
-      targetType: "feed",
-      targetId: "morning-briefing",
-      cadence: "digest",
-      filterOverride: null,
-      paused: false,
-    },
-  ];
-  const matches = matchFeedDigestPostingsToUsers([posting], subs, {
-    feedSlug: "morning-briefing",
-    sentKeys: new Set<string>(),
-    globalFiltersByUserId,
-  });
-  assert.equal(matches.length, 1);
-  assert.equal(matches[0].channel, "digest");
-});
-
-test("matchFeedDigestPostingsToUsers skips unlocated postings", () => {
-  const subs: AlertSubscription[] = [
-    {
-      id: "s1",
-      userId: "u1",
-      targetType: "feed",
-      targetId: "morning-briefing",
-      cadence: "digest",
-      filterOverride: null,
-      paused: false,
-    },
-  ];
-  const unlocated = { ...posting, location: "" };
-  const matches = matchFeedDigestPostingsToUsers([unlocated], subs, {
-    feedSlug: "morning-briefing",
-    sentKeys: new Set<string>(),
-    globalFiltersByUserId,
-  });
-  assert.equal(matches.length, 0);
-});
-
-test("matchFeedDigestPostingsToUsers matches nightly briefing feed", () => {
-  const subs: AlertSubscription[] = [
-    {
-      id: "s1",
-      userId: "u1",
-      targetType: "feed",
-      targetId: "nightly-briefing",
-      cadence: "digest",
-      filterOverride: null,
-      paused: false,
-    },
-  ];
-  const matches = matchFeedDigestPostingsToUsers([posting], subs, {
-    feedSlug: "nightly-briefing",
-    sentKeys: new Set<string>(),
-    globalFiltersByUserId,
-  });
-  assert.equal(matches.length, 1);
-  assert.equal(matches[0].channel, "digest");
-});
-
-test("matchBriefingPostingsToUsers includes postings without follows", () => {
-  const matches = matchBriefingPostingsToUsers([posting], {
-    enabledUserIds: new Set(["u1"]),
-    sentKeys: new Set<string>(),
-  });
-  assert.equal(matches.length, 1);
-  assert.equal(matches[0].channel, "digest");
-});
-
-test("matchBriefingPostingsToUsers ignores alert filters and location eligibility", () => {
-  const unlocated = { ...posting, location: "" };
-  const matches = matchBriefingPostingsToUsers([unlocated], {
-    enabledUserIds: new Set(["u1"]),
-    sentKeys: new Set<string>(),
-  });
-  assert.equal(matches.length, 1);
-});
-
-test("matchBriefingPostingsToUsers skips already sent digest postings", () => {
-  const matches = matchBriefingPostingsToUsers([posting], {
-    enabledUserIds: new Set(["u1"]),
-    sentKeys: new Set(["u1:p1:digest"]),
-  });
   assert.equal(matches.length, 0);
 });

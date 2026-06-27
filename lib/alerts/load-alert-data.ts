@@ -49,11 +49,6 @@ interface SentRow {
   channel: string;
 }
 
-interface DigestStateRow {
-  user_id: string;
-  last_sent_at: string;
-}
-
 function mapSubscription(row: SubscriptionRow): AlertSubscription {
   return {
     id: row.id,
@@ -97,19 +92,6 @@ export async function loadEnabledAlertUserIds(supabase: SupabaseClient): Promise
     .from("alert_preferences")
     .select("user_id")
     .eq("emails_enabled", true);
-
-  if (error) {
-    throw error;
-  }
-
-  return new Set((data ?? []).map((row) => row.user_id as string));
-}
-
-export async function loadDigestEnabledUserIds(supabase: SupabaseClient): Promise<Set<string>> {
-  const { data, error } = await supabase
-    .from("alert_preferences")
-    .select("user_id")
-    .eq("digest_enabled", true);
 
   if (error) {
     throw error;
@@ -212,33 +194,9 @@ export async function loadAlertSentKeys(
 
   const keys = new Set<string>();
   for (const row of (data ?? []) as SentRow[]) {
-    keys.add(buildSentKey(row.user_id, row.posting_id, row.channel as "instant" | "digest"));
+    keys.add(buildSentKey(row.user_id, row.posting_id, "instant"));
   }
   return keys;
-}
-
-export async function loadAlertDigestState(
-  supabase: SupabaseClient,
-  userIds: string[],
-): Promise<Map<string, Date>> {
-  if (userIds.length === 0) {
-    return new Map();
-  }
-
-  const { data, error } = await supabase
-    .from("alert_digest_state")
-    .select("user_id, last_sent_at")
-    .in("user_id", userIds);
-
-  if (error) {
-    throw error;
-  }
-
-  const map = new Map<string, Date>();
-  for (const row of (data ?? []) as DigestStateRow[]) {
-    map.set(row.user_id, new Date(row.last_sent_at));
-  }
-  return map;
 }
 
 export async function loadUserEmails(
@@ -260,7 +218,7 @@ export async function loadUserEmails(
 
 export async function recordAlertSentPostings(
   supabase: SupabaseClient,
-  rows: Array<{ userId: string; postingId: string; channel: "instant" | "digest" }>,
+  rows: Array<{ userId: string; postingId: string; channel: "instant" }>,
 ): Promise<void> {
   if (rows.length === 0) {
     return;
@@ -274,24 +232,6 @@ export async function recordAlertSentPostings(
       sent_at: new Date().toISOString(),
     })),
     { onConflict: "user_id,posting_id,channel" },
-  );
-
-  if (error) {
-    throw error;
-  }
-}
-
-export async function upsertAlertDigestState(
-  supabase: SupabaseClient,
-  userId: string,
-  sentAt: Date,
-): Promise<void> {
-  const { error } = await supabase.from("alert_digest_state").upsert(
-    {
-      user_id: userId,
-      last_sent_at: sentAt.toISOString(),
-    },
-    { onConflict: "user_id" },
   );
 
   if (error) {
@@ -328,7 +268,6 @@ export async function disableAlertEmails(
     {
       user_id: userId,
       emails_enabled: false,
-      digest_enabled: false,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "user_id" },

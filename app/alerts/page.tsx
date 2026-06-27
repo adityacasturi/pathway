@@ -19,7 +19,7 @@ interface SubscriptionRow {
   id: string;
   target_type: "company" | "sector";
   target_id: string;
-  cadence: "instant" | "digest";
+  cadence: "instant";
   filter_override: Record<string, unknown> | null;
   paused: boolean;
 }
@@ -34,7 +34,7 @@ export default async function AlertsRoute() {
     getCachedCuratedAlertSectors(),
     supabase
       .from("alert_preferences")
-      .select("emails_enabled, digest_enabled, alert_seasons, alert_countries, alert_include_remote")
+      .select("emails_enabled, alert_seasons, alert_countries, alert_include_remote")
       .eq("user_id", userId)
       .maybeSingle(),
     supabase
@@ -87,12 +87,10 @@ export default async function AlertsRoute() {
         companyId: null,
         companySlug: null,
         sectorSlug: row.target_id,
-        feedSlug: null,
         websiteUrl: null,
         sectorCompanies: sector?.companies ?? [],
         filterOverride,
         paused: row.paused,
-        cadence: row.cadence,
       });
       continue;
     }
@@ -104,11 +102,9 @@ export default async function AlertsRoute() {
       companyId: row.target_id,
       companySlug: companySlugById.get(row.target_id) ?? null,
       sectorSlug: null,
-      feedSlug: null,
       websiteUrl: companyWebsiteById.get(row.target_id) ?? null,
       filterOverride,
       paused: row.paused,
-      cadence: row.cadence,
     });
   }
 

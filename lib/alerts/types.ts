@@ -32,7 +32,7 @@ export interface AlertPostingCandidate {
 export interface AlertMatch {
   userId: string;
   posting: AlertPostingCandidate;
-  channel: "instant" | "digest";
+  channel: "instant";
 }
 
 export type { AlertSeason, AlertCountryCode };

@@ -1,6 +1,6 @@
 # Alert filters
 
-Email alerts match **follows** (company, bundle, or feed) plus **filters** (what roles count).
+Email alerts match **follows** (company or industry bundle) plus **filters** (what roles count).
 
 ## Global defaults
 
@@ -13,10 +13,6 @@ Stored on `alert_preferences`:
 | `alert_include_remote` | When `false`, exclude remote-only postings unless a selected country also matches |
 
 Set via `/alerts` → **Defaults** (filter editor). The server action validates the serialized filter payload and writes the scoped `alert_preferences` row with the service-role client for the authenticated `user.id`.
-
-**Morning briefing** and **Nightly briefing** are **feed** subscriptions added from `/alerts` → **Add alert** → **Feeds**. They send digest emails via GitHub Actions (`daily-digest.yml` at 13:00 UTC, `nightly-digest.yml` at 05:00 UTC) and respect per-feed season/location overrides like company and bundle alerts.
-
-Legacy `alert_preferences.digest_enabled` is kept in sync when adding or removing the morning briefing feed.
 
 ## Per-follow overrides
 

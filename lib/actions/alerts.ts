@@ -8,11 +8,6 @@ import {
   type AlertFilters,
   type AlertFiltersView,
 } from "@/lib/alerts/filters";
-import {
-  getAlertFeedDefinition,
-  isAlertFeedSlug,
-  MORNING_BRIEFING_FEED_SLUG,
-} from "@/lib/config/alert-feeds";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatSupabaseMutationError } from "@/lib/supabase/errors";
@@ -54,22 +49,6 @@ async function ensureInstantAlertsEnabled(userId: string) {
 
   if (error) {
     throw new Error(formatSupabaseMutationError(error, "Unable to enable instant alerts."));
-  }
-}
-
-async function syncDigestEnabledPreference(userId: string, enabled: boolean) {
-  const admin = createAdminClient();
-  const { error } = await admin.from("alert_preferences").upsert(
-    {
-      user_id: userId,
-      digest_enabled: enabled,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "user_id" },
-  );
-
-  if (error) {
-    throw new Error(formatSupabaseMutationError(error, "Unable to save morning briefing."));
   }
 }
 
@@ -130,40 +109,6 @@ export async function updateAlertsEnabled(enabled: boolean) {
   return { ok: true, emailsEnabled: enabled };
 }
 
-export async function updateDigestEnabled(enabled: boolean) {
-  if (typeof enabled !== "boolean") {
-    return { error: "Invalid alert setting." };
-  }
-
-  const rateLimit = await limitAlertsWrite();
-  if (!rateLimit.ok) {
-    return { error: rateLimit.error };
-  }
-
-  const { user } = await getAuthenticatedUser();
-  if (!user) {
-    return { error: "Not authenticated" };
-  }
-
-  const admin = createAdminClient();
-  const { error } = await admin.from("alert_preferences").upsert(
-    {
-      user_id: user.id,
-      digest_enabled: enabled,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "user_id" },
-  );
-
-  if (error) {
-    return { error: formatSupabaseMutationError(error, "Unable to save daily briefing.") };
-  }
-
-  revalidatePath("/alerts");
-  revalidatePath("/settings");
-  return { ok: true, digestEnabled: enabled };
-}
-
 export async function addSectorAlert(sectorSlug: string) {
   const rateLimit = await limitAlertsWrite();
   if (!rateLimit.ok) {
@@ -216,114 +161,6 @@ export async function addSectorAlert(sectorSlug: string) {
       error:
         enableError instanceof Error ? enableError.message : "Unable to enable instant alerts.",
     };
-  }
-
-  revalidatePath("/alerts");
-  return { ok: true };
-}
-
-export async function addFeedAlert(feedSlug: string) {
-  const rateLimit = await limitAlertsWrite();
-  if (!rateLimit.ok) {
-    return { error: rateLimit.error };
-  }
-
-  const { user } = await getAuthenticatedUser();
-  if (!user) {
-    return { error: "Not authenticated" };
-  }
-
-  const slug = typeof feedSlug === "string" ? feedSlug.trim().toLowerCase() : "";
-  if (!isAlertFeedSlug(slug)) {
-    return { error: "Choose a valid feed alert." };
-  }
-
-  const feed = getAlertFeedDefinition(slug);
-  if (!feed) {
-    return { error: "Feed alert not found." };
-  }
-
-  const admin = createAdminClient();
-  const { error } = await admin.from("alert_subscriptions").insert({
-    user_id: user.id,
-    target_type: "feed",
-    target_id: slug,
-    cadence: feed.cadence,
-    filter_override: null,
-  });
-
-  if (error) {
-    if (error.code === "23505") {
-      return { error: "You already follow this feed." };
-    }
-    return { error: formatSupabaseMutationError(error, "Unable to add feed alert.") };
-  }
-
-  try {
-    if (feed.cadence === "instant") {
-      await ensureInstantAlertsEnabled(user.id);
-    }
-    if (slug === MORNING_BRIEFING_FEED_SLUG) {
-      await syncDigestEnabledPreference(user.id, true);
-    }
-  } catch (enableError) {
-    return {
-      error: enableError instanceof Error ? enableError.message : "Unable to enable feed alert.",
-    };
-  }
-
-  revalidatePath("/alerts");
-  return { ok: true };
-}
-
-export async function removeFeedAlert(subscriptionId: string) {
-  const rateLimit = await limitAlertsWrite();
-  if (!rateLimit.ok) {
-    return { error: rateLimit.error };
-  }
-
-  const { user } = await getAuthenticatedUser();
-  if (!user) {
-    return { error: "Not authenticated" };
-  }
-
-  if (!isUuid(subscriptionId)) {
-    return { error: "Invalid feed alert." };
-  }
-
-  const admin = createAdminClient();
-  const { data: row, error: lookupError } = await admin
-    .from("alert_subscriptions")
-    .select("target_type, target_id")
-    .eq("id", subscriptionId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (lookupError) {
-    return { error: formatSupabaseMutationError(lookupError, "Unable to verify feed alert.") };
-  }
-  if (!row || row.target_type !== "feed") {
-    return { error: "Feed alert not found." };
-  }
-
-  const result = await removeAlertSubscriptionForUser(
-    user.id,
-    subscriptionId,
-    "Unable to remove feed alert.",
-  );
-  if ("error" in result) {
-    return result;
-  }
-
-  if (row.target_id === MORNING_BRIEFING_FEED_SLUG) {
-    try {
-      await syncDigestEnabledPreference(user.id, false);
-    } catch (syncError) {
-      return {
-        error:
-          syncError instanceof Error ? syncError.message : "Unable to update morning briefing.",
-      };
-    }
   }
 
   revalidatePath("/alerts");

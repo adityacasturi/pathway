@@ -30,15 +30,14 @@ npm run test:e2e         # Playwright public smoke (no credentials)
 npm run test:preprod     # typecheck + audit + unit + build
 npm run test:preprod:full # lint + test:preprod + e2e
 npm run scrape           # scrape → scraped_postings (same runAllScrapes path as GHA; native fetch adapters)
-npm run alerts:instant   # send instant alert email for new matching postings
-npm run alerts:digest    # send daily briefing (digest) emails
+npm run alerts:instant   # send instant alert emails for new matching postings
 npm run company-logos    # static PNGs in public/company-logos + manifest
 npm run discover-company # one-off company onboarding CLI
 npm run discover-queue   # bulk onboarding queue CLI
 npm run verify           # lint + test:preprod
 ```
 
-Scrape/alerts schedule: GitHub Actions (`.github/workflows/scrape-and-alerts.yml` hourly, `.github/workflows/daily-digest.yml` daily). Vercel production env: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `ALERT_UNSUBSCRIBE_SECRET`. GHA secrets for scrape/alerts: same Supabase, Resend, site URL, and unsubscribe secret vars.
+Scrape/alerts schedule: GitHub Actions (`.github/workflows/scrape-and-alerts.yml` hourly). Vercel production env: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `ALERT_UNSUBSCRIBE_SECRET`. GHA secrets for scrape/alerts: same Supabase, Resend, site URL, and unsubscribe secret vars.
 
 ## Next.js 16
 

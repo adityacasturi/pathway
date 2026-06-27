@@ -204,12 +204,10 @@ export function AlertsPage({
           companyId: null,
           companySlug: null,
           sectorSlug: slug,
-          feedSlug: null,
           websiteUrl: null,
           sectorCompanies: sector.companies,
           filterOverride: null,
           paused: false,
-          cadence: "instant",
         },
       ]);
     }

@@ -48,7 +48,6 @@ export async function processInstantAlerts(since: Date): Promise<ResendBatchResu
   const rawMatches = matchPostingsToUsers(postings, subscriptions, sectorMembers, {
     enabledUserIds,
     sentKeys,
-    channel: "instant",
     globalFiltersByUserId,
   });
   const matches = dedupeAlertMatches(rawMatches);

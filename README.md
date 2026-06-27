@@ -91,7 +91,7 @@ You do **not** need to run SQL files from git — the hosted database is already
 | `npm run scrape` | Scrape boards → `scraped_postings` (same pipeline as GitHub Actions) |
 | `npm run scrape:audit-posted-dates` | Audit `posted_at` / republish semantics |
 | `npm run alerts:instant` | Send instant alert email for new matching postings |
-| `npm run alerts:digest` | Send daily briefing emails |
+| `npm run alerts:instant` | Send instant alert emails |
 | `npm run discover-company` | Onboard one company (dry-run or `--apply --scrape`) |
 | `npm run discover-queue` | Bulk Discover onboarding queue CLI |
 | `npm run company-logos` | Download static PNGs + manifest |
@@ -107,7 +107,7 @@ app/                    Routes, layouts, logo API
 components/             Product UI (app-shell/, home/, openings/, companies/, landing/, …)
 components/ui/          Shared UI primitives
 lib/actions/            Server Actions
-lib/alerts/             Email alert matching, digest/instant send
+lib/alerts/             Email alert matching and instant send
 lib/auth/               Signup / login validation helpers
 lib/config/             Events, accent, season filter, nav, status colors
 lib/discover/           Companies catalog loaders (discover_industries)

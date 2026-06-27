@@ -55,10 +55,10 @@ User-owned (RLS via `auth.uid()`):
 | `feed_interactions` | Saved / dismissed Openings posting ids (stable URL hashes) |
 | `discover_company_favorites` | Starred Companies |
 | `user_preferences` | Accent, quick-track, Openings view prefs (`live_*` columns), Applications hide toggles |
-| `alert_preferences` | Email alerts master switch, digest toggle, global filter defaults |
+| `alert_preferences` | Email alerts master switch, global filter defaults |
 | `alert_subscriptions` | Per-company or bundle alert follows |
 | `alert_sent_postings` | Dedup ledger for sent alert emails |
-| `alert_digest_state` | Last digest send timestamp per user |
+| `alert_digest_state` | Legacy digest send timestamps (unused) |
 | `alert_curated_sectors` | Industry bundle labels/metadata; `alert_curated_sector_companies` maps bundle → company slugs |
 | `alert_unsubscribe_nonces` | Single-use unsubscribe nonces (service-role only) |
 Shared scrape catalog (authenticated read; writes via service role / scripts):
@@ -139,11 +139,10 @@ Loader: `lib/discover/companies.ts`. UI: `components/companies/companies-page.ts
 ## Email alerts
 
 - UI: `app/alerts/page.tsx`, `components/alerts/alerts-page.tsx` (and related `components/alerts/*`).
-- **Daily briefing** — `alert_preferences.digest_enabled` + GitHub Actions `daily-digest.yml` (`0 13 * * *` UTC). Toggle via **Daily briefing** on the `/alerts` toolbar. Sends every open role posted in the last 24 hours (no filters).
-- **As-posted alerts** — `alert_preferences.emails_enabled` + company/industry bundle subscriptions in `alert_subscriptions`.
+- **Instant alerts** — `alert_preferences.emails_enabled` + company/industry bundle subscriptions in `alert_subscriptions`.
 - Filter semantics: [alerts-filters.md](./alerts-filters.md).
 - Matching: `lib/alerts/match-postings.ts` (`posted_at` for new or republished roles).
-- Send: Resend via `lib/email/resend-client.ts`; instant alerts run after the hourly GitHub Actions scrape; daily briefing runs at 13:00 UTC.
+- Send: Resend via `lib/email/resend-client.ts`; instant alerts run after the hourly GitHub Actions scrape.
 - Env: `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `ALERT_UNSUBSCRIBE_SECRET`.
 - Unsubscribe: `GET /alerts/unsubscribe` confirm form; `POST` performs disable. HMAC token + single-use nonce.
 - Writes: server actions authenticate the user, then perform scoped service-role writes; direct client alert table writes are revoked.
@@ -152,7 +151,7 @@ Loader: `lib/discover/companies.ts`. UI: `components/companies/companies-page.ts
 
 - Scheduled: GitHub Actions `scrape-and-alerts.yml` → five parallel `npm run scrape` shards → one `npm run alerts:instant` → `runAllScrapes` → adapter registry → `upsert.ts` + `posted-at.ts`. Same path as local `npm run scrape`. Hourly at `:07` UTC.
 - HTTP: native `fetch` + per-adapter parsers (not Crawlee/Playwright at runtime).
-- Local: `npm run scrape`, `npm run alerts:instant`, and `npm run alerts:digest` (need `SUPABASE_SERVICE_ROLE_KEY`; alerts also need Resend env vars to send email).
+- Local: `npm run scrape` and `npm run alerts:instant` (need `SUPABASE_SERVICE_ROLE_KEY`; alerts also need Resend env vars to send email).
 - Adapters: `lib/scraping/registry.ts` keyed by `company_sources.source_type`.
 - Full detail: [scraping.md](./scraping.md).
 

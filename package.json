@@ -29,8 +29,6 @@
     "scrape:audit-adapters": "node --disable-warning=ExperimentalWarning --experimental-strip-types --experimental-specifier-resolution=node scripts/audit-adapter-patterns.ts",
     "scrape:audit-locations": "node --disable-warning=ExperimentalWarning --experimental-strip-types --experimental-specifier-resolution=node scripts/audit-locations.ts",
     "alerts:instant": "node --disable-warning=ExperimentalWarning --experimental-strip-types --experimental-specifier-resolution=node scripts/send-instant-alerts.ts",
-    "alerts:digest": "node --disable-warning=ExperimentalWarning --experimental-strip-types --experimental-specifier-resolution=node scripts/send-digest-alerts.ts",
-    "alerts:digest:nightly": "node --disable-warning=ExperimentalWarning --experimental-strip-types --experimental-specifier-resolution=node scripts/send-digest-alerts.ts nightly-briefing",
     "build:gazetteer": "node --disable-warning=ExperimentalWarning --experimental-strip-types --experimental-specifier-resolution=node scripts/build-gazetteer.ts",
     "backfill:locations": "node --disable-warning=ExperimentalWarning --experimental-strip-types --experimental-specifier-resolution=node scripts/backfill-locations.ts",
     "discover-queue": "node --disable-warning=ExperimentalWarning --experimental-strip-types --experimental-specifier-resolution=node scripts/discover-queue.ts",
