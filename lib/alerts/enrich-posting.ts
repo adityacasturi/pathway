@@ -1,9 +1,9 @@
-import { formatPlacesFromJson } from "@/lib/geo/format.ts";
-import type { LocationPlaceJson } from "@/lib/geo/types.ts";
-import { countriesFromLocationField } from "@/lib/feed/country-filter";
-import { hasRemoteLocation } from "@/lib/feed/location";
-import { expandLocationSegments } from "@/lib/feed/us-locations";
-import type { AlertPostingCandidate } from "@/lib/alerts/types";
+import { formatPlacesFromJson } from "../geo/format.ts";
+import type { LocationPlaceJson } from "../geo/types.ts";
+import { countriesFromLocationField } from "../feed/country-filter.ts";
+import { hasRemoteLocation } from "../feed/location.ts";
+import { expandLocationSegments } from "../feed/us-locations.ts";
+import type { AlertPostingCandidate } from "./types.ts";
 
 export function enrichAlertPostingCandidate(
   posting: Omit<AlertPostingCandidate, "countries" | "hasRemote"> & {

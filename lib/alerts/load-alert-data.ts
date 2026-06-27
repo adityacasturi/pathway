@@ -1,13 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { enrichAlertPostingCandidate } from "@/lib/alerts/enrich-posting";
+import { enrichAlertPostingCandidate } from "./enrich-posting.ts";
 import {
   alertFiltersFromPreferenceRow,
   parseFilterOverrideJson,
   type AlertFilters,
-} from "@/lib/alerts/filters";
-import { buildSentKey } from "@/lib/alerts/match-postings";
-import type { AlertPostingCandidate, AlertSubscription } from "@/lib/alerts/types";
-import type { AlertCadence, AlertTargetType } from "@/lib/config/alerts";
+} from "./filters.ts";
+import { buildSentKey } from "./match-postings.ts";
+import type { AlertPostingCandidate, AlertSubscription } from "./types.ts";
+import type { AlertCadence, AlertTargetType } from "../config/alerts.ts";
 
 interface SubscriptionRow {
   id: string;

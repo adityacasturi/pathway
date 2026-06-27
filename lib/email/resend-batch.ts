@@ -2,8 +2,8 @@ import {
   logResendFailure,
   shouldStopResendBatch,
   type ResendSendResult,
-} from "@/lib/email/resend-client";
-import { logServerEvent } from "@/lib/observability";
+} from "./resend-client.ts";
+import { logServerEvent } from "../observability.ts";
 
 const RESEND_BATCH_GAP_MS = 250;
 

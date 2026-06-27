@@ -1,5 +1,5 @@
-import { createUnsubscribeToken } from "@/lib/alerts/unsubscribe-token";
-import { getSiteUrl, getUnsubscribeSecret } from "@/lib/alerts/site-url";
+import { createUnsubscribeToken } from "../../alerts/unsubscribe-token.ts";
+import { getSiteUrl, getUnsubscribeSecret } from "../../alerts/site-url.ts";
 
 function escapeHtml(value: string): string {
   return value

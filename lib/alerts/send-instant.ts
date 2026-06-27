@@ -1,4 +1,4 @@
-import { dedupeAlertMatches } from "@/lib/alerts/dedupe-matches";
+import { dedupeAlertMatches } from "./dedupe-matches.ts";
 import {
   loadAlertFilterDefaults,
   loadAlertPostingCandidates,
@@ -7,20 +7,20 @@ import {
   loadEnabledAlertUserIds,
   loadUserEmails,
   recordAlertSentPostings,
-} from "@/lib/alerts/load-alert-data";
-import { loadCuratedSectorCompanyMap } from "@/lib/alerts/load-curated-sectors";
-import { matchPostingsToUsers } from "@/lib/alerts/match-postings";
+} from "./load-alert-data.ts";
+import { loadCuratedSectorCompanyMap } from "./load-curated-sectors.ts";
+import { matchPostingsToUsers } from "./match-postings.ts";
 import {
   handleResendBatchFailure,
   pauseBetweenResendSends,
   type ResendBatchResult,
-} from "@/lib/email/resend-batch";
-import { isEmailConfigured, sendResendEmail } from "@/lib/email/resend-client";
+} from "../email/resend-batch.ts";
+import { isEmailConfigured, sendResendEmail } from "../email/resend-client.ts";
 import {
   buildInstantAlertHtml,
   buildInstantAlertSubject,
-} from "@/lib/email/templates/instant-alert";
-import { createAdminClient } from "@/lib/supabase/admin";
+} from "../email/templates/instant-alert.ts";
+import { createAdminClient } from "../supabase/admin.ts";
 
 export async function processInstantAlerts(since: Date): Promise<ResendBatchResult> {
   if (!isEmailConfigured()) {

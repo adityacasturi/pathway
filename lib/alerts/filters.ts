@@ -5,9 +5,9 @@ import {
   normalizeAlertSeasons,
   type AlertCountryCode,
   type AlertSeason,
-} from "@/lib/config/alert-filters";
-import { matchesCountryFilter } from "@/lib/feed/country-filter";
-import type { AlertPostingCandidate } from "@/lib/alerts/types";
+} from "../config/alert-filters.ts";
+import { matchesCountryFilter } from "../feed/country-filter.ts";
+import type { AlertPostingCandidate } from "./types.ts";
 
 export interface AlertFilters {
   seasons: AlertSeason[] | null;

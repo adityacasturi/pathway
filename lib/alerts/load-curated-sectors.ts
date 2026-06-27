@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { CuratedAlertSector } from "@/lib/alerts/curated-sectors";
+import type { CuratedAlertSector } from "./curated-sectors.ts";
 
 interface SectorRow {
   slug: string;

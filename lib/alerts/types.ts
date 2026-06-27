@@ -1,6 +1,6 @@
-import type { AlertCadence, AlertTargetType } from "@/lib/config/alerts";
-import type { AlertCountryCode, AlertSeason } from "@/lib/config/alert-filters";
-import type { AlertFilterOverrideJson, AlertFilters } from "@/lib/alerts/filters";
+import type { AlertCadence, AlertTargetType } from "../config/alerts.ts";
+import type { AlertCountryCode, AlertSeason } from "../config/alert-filters.ts";
+import type { AlertFilterOverrideJson, AlertFilters } from "./filters.ts";
 
 export type { AlertFilters, AlertFilterOverrideJson };
 

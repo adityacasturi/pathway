@@ -1,4 +1,4 @@
-import type { FeedSeason } from "@/lib/feed/types";
+import type { FeedSeason } from "../feed/types.ts";
 
 export const ALERT_SEASONS = ["Summer", "Fall", "Spring", "Winter"] as const;
 export type AlertSeason = (typeof ALERT_SEASONS)[number];

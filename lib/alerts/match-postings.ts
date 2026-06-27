@@ -1,12 +1,12 @@
-import { isCompanyInCuratedSector } from "@/lib/alerts/curated-sectors";
+import { isCompanyInCuratedSector } from "./curated-sectors.ts";
 import {
   DEFAULT_ALERT_FILTERS,
   mergeAlertFilters,
   postingMatchesAlertFilters,
   type AlertFilters,
-} from "@/lib/alerts/filters";
-import type { AlertChannel } from "@/lib/config/alerts";
-import type { AlertMatch, AlertPostingCandidate, AlertSubscription } from "@/lib/alerts/types";
+} from "./filters.ts";
+import type { AlertChannel } from "../config/alerts.ts";
+import type { AlertMatch, AlertPostingCandidate, AlertSubscription } from "./types.ts";
 
 export function isAlertEligiblePosting(posting: AlertPostingCandidate): boolean {
   return Boolean(posting.location?.trim());

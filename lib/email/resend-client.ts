@@ -1,4 +1,4 @@
-import { logServerEvent } from "@/lib/observability";
+import { logServerEvent } from "../observability.ts";
 
 interface SendEmailInput {
   to: string;

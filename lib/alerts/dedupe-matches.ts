@@ -1,5 +1,5 @@
-import { buildSentKey } from "@/lib/alerts/match-postings";
-import type { AlertMatch } from "@/lib/alerts/types";
+import { buildSentKey } from "./match-postings.ts";
+import type { AlertMatch } from "./types.ts";
 
 export function dedupeAlertMatches(matches: AlertMatch[]): AlertMatch[] {
   const seen = new Set<string>();

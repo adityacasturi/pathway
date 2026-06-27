@@ -1,9 +1,9 @@
-import type { AlertPostingCandidate } from "@/lib/alerts/types";
+import type { AlertPostingCandidate } from "../../alerts/types.ts";
 import {
   buildCompanyLogoUrl,
   escapeHtml,
   renderAlertEmailLayout,
-} from "@/lib/email/templates/alert-email-layout";
+} from "./alert-email-layout.ts";
 
 export function buildInstantAlertSubject(posting: AlertPostingCandidate): string {
   return `${posting.companyName}: New internship - ${posting.roleName}`;
