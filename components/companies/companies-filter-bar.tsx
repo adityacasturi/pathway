@@ -56,7 +56,6 @@ export function CompaniesFilterBar({
   const [industryOpen, setIndustryOpen] = useState(false);
   const sortRef = useRef<HTMLDivElement | null>(null);
   const industryRef = useRef<HTMLDivElement | null>(null);
-  const mobileIndustryPanelRef = useRef<HTMLDivElement | null>(null);
   const activeSort = sortKey ?? "openings";
 
   const selectedIndustryLabel =
@@ -71,9 +70,7 @@ export function CompaniesFilterBar({
         setSortOpen(false);
       }
       if (!industryRef.current?.contains(event.target as Node)) {
-        if (!mobileIndustryPanelRef.current?.contains(event.target as Node)) {
-          setIndustryOpen(false);
-        }
+        setIndustryOpen(false);
       }
     }
     if (!sortOpen && !industryOpen) return;
@@ -82,7 +79,13 @@ export function CompaniesFilterBar({
   }, [sortOpen, industryOpen]);
 
   return (
-    <div className={cn("relative shrink-0 bg-card", searchFocused && "z-30", className)}>
+    <div
+      className={cn(
+        "relative shrink-0 bg-card",
+        (searchFocused || sortOpen || industryOpen) && "z-30",
+        className,
+      )}
+    >
       <h1 className="sr-only">Companies</h1>
       <div className="flex flex-col gap-2.5 border-b border-border px-4 py-3 lg:flex-row lg:flex-wrap lg:items-center">
         <div className="w-full min-w-[10rem] lg:flex-1 [&_input]:h-8 [&_input]:rounded-md [&_input]:text-sm">
@@ -115,6 +118,18 @@ export function CompaniesFilterBar({
                 <span className="truncate">{selectedIndustryLabel}</span>
                 <ChevronDown size={14} strokeWidth={1.75} className="shrink-0 opacity-70" />
               </ToolbarButton>
+              {industryOpen ? (
+                <div className="absolute left-0 top-full z-40 mt-1.5 w-[min(16rem,calc(100vw-2rem))]">
+                  <CompanyIndustryMenu
+                    industryFilter={industryFilter}
+                    searchableCount={searchableCount}
+                    industryOptions={industryOptions}
+                    onIndustryFilterChange={onIndustryFilterChange}
+                    onClose={() => setIndustryOpen(false)}
+                    className="max-h-72 overflow-y-auto shadow-sm"
+                  />
+                </div>
+              ) : null}
             </div>
           ) : null}
 
@@ -162,21 +177,6 @@ export function CompaniesFilterBar({
             </ToolbarButton>
           </div>
 
-          {industryOpen && showIndustryFilter ? (
-            <div
-              ref={mobileIndustryPanelRef}
-              className="absolute right-0 top-full z-40 mt-1.5 w-[min(16rem,calc(100vw-2rem))] lg:hidden"
-            >
-              <CompanyIndustryMenu
-                industryFilter={industryFilter}
-                searchableCount={searchableCount}
-                industryOptions={industryOptions}
-                onIndustryFilterChange={onIndustryFilterChange}
-                onClose={() => setIndustryOpen(false)}
-                className="max-h-72 overflow-y-auto shadow-sm"
-              />
-            </div>
-          ) : null}
         </div>
       </div>
 

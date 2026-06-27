@@ -89,7 +89,12 @@ export function AlertsSubscriptionList({
         <div className="min-h-0 flex-1 overflow-y-auto">
           <section>
             <div
-              className={cn(DESKTOP_GRID, ROW_HEIGHT, COMPACT_COL_GRID, "border-b border-border bg-muted/25")}
+              className={cn(
+                DESKTOP_GRID,
+                ROW_HEIGHT,
+                COMPACT_COL_GRID,
+                "hidden border-b border-border bg-muted/25 md:grid",
+              )}
             >
               <HeaderCell label="Following" icon={Building2} />
               <HeaderCell label="Filters" icon={SlidersHorizontal} />
@@ -200,10 +205,43 @@ function SubscriptionRow({
     <MotionStaggerItem as="li" index={index}>
       <div
         className={cn(
+          "flex w-full items-center gap-3 border-b border-border/60 px-4 md:hidden",
+          ROW_HEIGHT,
+          "transition-colors hover:bg-muted/35",
+          subscription.paused && "opacity-70",
+        )}
+      >
+        <button
+          type="button"
+          onClick={onOpenDetail}
+          disabled={rowDisabled}
+          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <AlertSubscriptionAvatar subscription={subscription} />
+          <span className={cn(TABLE_TEXT, "truncate font-medium text-foreground")}>
+            {subscription.label}
+          </span>
+        </button>
+        <div
+          className="flex shrink-0 items-center py-2"
+          onClick={(event) => event.stopPropagation()}
+          onKeyDown={(event) => event.stopPropagation()}
+        >
+          <Switch
+            checked={emailsEnabled}
+            disabled={rowDisabled || pausePending}
+            onCheckedChange={(enabled) => onTogglePaused(subscription.id, !enabled)}
+            aria-label={`Email alerts for ${subscription.label}`}
+          />
+        </div>
+      </div>
+
+      <div
+        className={cn(
           DESKTOP_GRID,
           ROW_HEIGHT,
           COMPACT_COL_GRID,
-          "w-full border-b border-border/60 transition-colors hover:bg-muted/35",
+          "hidden w-full border-b border-border/60 transition-colors hover:bg-muted/35 md:grid",
           subscription.paused && "opacity-70",
         )}
       >
