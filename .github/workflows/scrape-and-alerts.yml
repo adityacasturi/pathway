@@ -18,7 +18,7 @@ env:
 
 jobs:
   scrape:
-    name: Scrape shard ${{ matrix.shard }}/${{ env.SCRAPE_SHARD_COUNT }}
+    name: Scrape shard ${{ matrix.shard }}/5
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
