@@ -3,7 +3,12 @@ import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl, safeToIsoDate } from "./shared.ts";
+import {
+  fetchTextPayloadWithTimeout,
+  isHttpUrl,
+  safeToIsoDate,
+  scraperHtmlHeaders,
+} from "./shared.ts";
 import { INTERNSHIP_LIST_TITLE_PATTERN } from "../list-filters.ts";
 
 /**
@@ -13,6 +18,8 @@ import { INTERNSHIP_LIST_TITLE_PATTERN } from "../list-filters.ts";
 export const SHOPIFY_CAREERS_ORIGIN = "https://www.shopify.com";
 export const SHOPIFY_CAREERS_FEED_URL = `${SHOPIFY_CAREERS_ORIGIN}/careers/feed.xml`;
 export const SHOPIFY_DEFAULT_SOURCE_URL = SHOPIFY_CAREERS_FEED_URL;
+/** ~700KB XML feed; Shopify CDN can exceed the default 20s scraper timeout. */
+const SHOPIFY_FEED_TIMEOUT_MS = 60_000;
 
 /** List titles must look internship-related before classification. */
 export interface ShopifyBoardConfig {
@@ -288,16 +295,21 @@ function readShopifyXmlField(block: string, tag: string): string | null {
 }
 
 async function fetchShopifyCareersFeed(feedUrl: string): Promise<string> {
-  const res = await fetchJsonWithTimeout(feedUrl, {
-    headers: {
-      accept: "application/xml,text/xml,*/*",
+  const { response, data } = await fetchTextPayloadWithTimeout(
+    feedUrl,
+    {
+      headers: {
+        ...scraperHtmlHeaders(SHOPIFY_CAREERS_ORIGIN),
+        accept: "application/xml,text/xml,*/*",
+      },
     },
-  });
+    { timeoutMs: SHOPIFY_FEED_TIMEOUT_MS },
+  );
 
-  if (!res.ok) {
-    throw new Error(`Shopify careers feed returned ${res.status} for ${feedUrl}`);
+  if (!response.ok) {
+    throw new Error(`Shopify careers feed returned ${response.status} for ${feedUrl}`);
   }
 
-  return res.text();
+  return data;
 }
 
