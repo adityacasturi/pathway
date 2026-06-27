@@ -5,8 +5,8 @@ const MAX_COMPANY_CONCURRENCY = 16;
 
 /** Shared ATS hosts — cap concurrent scrapes per host to reduce 429s. */
 const HOST_CONCURRENCY_LIMITS: Record<string, number> = {
-  "boards-api.greenhouse.io": 3,
-  "job-boards.greenhouse.io": 3,
+  "boards-api.greenhouse.io": 6,
+  "job-boards.greenhouse.io": 6,
   "api.ashbyhq.com": 3,
   "api.lever.co": 3,
   "*.myworkdayjobs.com": 2,

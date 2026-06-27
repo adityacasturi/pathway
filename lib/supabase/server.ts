@@ -1,7 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { cache } from "react";
 
-export async function createClient() {
+async function createClientImpl() {
   const cookieStore = await cookies();
 
   return createServerClient(
@@ -25,3 +26,6 @@ export async function createClient() {
     }
   );
 }
+
+/** Request-scoped Supabase client (deduped when called multiple times per render). */
+export const createClient = cache(createClientImpl);

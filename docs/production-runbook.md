@@ -41,7 +41,7 @@ Vercel production env still needs `SUPABASE_SERVICE_ROLE_KEY` for server routes.
 
 **GitHub Actions (scrape + alerts):**
 
-Production scraping and instant alerts run in `.github/workflows/scrape-and-alerts.yml` (hourly at `:07` UTC, unsharded). Daily briefing emails run in `.github/workflows/daily-digest.yml` (`0 13 * * *` UTC). Configure these repository secrets:
+Production scraping and instant alerts run in `.github/workflows/scrape-and-alerts.yml` (hourly at `:07` UTC, five parallel scrape shards then one instant-alerts job). Daily briefing emails run in `.github/workflows/daily-digest.yml` (`0 13 * * *` UTC). Configure these repository secrets:
 
 | Secret | Purpose |
 | --- | --- |

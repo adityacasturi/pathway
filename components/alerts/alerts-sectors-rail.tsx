@@ -3,10 +3,13 @@
 import { useState } from "react";
 import { Check, ChevronDown, Loader2, Plus } from "lucide-react";
 import type { CuratedSectorView } from "@/components/alerts/types";
+import {
+  ADD_ALERT_ROW_PENDING_CLASS,
+  addAlertIconButtonClass,
+} from "@/components/alerts/add-alert-button-styles";
 import { CompanyLogo } from "@/components/company-logo";
 import { SectorLogoStack } from "@/components/sector-logo-stack";
 import { formatBundleCompanyLine } from "@/lib/alerts/bundle-preview";
-import { UI_SELECTED } from "@/lib/ui/selection-styles";
 import { cn } from "@/lib/utils";
 
 export function AlertsBundlesList({
@@ -15,7 +18,7 @@ export function AlertsBundlesList({
   pendingSectorSlug,
   disabled,
   onToggleSector,
-  emptyMessage = "No bundles match your search.",
+  emptyMessage = "No industries match your search.",
 }: {
   sectors: CuratedSectorView[];
   followedSectorSlugs: Set<string>;
@@ -76,10 +79,11 @@ function SectorRow({
   return (
     <li
       className={cn(
-        "overflow-hidden rounded-xl border transition-[border-color,background-color,box-shadow]",
+        "overflow-hidden rounded-xl border transition-colors",
+        pending && ADD_ALERT_ROW_PENDING_CLASS,
         active
-          ? cn(UI_SELECTED, "shadow-[0_0_0_1px_var(--selection-border)]")
-          : "border-border bg-card",
+          ? "border-[var(--selection-border)] bg-[var(--selection-subtle-bg)]"
+          : "border-border/60 bg-background hover:border-border",
       )}
     >
       <div className="flex gap-3 p-3">
@@ -87,10 +91,10 @@ function SectorRow({
           type="button"
           onClick={onToggleExpanded}
           aria-expanded={expanded}
-          className="flex min-w-0 flex-1 items-center gap-4 text-left transition-colors hover:opacity-90"
+          className="flex min-w-0 flex-1 items-center gap-2 text-left transition-colors hover:opacity-90"
         >
           <SectorLogoStack companies={sector.companies.slice(0, 4)} />
-          <span className="min-w-0 flex-1 pl-0.5">
+          <span className="min-w-0 flex-1">
             <span className="flex items-center gap-2">
               <span
                 className={cn(
@@ -131,17 +135,19 @@ function SectorRow({
             type="button"
             disabled={disabled || pending}
             aria-pressed={active}
-            aria-label={active ? `Remove alert for ${sector.label}` : `Add alert for ${sector.label}`}
+            aria-busy={pending}
+            aria-label={
+              pending
+                ? `Saving ${sector.label}…`
+                : active
+                  ? `Remove alert for ${sector.label}`
+                  : `Add alert for ${sector.label}`
+            }
             onClick={onToggleFollow}
-            className={cn(
-              "inline-flex size-8 items-center justify-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-60",
-              active
-                ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
-                : "border-border bg-background text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-            )}
+            className={addAlertIconButtonClass(pending)}
           >
             {pending ? (
-              <Loader2 size={14} className="animate-spin" />
+              <Loader2 size={14} strokeWidth={2} className="animate-spin" />
             ) : active ? (
               <Check size={14} strokeWidth={2} />
             ) : (

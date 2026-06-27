@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { runAllScrapes } from "../lib/scraping/run-all.ts";
+import { runAllScrapes, type ScrapeSourceShard } from "../lib/scraping/run-all.ts";
 import type { ScrapeProgressEvent, SourceScrapeResult, SourceType } from "../lib/scraping/types.ts";
 
 loadDotEnvLocal();
@@ -15,9 +15,12 @@ if (cli.help) {
 const startedAt = Date.now();
 const companyMeta = new Map<string, CompanyRunMeta>();
 
+const sourceShard = readSourceShard(cli.shard);
+
 const results = await runAllScrapes({
   filterSlug: cli.filterSlug,
   dryRun: cli.dryRun,
+  sourceShard,
   onProgress: (event) => logScrapeProgress(event, companyMeta, cli.verbose, cli.dryRun),
 });
 
@@ -42,14 +45,18 @@ function parseCliArgs(args: string[]) {
   let verbose = process.env.SCRAPER_VERBOSE === "1";
   let dryRun = false;
   let help = false;
+  let shard: ScrapeSourceShard | undefined;
 
-  for (const arg of args) {
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index]!;
     if (arg === "--help" || arg === "-h") {
       help = true;
     } else if (arg === "--verbose" || arg === "-v") {
       verbose = true;
     } else if (arg === "--dry-run") {
       dryRun = true;
+    } else if (arg === "--shard" && args[index + 1]) {
+      shard = parseShardArg(args[++index]!);
     } else if (!arg.startsWith("-")) {
       const normalized = arg.trim().toLowerCase();
       if (normalized && normalized !== "all") {
@@ -58,7 +65,47 @@ function parseCliArgs(args: string[]) {
     }
   }
 
-  return { filterSlug, verbose, dryRun, help };
+  return { filterSlug, verbose, dryRun, help, shard };
+}
+
+function readSourceShard(cliShard?: ScrapeSourceShard): ScrapeSourceShard | undefined {
+  if (cliShard) {
+    return cliShard;
+  }
+
+  const indexRaw = process.env.SCRAPE_SHARD_INDEX?.trim();
+  const countRaw = process.env.SCRAPE_SHARD_COUNT?.trim();
+  if (!indexRaw && !countRaw) {
+    return undefined;
+  }
+  if (!indexRaw || !countRaw) {
+    throw new Error("SCRAPE_SHARD_INDEX and SCRAPE_SHARD_COUNT must both be set");
+  }
+
+  return parseShardValues(indexRaw, countRaw);
+}
+
+function parseShardArg(value: string): ScrapeSourceShard {
+  const match = value.trim().match(/^(\d+)\s*\/\s*(\d+)$/);
+  if (!match) {
+    throw new Error(`Invalid --shard value "${value}" (expected index/count, e.g. 0/5)`);
+  }
+  return parseShardValues(match[1]!, match[2]!);
+}
+
+function parseShardValues(indexRaw: string, countRaw: string): ScrapeSourceShard {
+  const index = Number.parseInt(indexRaw, 10);
+  const count = Number.parseInt(countRaw, 10);
+  if (!Number.isInteger(index) || index < 0) {
+    throw new Error(`Invalid shard index: ${indexRaw}`);
+  }
+  if (!Number.isInteger(count) || count < 1) {
+    throw new Error(`Invalid shard count: ${countRaw}`);
+  }
+  if (index >= count) {
+    throw new Error(`Shard index ${index} must be less than count ${count}`);
+  }
+  return { index, count };
 }
 
 function printHelp() {
@@ -69,11 +116,14 @@ function printHelp() {
   console.log("  --dry-run       Fetch roles without writing to the database");
   console.log("  SCRAPER_VERBOSE=1   Same as --verbose");
   console.log("  SCRAPE_COMPANY_CONCURRENCY=8   Parallel companies (default 8, max 16)");
+  console.log("  SCRAPE_SHARD_INDEX=0 SCRAPE_SHARD_COUNT=5   Deterministic source shard");
+  console.log("  --shard 0/5                    Same as shard env vars");
   console.log("");
   console.log("Examples:");
   console.log("  npm run scrape");
   console.log("  npm run scrape -- --verbose");
   console.log("  npm run scrape -- --dry-run palantir");
+  console.log("  npm run scrape -- --shard 2/5");
 }
 
 function logScrapeProgress(

@@ -1,6 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache/tags";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { formatSupabaseMutationError } from "@/lib/supabase/errors";
 import { limitServerActionByIp } from "@/lib/rate-limit";
@@ -136,6 +137,7 @@ export async function refreshFeed() {
   const { user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
 
+  updateTag(CACHE_TAGS.feed);
   revalidatePath("/openings");
   revalidatePath("/home");
   return { ok: true };

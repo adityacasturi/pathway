@@ -31,7 +31,7 @@ export function AlertsDailyBriefingToolbarButton({
         toast.error("Couldn't update daily email", { description: result.error });
         return;
       }
-      toast.success(next ? "Daily on" : "Daily off");
+      toast.success(next ? `${DAILY_BRIEFING_COPY.label} on` : `${DAILY_BRIEFING_COPY.label} off`);
       router.refresh();
     });
   }

@@ -11,6 +11,7 @@ function sub(
     companyId: null,
     companySlug: null,
     sectorSlug: null,
+    feedSlug: null,
     websiteUrl: null,
     filterOverride: null,
     paused: false,
@@ -18,7 +19,7 @@ function sub(
   };
 }
 
-test("sortAlertSubscriptions lists bundles first, then companies, alphabetically within each", () => {
+test("sortAlertSubscriptions lists industries before companies", () => {
   const sorted = sortAlertSubscriptions([
     sub({ id: "1", type: "company", label: "Zeta Corp", companyId: "z" }),
     sub({ id: "2", type: "sector", label: "Defense", sectorSlug: "defense" }),

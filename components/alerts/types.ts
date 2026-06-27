@@ -8,10 +8,12 @@ export interface AlertSubscriptionView {
   companyId: string | null;
   companySlug: string | null;
   sectorSlug: string | null;
+  feedSlug: string | null;
   websiteUrl: string | null;
   sectorCompanies?: SectorLogoCompany[];
   filterOverride: Partial<AlertFilters> | null;
   paused: boolean;
+  cadence?: "instant" | "digest";
 }
 
 export interface AlertCompanyOption {

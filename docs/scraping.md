@@ -35,8 +35,9 @@ Environment:
 | `ALERT_UNSUBSCRIBE_SECRET` | Required to sign unsubscribe links |
 | `SCRAPER_VERBOSE=1` | Same as `--verbose` |
 | `SCRAPE_COMPANY_CONCURRENCY` | Parallel companies (default 8, max 16) |
+| `SCRAPE_SHARD_INDEX` / `SCRAPE_SHARD_COUNT` | Deterministic subset for parallel scrape jobs (e.g. `0` / `5`) |
 
-Cron (production): GitHub Actions in `.github/workflows/` — hourly unsharded `npm run scrape` then `npm run alerts:instant` (`7 * * * *` UTC), plus daily briefing via `npm run alerts:digest` (`0 13 * * *` UTC). Manual/local scrapes use the same `runAllScrapes` path: `npm run scrape -- <slug>`.
+Cron (production): GitHub Actions in `.github/workflows/` — hourly **five parallel scrape shards** (`SCRAPE_SHARD_COUNT=5`, `SCRAPE_COMPANY_CONCURRENCY=16`) then one `npm run alerts:instant` (`7 * * * *` UTC), plus daily briefing via `npm run alerts:digest` (`0 13 * * *` UTC). Manual/local scrapes use the same `runAllScrapes` path: `npm run scrape -- <slug>` or `npm run scrape -- --shard 2/5`.
 
 `company_sources.scrape_interval_minutes` (default 15 on onboard) is catalog metadata only — production cadence is the GitHub Actions scrape workflow, not that column.
 
@@ -184,7 +185,7 @@ Shared modules:
 
 Parser adapters use `buildScrapedRole()` + `buildRoleParseResult()` so location resolution, dedupe, and stats stay consistent. Run `npm run scrape:audit-adapters` to verify; delegated wrappers are labeled separately from parser adapters.
 
-**Ashby public API** (`api.ashbyhq.com/posting-api/job-board/{token}`): use `descriptionPlain`, `publishedAt`, `address.postalAddress`, `employmentType`, `workplaceType`, `isListed`; skip `isListed === false`. Ashby does not include `updatedAt` in this API, so kept roles may fetch the public job page and parse `window.__appData.posting.updatedAt` for republish detection.
+**Ashby public API** (`api.ashbyhq.com/posting-api/job-board/{token}`): use `descriptionPlain`, `publishedAt`, `updatedAt` when present, `address.postalAddress`, `employmentType`, `workplaceType`, `isListed`; skip `isListed === false`. When `updatedAt` is missing from the API payload, kept roles may fetch the public job page and parse `window.__appData.posting.updatedAt` for republish detection.
 
 **Audit all enabled sources (dry-run, no writes):**
 

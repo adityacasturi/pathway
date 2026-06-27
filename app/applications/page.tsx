@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { pageMetadata } from "@/lib/metadata/page";
 
 export const metadata = pageMetadata("Applications", "Track internship applications and pipeline status.");
-import { createClient } from "@/lib/supabase/server";
 import { ApplicationsPage as Dashboard } from "@/components/applications/applications-page";
 import { Application } from "@/types/application";
 import { normalizeApplicationState } from "@/lib/config/application-state";
@@ -10,18 +9,17 @@ import {
   companyLogoAssetByNameFromLookups,
   companySlugByNameFromLookups,
   companyWebsiteByNameFromLookups,
-  loadCompanyWebsiteLookups,
 } from "@/lib/logo/company-website-lookup";
+import { getCachedCompanyWebsiteLookups } from "@/lib/cache/catalog";
 import { loadUserViewPreferences } from "@/lib/user-preferences/load-view-preferences";
 import { assertSupabaseOk } from "@/lib/supabase/errors";
+import { getAuthenticatedUser } from "@/lib/supabase/auth";
 
 export default async function ApplicationsPage() {
-  const supabase = await createClient();
+  const { supabase, user } = await getAuthenticatedUser();
 
-  const userResult = await supabase.auth.getUser();
-
-  if (!userResult.data.user) redirect("/login?next=/applications");
-  const userId = userResult.data.user.id;
+  if (!user) redirect("/login?next=/applications");
+  const userId = user.id;
 
   const [appsResult, websiteLookups, viewPrefs] = await Promise.all([
     supabase
@@ -29,7 +27,7 @@ export default async function ApplicationsPage() {
       .select("*, application_events(*)")
       .eq("user_id", userId)
       .order("created_at", { ascending: false }),
-    loadCompanyWebsiteLookups(supabase),
+    getCachedCompanyWebsiteLookups(),
     loadUserViewPreferences(supabase, userId),
   ]);
 

@@ -544,15 +544,7 @@ export function OpeningsPage({
             </div>
           ) : null}
 
-          <div className="relative flex min-h-0 flex-1 flex-col">
-            {selectedPosting ? (
-              <div
-                role="presentation"
-                className="ds-overlay-enter absolute inset-0 z-10 hidden bg-background/20 backdrop-blur-[3px] xl:block"
-                onClick={closeInspector}
-              />
-            ) : null}
-
+          <div className="flex min-h-0 flex-1 flex-col">
             <OpeningsRecordList
               postings={visiblePostings}
               totalCount={filtered.length}
@@ -570,30 +562,12 @@ export function OpeningsPage({
               selectedId={selectedPosting?.id ?? null}
               onOpen={openPosting}
             />
-
-            {selectedPosting ? (
-              <aside className="ds-drawer-enter absolute inset-y-0 right-0 z-20 hidden w-[var(--app-inspector-width)] border-l border-border/80 shadow-[-16px_0_48px_-20px_color-mix(in_oklab,var(--ink)_22%,transparent)] xl:block">
-                <PostingInspector
-                  variant="panel"
-                  posting={selectedPosting}
-                  saved={selectedSaved}
-                  tracked={selectedTracked}
-                  trackPending={trackPendingId === selectedPosting.id}
-                  savePending={pendingSavedIds.has(selectedPosting.id)}
-                  onTrack={() => void openTrack(selectedPosting)}
-                  onToggleSaved={() => onToggleSaved(selectedPosting, !selectedSaved)}
-                  onClose={closeInspector}
-                  className="h-full"
-                />
-              </aside>
-            ) : null}
           </div>
         </section>
       </div>
 
       {selectedPosting ? (
         <PostingInspector
-          variant="overlay"
           posting={selectedPosting}
           saved={selectedSaved}
           tracked={selectedTracked}

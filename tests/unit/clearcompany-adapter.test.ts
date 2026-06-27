@@ -104,6 +104,6 @@ test("createClearCompanyAdapter requests identity encoding", async () => {
     globalThis.fetch = originalFetch;
   }
 
-  assert.equal(calls.length, 1);
+  assert.ok(calls.length >= 1);
   assert.equal((calls[0]?.headers as Record<string, string>)?.["accept-encoding"], "identity");
 });

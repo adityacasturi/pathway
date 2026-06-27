@@ -150,7 +150,7 @@ Loader: `lib/discover/companies.ts`. UI: `components/companies/companies-page.ts
 
 ## Scraping (summary)
 
-- Scheduled: GitHub Actions `scrape-and-alerts.yml` → `npm run scrape` → `runAllScrapes` → adapter registry → `upsert.ts` + `posted-at.ts`. Same path as local `npm run scrape`. Hourly, unsharded.
+- Scheduled: GitHub Actions `scrape-and-alerts.yml` → five parallel `npm run scrape` shards → one `npm run alerts:instant` → `runAllScrapes` → adapter registry → `upsert.ts` + `posted-at.ts`. Same path as local `npm run scrape`. Hourly at `:07` UTC.
 - HTTP: native `fetch` + per-adapter parsers (not Crawlee/Playwright at runtime).
 - Local: `npm run scrape`, `npm run alerts:instant`, and `npm run alerts:digest` (need `SUPABASE_SERVICE_ROLE_KEY`; alerts also need Resend env vars to send email).
 - Adapters: `lib/scraping/registry.ts` keyed by `company_sources.source_type`.

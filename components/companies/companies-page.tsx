@@ -510,81 +510,29 @@ export function CompaniesPage({
             </div>
           ) : null}
 
-          <div className="relative flex min-h-0 flex-1 flex-col">
-            {selected ? (
-              <div
-                role="presentation"
-                className="ds-overlay-enter absolute inset-0 z-10 hidden bg-background/20 backdrop-blur-[3px] xl:block"
-                onClick={closeInspector}
-              />
-            ) : null}
-
-            <div className="relative flex min-h-0 flex-1 flex-col md:overflow-hidden">
-              <CompaniesRecordList
-                companies={visibleCompanies}
-                totalCount={filtered.length}
-                selectedSlug={selectedSlug}
-                sortKey={sortKey}
-                sortDirection={sortDirection}
-                onSortChange={handleSortChange}
-                listScrollRef={listScrollRef}
-                desktopLoadMoreRef={desktopLoadMoreRef}
-                mobileLoadMoreRef={mobileLoadMoreRef}
-                hasMoreRows={hasMoreRows}
-                onOpen={openCompany}
-                starredIds={starredIds}
-                starPendingId={starPendingId}
-                onToggleStar={toggleStar}
-              />
-            </div>
-
-            {selected ? (
-              <aside className="ds-drawer-enter absolute inset-y-0 right-0 z-20 hidden w-[var(--app-company-inspector-width)] border-l border-border/80 shadow-[-16px_0_48px_-20px_color-mix(in_oklab,var(--ink)_22%,transparent)] xl:block">
-                <CompanyInspector
-                  variant="panel"
-                  company={selected}
-                  postings={selectedPostings}
-                  postingsRaw={selectedPostingsRaw}
-                  postingsAvailable={selectedPostingsAvailable}
-                  loading={loadingCompanyId === selected.id}
-                  loadError={loadError}
-                  postingQuery={postingQuery}
-                  onPostingQueryChange={setPostingQuery}
-                  selectedPostingSeasons={selectedPostingSeasons}
-                  onTogglePostingSeason={(season) => {
-                    setSelectedPostingSeasons((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(season)) next.delete(season);
-                      else next.add(season);
-                      return next;
-                    });
-                  }}
-                  onClearPostingSeasons={() => setSelectedPostingSeasons(new Set())}
-                  postingSeasonCounts={postingSeasonCounts}
-                  countryFilterOptions={postingCountryFilterOptions}
-                  selectedPostingCountries={selectedPostingCountries}
-                  onTogglePostingCountry={(code) => {
-                    setSelectedPostingCountries((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(code)) next.delete(code);
-                      else next.add(code);
-                      return next;
-                    });
-                  }}
-                  onClearPostingCountries={() => setSelectedPostingCountries(new Set())}
-                  onOpenPosting={openPostingInOpenings}
-                  onClose={closeInspector}
-                  className="h-full"
-                />
-              </aside>
-            ) : null}
+          <div className="flex min-h-0 flex-1 flex-col md:overflow-hidden">
+            <CompaniesRecordList
+              companies={visibleCompanies}
+              totalCount={filtered.length}
+              selectedSlug={selectedSlug}
+              sortKey={sortKey}
+              sortDirection={sortDirection}
+              onSortChange={handleSortChange}
+              listScrollRef={listScrollRef}
+              desktopLoadMoreRef={desktopLoadMoreRef}
+              mobileLoadMoreRef={mobileLoadMoreRef}
+              hasMoreRows={hasMoreRows}
+              onOpen={openCompany}
+              starredIds={starredIds}
+              starPendingId={starPendingId}
+              onToggleStar={toggleStar}
+            />
           </div>
         </section>
       </div>
 
       {selected ? (
         <CompanyInspector
-          variant="overlay"
           company={selected}
           postings={selectedPostings}
           postingsRaw={selectedPostingsRaw}

@@ -47,7 +47,7 @@
   --app-sidebar-width: 18.5rem;
   --app-topbar-height: 4rem;
   --app-inspector-width: 32rem;
-  --app-company-inspector-width: 38rem;
+  --app-company-inspector-width: 44rem;
 
   --motion-duration-fast: 140ms;
   --motion-duration-base: 240ms;
@@ -558,4 +558,43 @@
 @keyframes ds-overlay-enter {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+@keyframes ds-overlay-exit {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* Centered dialog scales and fades in. */
+.react-aria-ModalOverlay[data-entering] {
+  animation: ds-overlay-enter 220ms var(--motion-ease-standard) both;
+}
+.react-aria-ModalOverlay[data-exiting] {
+  animation: ds-overlay-exit 180ms var(--motion-ease-standard) both;
+}
+.react-aria-Modal[data-entering] [data-slot="dialog-content"] {
+  animation: ds-dialog-enter 320ms var(--motion-ease-smooth) both;
+}
+.react-aria-Modal[data-exiting] [data-slot="dialog-content"] {
+  animation: ds-dialog-exit 220ms var(--motion-ease-smooth) both;
+}
+@keyframes ds-dialog-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+@keyframes ds-dialog-exit {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0) scale(0.985);
+  }
 }

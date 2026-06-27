@@ -91,3 +91,13 @@ export function clearSubscriptionOverrideField(
   delete next[field];
   return Object.keys(next).length > 0 ? next : null;
 }
+
+export function isSubscriptionFiltersCustomized(
+  filterOverride: Partial<AlertFilters> | null,
+  globalFilters: AlertFilters,
+): boolean {
+  return (
+    isSubscriptionFieldCustomized(filterOverride, globalFilters, "seasons") ||
+    isSubscriptionFieldCustomized(filterOverride, globalFilters, "countries")
+  );
+}

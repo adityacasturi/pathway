@@ -8,7 +8,7 @@ import {
   type AccentColor,
 } from "@/lib/config/accent";
 import { loadAppearancePreferences } from "@/lib/settings/load-appearance-preferences";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import "./globals.css";
 
 /** Hex approximation of `--paper` for mobile browser chrome and overscroll. */
@@ -73,54 +73,33 @@ export const metadata: Metadata = {
   },
 };
 
-async function getSessionUserEmail(): Promise<string | null> {
-  try {
-    const cookieStore = await cookies();
-    const hasAuthCookie = cookieStore
-      .getAll()
-      .some((c) => c.name.startsWith("sb-") && c.name.includes("auth-token"));
-    if (!hasAuthCookie) return null;
-
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    return user?.email ?? null;
-  } catch {
-    return null;
-  }
-}
-
-async function getInitialAccentColor(): Promise<AccentColor> {
+async function getLayoutChrome(): Promise<{ accentColor: AccentColor; userEmail: string | null }> {
   try {
     const cookieStore = await cookies();
     const hasAuthCookie = cookieStore
       .getAll()
       .some((c) => c.name.startsWith("sb-") && c.name.includes("auth-token"));
     if (!hasAuthCookie) {
-      return DEFAULT_ACCENT_COLOR;
+      return { accentColor: DEFAULT_ACCENT_COLOR, userEmail: null };
     }
 
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { supabase, user } = await getAuthenticatedUser();
     if (!user) {
-      return DEFAULT_ACCENT_COLOR;
+      return { accentColor: DEFAULT_ACCENT_COLOR, userEmail: null };
     }
 
     const appearance = await loadAppearancePreferences(supabase, user.id);
-    return appearance.accentColor;
+    return {
+      accentColor: appearance.accentColor,
+      userEmail: user.email ?? null,
+    };
   } catch {
-    return DEFAULT_ACCENT_COLOR;
+    return { accentColor: DEFAULT_ACCENT_COLOR, userEmail: null };
   }
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [accentColor, userEmail] = await Promise.all([
-    getInitialAccentColor(),
-    getSessionUserEmail(),
-  ]);
+  const { accentColor, userEmail } = await getLayoutChrome();
 
   return (
     <html

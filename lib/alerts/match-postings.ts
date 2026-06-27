@@ -6,6 +6,7 @@ import {
   type AlertFilters,
 } from "@/lib/alerts/filters";
 import type { AlertCadence, AlertChannel } from "@/lib/config/alerts";
+import { getAlertFeedDefinition } from "@/lib/config/alert-feeds";
 import type { AlertMatch, AlertPostingCandidate, AlertSubscription } from "@/lib/alerts/types";
 
 export function isAlertEligiblePosting(posting: AlertPostingCandidate): boolean {
@@ -62,7 +63,47 @@ export function matchPostingsToUsers(
   return matches;
 }
 
-/** Daily briefing: every posting in the lookback window, no user filters. */
+/** Morning briefing and other digest feeds: all eligible postings in the lookback window. */
+export function matchFeedDigestPostingsToUsers(
+  postings: AlertPostingCandidate[],
+  subscriptions: AlertSubscription[],
+  options: {
+    feedSlug: string;
+    sentKeys: Set<string>;
+    globalFiltersByUserId: Map<string, AlertFilters>;
+  },
+): AlertMatch[] {
+  const matches: AlertMatch[] = [];
+  const eligible = postings.filter(isAlertEligiblePosting);
+  const feedSubs = subscriptions.filter(
+    (sub) =>
+      !sub.paused &&
+      sub.targetType === "feed" &&
+      sub.targetId === options.feedSlug &&
+      sub.cadence === "digest" &&
+      getAlertFeedDefinition(sub.targetId)?.cadence === "digest",
+  );
+
+  for (const posting of eligible) {
+    for (const sub of feedSubs) {
+      const globalFilters =
+        options.globalFiltersByUserId.get(sub.userId) ?? DEFAULT_ALERT_FILTERS;
+      const effectiveFilters = mergeAlertFilters(globalFilters, sub.filterOverride);
+      if (!postingMatchesAlertFilters(posting, effectiveFilters)) {
+        continue;
+      }
+
+      const key = buildSentKey(sub.userId, posting.postingId, "digest");
+      if (options.sentKeys.has(key)) continue;
+
+      matches.push({ userId: sub.userId, posting, channel: "digest" });
+    }
+  }
+
+  return matches;
+}
+
+/** @deprecated Use matchFeedDigestPostingsToUsers with feed subscriptions. */
 export function matchBriefingPostingsToUsers(
   postings: AlertPostingCandidate[],
   options: {

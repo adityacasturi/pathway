@@ -2,13 +2,12 @@ import { redirect } from "next/navigation";
 import { pageMetadata } from "@/lib/metadata/page";
 
 export const metadata = pageMetadata("Openings", "Browse live internship openings from tracked companies.");
-import { createClient } from "@/lib/supabase/server";
 import { fetchFeed } from "@/lib/feed/source";
 import { normalizeUrl } from "@/lib/url";
 import { OpeningsPage as LiveFeed } from "@/components/openings/openings-page";
-import { isMissingPreferenceColumnError } from "@/lib/config/user-preferences";
 import { loadUserViewPreferences } from "@/lib/user-preferences/load-view-preferences";
 import { assertSupabaseOk } from "@/lib/supabase/errors";
+import { getAuthenticatedUser } from "@/lib/supabase/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -21,20 +20,18 @@ interface LivePageProps {
 }
 
 export default async function OpeningsPage({ searchParams }: LivePageProps) {
-  const supabase = await createClient();
   const params = await searchParams;
   const initialQuery = typeof params.q === "string" ? params.q : "";
   const recentRaw = typeof params.recent === "string" ? params.recent : "";
   const initialRecentDays = /^\d+$/.test(recentRaw) ? Number(recentRaw) : null;
   const initialPostingId = typeof params.posting === "string" ? params.posting : "";
 
-  const userResult = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedUser();
 
-  if (!userResult.data.user) redirect("/login?next=/openings");
-  const userId = userResult.data.user.id;
+  if (!user) redirect("/login?next=/openings");
+  const userId = user.id;
 
-  const [postings, interactionsRes, appsRes, preferencesRes, viewPrefs] =
-    await Promise.all([
+  const [postings, interactionsRes, appsRes, viewPrefs] = await Promise.all([
       fetchFeed(),
       supabase.from("feed_interactions").select("posting_id").eq("user_id", userId).eq("kind", "saved"),
       supabase
@@ -42,19 +39,11 @@ export default async function OpeningsPage({ searchParams }: LivePageProps) {
         .select("posting_url")
         .eq("user_id", userId)
         .is("archived_at", null),
-      supabase
-        .from("user_preferences")
-        .select("quick_track_enabled")
-        .eq("user_id", userId)
-        .maybeSingle(),
       loadUserViewPreferences(supabase, userId),
     ]);
 
   assertSupabaseOk(interactionsRes.error, "Load feed interactions");
   assertSupabaseOk(appsRes.error, "Load tracked applications");
-  if (!isMissingPreferenceColumnError(preferencesRes.error, "quick_track_enabled")) {
-    assertSupabaseOk(preferencesRes.error, "Load preferences");
-  }
 
   const savedIds = new Set<string>();
   for (const row of interactionsRes.data ?? []) {
@@ -76,7 +65,7 @@ export default async function OpeningsPage({ searchParams }: LivePageProps) {
       initialQuery={initialQuery}
       initialRecentDays={initialRecentDays}
       initialPostingId={initialPostingId || undefined}
-      quickTrackEnabled={preferencesRes.data?.quick_track_enabled ?? false}
+      quickTrackEnabled={viewPrefs.quickTrackEnabled}
       initialFeedPrefs={viewPrefs.feed}
     />
   );

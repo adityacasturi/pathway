@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { AlertsAddSidebarOverlay } from "@/components/alerts/alerts-add-sidebar";
+import { AlertsAddDialog } from "@/components/alerts/alerts-add-dialog";
 import { AlertsFilterBar } from "@/components/alerts/alerts-filter-bar";
 import { AlertsSubscriptionList } from "@/components/alerts/alerts-subscription-list";
 import type {
@@ -13,13 +13,6 @@ import type {
 } from "@/components/alerts/types";
 import { PageShell } from "@/components/design-system/page";
 import { InlineError } from "@/components/ui/inline-error";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   addCompanyAlert,
   addSectorAlert,
@@ -28,7 +21,11 @@ import {
   setAlertSubscriptionPaused,
   updateAlertGlobalFilters,
 } from "@/lib/actions/alerts";
-import { filterAddableCompanies, filterSectorsByQuery } from "@/lib/alerts/addable-targets";
+import {
+  filterAddableCompanies,
+  filterSectorsByQuery,
+  getPopularAddableCompanies,
+} from "@/lib/alerts/addable-targets";
 import {
   alertFiltersToView,
   viewToAlertFilters,
@@ -36,13 +33,14 @@ import {
   type AlertFiltersView,
 } from "@/lib/alerts/filters";
 import { sortAlertSubscriptions } from "@/lib/alerts/subscription-sort";
-import { ALERT_DEFAULTS_SAVE_DEBOUNCE_MS } from "@/lib/config/alerts";
+import { ALERT_DEFAULTS_SAVE_DEBOUNCE_MS, ALERT_POPULAR_COMPANY_SLUGS } from "@/lib/config/alerts";
+
+const ADD_ALERT_ACTION_DEBOUNCE_MS = 400;
 import { useFocusSearchShortcut } from "@/lib/ui/focus-search-shortcut";
 import { getSearchTerms } from "@/lib/search-terms";
 
 interface Props {
   globalFilters: AlertFilters;
-  briefingEnabled: boolean;
   subscriptions: AlertSubscriptionView[];
   companies: AlertCompanyOption[];
   curatedSectors: CuratedSectorView[];
@@ -50,7 +48,6 @@ interface Props {
 
 export function AlertsPage({
   globalFilters: initialGlobalFilters,
-  briefingEnabled,
   subscriptions: initialSubscriptions,
   companies,
   curatedSectors,
@@ -87,15 +84,18 @@ export function AlertsPage({
   const [pendingCompanyId, setPendingCompanyId] = useState<string | null>(null);
   const [pendingPauseId, setPendingPauseId] = useState<string | null>(null);
   const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
-  const [removeTarget, setRemoveTarget] = useState<AlertSubscriptionView | null>(null);
-  const [isActionPending, startActionTransition] = useTransition();
+  const [, startActionTransition] = useTransition();
+  const lastAddActionAtRef = useRef(0);
   const [globalFilterView, setGlobalFilterView] = useState<AlertFiltersView>(() =>
     alertFiltersToView(initialGlobalFilters),
   );
   const [savedGlobalFilterView, setSavedGlobalFilterView] = useState(globalFilterView);
   const [globalFiltersError, setGlobalFiltersError] = useState<string | null>(null);
   const globalFilterViewRef = useRef(globalFilterView);
-  globalFilterViewRef.current = globalFilterView;
+
+  useEffect(() => {
+    globalFilterViewRef.current = globalFilterView;
+  }, [globalFilterView]);
 
   const searchInputRef = useRef<HTMLDivElement | null>(null);
   useFocusSearchShortcut(searchInputRef);
@@ -161,12 +161,32 @@ export function AlertsPage({
     [companies, followedCompanyIds, addQuery],
   );
 
+  const popularCompanies = useMemo(
+    () => getPopularAddableCompanies(companies, followedCompanyIds, ALERT_POPULAR_COMPANY_SLUGS),
+    [companies, followedCompanyIds],
+  );
+
   const activeGlobalFilters = useMemo(
     () => viewToAlertFilters(savedGlobalFilterView),
     [savedGlobalFilterView],
   );
 
+  const addDialogBusy = Boolean(pendingCompanyId || pendingSlug);
+
+  function guardAddDialogAction() {
+    if (addDialogBusy) {
+      return true;
+    }
+    const now = Date.now();
+    if (now - lastAddActionAtRef.current < ADD_ALERT_ACTION_DEBOUNCE_MS) {
+      return true;
+    }
+    lastAddActionAtRef.current = now;
+    return false;
+  }
+
   function toggleSector(slug: string) {
+    if (guardAddDialogAction()) return;
     setActionError(null);
     const existing = subscriptions.find((sub) => sub.type === "sector" && sub.sectorSlug === slug);
     const sector = curatedSectors.find((item) => item.slug === slug);
@@ -184,10 +204,12 @@ export function AlertsPage({
           companyId: null,
           companySlug: null,
           sectorSlug: slug,
+          feedSlug: null,
           websiteUrl: null,
           sectorCompanies: sector.companies,
           filterOverride: null,
           paused: false,
+          cadence: "instant",
         },
       ]);
     }
@@ -203,37 +225,26 @@ export function AlertsPage({
       if (result?.error) {
         setActionError(result.error);
         setSubscriptions(previous);
-        toast.error(existing ? "Couldn't remove bundle" : "Couldn't follow bundle", {
+        toast.error(existing ? "Couldn't remove industry" : "Couldn't follow industry", {
           description: result.error,
         });
         return;
       }
 
-      toast.success(existing ? `Unfollowed ${sector?.label ?? "bundle"}` : `Now following ${sector?.label ?? "bundle"}`);
+      toast.success(
+        existing
+          ? `Unfollowed ${sector?.label ?? "industry"}`
+          : `Now following ${sector?.label ?? "industry"}`,
+      );
       router.refresh();
     });
   }
 
   function addCompany(companyId: string) {
+    if (guardAddDialogAction()) return;
     setActionError(null);
     const company = companies.find((item) => item.id === companyId);
     if (!company) return;
-
-    const previous = subscriptions;
-    setSubscriptions((current) => [
-      ...current,
-      {
-        id: `pending-company-${companyId}`,
-        type: "company",
-        label: company.name,
-        companyId: company.id,
-        companySlug: company.slug,
-        sectorSlug: null,
-        websiteUrl: company.websiteUrl,
-        filterOverride: null,
-        paused: false,
-      },
-    ]);
 
     setPendingCompanyId(companyId);
     startActionTransition(async () => {
@@ -242,7 +253,6 @@ export function AlertsPage({
 
       if (result?.error) {
         setActionError(result.error);
-        setSubscriptions(previous);
         toast.error("Couldn't follow company", { description: result.error });
         return;
       }
@@ -250,10 +260,6 @@ export function AlertsPage({
       toast.success(`Now following ${company.name}`);
       router.refresh();
     });
-  }
-
-  function requestRemoveSubscription(subscription: AlertSubscriptionView) {
-    setRemoveTarget(subscription);
   }
 
   function removeSubscription(subscription: AlertSubscriptionView) {
@@ -322,7 +328,6 @@ export function AlertsPage({
                 onSearchFocusChange={setSearchFocused}
                 globalFilters={globalFilterView}
                 onGlobalFiltersChange={setGlobalFilterView}
-                briefingEnabled={briefingEnabled}
                 onOpenAddPanel={() => setAddPanelOpen(true)}
               />
 
@@ -350,7 +355,7 @@ export function AlertsPage({
                   pendingPauseId={pendingPauseId}
                   pendingRemoveId={pendingRemoveId}
                   onTogglePaused={toggleSubscriptionPaused}
-                  onRemove={requestRemoveSubscription}
+                  onRemove={removeSubscription}
                   onSubscriptionUpdated={() => router.refresh()}
                   onAddAlert={() => setAddPanelOpen(true)}
                 />
@@ -359,51 +364,27 @@ export function AlertsPage({
 
         </section>
 
-        <AlertsAddSidebarOverlay
+        <AlertsAddDialog
           open={addPanelOpen}
-          onClose={() => setAddPanelOpen(false)}
+          onOpenChange={(open) => {
+            setAddPanelOpen(open);
+            if (!open) {
+              setAddQuery("");
+            }
+          }}
           query={addQuery}
           onQueryChange={setAddQuery}
           addableCompanies={addableCompanies}
+          popularCompanies={popularCompanies}
           bundleSectors={bundleSectors}
           followedSectorSlugs={followedSectorSlugs}
           pendingSectorSlug={pendingSlug}
           pendingCompanyId={pendingCompanyId}
-          disabled={isActionPending}
+          disabled={addDialogBusy}
           onAddCompany={addCompany}
           onToggleSector={toggleSector}
         />
 
-      <Dialog open={Boolean(removeTarget)} onOpenChange={(open) => !open && setRemoveTarget(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Remove alert?</DialogTitle>
-            <p className="text-sm text-muted-foreground">
-              {removeTarget
-                ? `Stop following ${removeTarget.label}. You can add it again from Add alert.`
-                : null}
-            </p>
-          </DialogHeader>
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button type="button" variant="outline" onClick={() => setRemoveTarget(null)}>
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={Boolean(pendingRemoveId)}
-              onClick={() => {
-                if (!removeTarget) return;
-                const target = removeTarget;
-                setRemoveTarget(null);
-                removeSubscription(target);
-              }}
-            >
-              Remove
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </PageShell>
   );
 }

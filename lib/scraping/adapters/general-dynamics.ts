@@ -8,9 +8,11 @@ import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../typ
 import type { StructuredPlaceInput } from "../../geo/types.ts";
 import {
   fetchJsonWithTimeout,
+  fetchTextPayloadWithTimeout,
   isHttpUrl,
   resolveBoardToken,
   scraperDelay,
+  scraperHtmlHeaders,
 } from "./shared.ts";
 
 /**
@@ -410,13 +412,12 @@ async function fetchGeneralDynamicsCareerSearchPage(
 }
 
 async function fetchGeneralDynamicsApiAuth(jobSearchUrl: string): Promise<GeneralDynamicsApiAuth> {
-  const res = await fetchJsonWithTimeout(jobSearchUrl, {
-    headers: { accept: "text/html,application/xhtml+xml" },
+  const { response: res, data: html } = await fetchTextPayloadWithTimeout(jobSearchUrl, {
+    headers: scraperHtmlHeaders(),
   });
   if (!res.ok) {
     throw new Error(`General Dynamics job search page returned ${res.status}`);
   }
-  const html = await res.text();
   const auth = parseGeneralDynamicsApiAuthFromHtml(html);
   if (!auth?.nonce || !auth.signature || !auth.timestamp) {
     throw new Error("General Dynamics job search page missing API auth headers");
@@ -483,13 +484,14 @@ async function enrichGeneralDynamicsListings(
 }
 
 async function fetchGeneralDynamicsHtml(url: string): Promise<string> {
-  const res = await fetchJsonWithTimeout(url, {
-    headers: { accept: "text/html,application/xhtml+xml" },
+  const careersOrigin = parseGeneralDynamicsCareersOrigin(url) ?? GENERAL_DYNAMICS_CAREERS_ORIGIN;
+  const { response: res, data: html } = await fetchTextPayloadWithTimeout(url, {
+    headers: scraperHtmlHeaders(`${careersOrigin}/careers/job-search`),
   });
   if (!res.ok) {
     throw new Error(`General Dynamics careers returned ${res.status} for ${url}`);
   }
-  return res.text();
+  return html;
 }
 
 function parseGeneralDynamicsSearchKeywordFromUrl(sourceUrl: string): string | null {

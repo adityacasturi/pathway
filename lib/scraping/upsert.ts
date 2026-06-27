@@ -114,6 +114,10 @@ export async function runScrapeAdapter(
 
 function formatScrapeErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message.trim()) {
+    const cause = (error as { cause?: unknown }).cause;
+    if (error.message === "terminated" && cause instanceof Error && cause.message.trim()) {
+      return `Connection closed while reading response (${cause.message})`;
+    }
     return error.message;
   }
   if (error && typeof error === "object") {

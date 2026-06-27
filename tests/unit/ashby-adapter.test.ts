@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { parseAshbyJobs, parseAshbyPostingPageUpdatedAt } from "@/lib/scraping/adapters/ashby";
+import { ashbyRoleHasApiUpdatedAt, parseAshbyJobs, parseAshbyPostingPageUpdatedAt } from "@/lib/scraping/adapters/ashby";
 import type { CompanySourceConfig } from "@/lib/scraping/types";
 
 const SOURCE: CompanySourceConfig = {
@@ -34,6 +34,33 @@ test("parseAshbyJobs preserves publishedAt in ATS dates", () => {
 
   assert.equal(parsed.roles.length, 1);
   assert.equal(parsed.roles[0].atsDates?.publishedAt, "2025-08-07T20:49:38.961+00:00");
+});
+
+test("parseAshbyJobs preserves updatedAt in ATS dates", () => {
+  const parsed = parseAshbyJobs(
+    [
+      {
+        id: "67fadb77-43d8-4449-954b-d4cf2c6d3b8b",
+        title: "Software Engineer Internship, Android ",
+        jobUrl: "https://jobs.ashbyhq.com/ramp/67fadb77-43d8-4449-954b-d4cf2c6d3b8b",
+        descriptionPlain: "Fall Program (August/September 2026 - December 2026)",
+        employmentType: "Intern",
+        location: "New York, NY",
+        publishedAt: "2025-08-07T20:49:38.961+00:00",
+        updatedAt: "2026-06-04T16:57:38.597Z",
+        isListed: true,
+      },
+    ],
+    SOURCE,
+  );
+
+  assert.equal(parsed.roles.length, 1);
+  assert.equal(parsed.roles[0].atsDates?.updatedAt, "2026-06-04T16:57:38.597Z");
+  assert.equal(ashbyRoleHasApiUpdatedAt(parsed.roles[0]), true);
+});
+
+test("ashbyRoleHasApiUpdatedAt is false when updatedAt is missing", () => {
+  assert.equal(ashbyRoleHasApiUpdatedAt({ atsDates: { updatedAt: null } }), false);
 });
 
 test("parseAshbyPostingPageUpdatedAt reads updatedAt from embedded page data", () => {

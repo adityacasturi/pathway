@@ -5,6 +5,7 @@ import {
   INSPECTOR_HOVER_PENCIL_CLASS,
   INSPECTOR_HOVER_ROW_CLASS,
 } from "@/components/inspector/inspector-field-styles";
+import { SeasonDot } from "@/components/season-filter-section";
 import { APPLICATION_SEASONS, type ApplicationSeason } from "@/types/application";
 import { cn } from "@/lib/utils";
 
@@ -39,13 +40,16 @@ export function InspectorSeasonField({
         className,
       )}
     >
-      <span
-        className={cn(
-          "min-w-0 text-sm capitalize",
-          isEmpty ? "text-muted-foreground/55" : "text-muted-foreground",
-        )}
-      >
-        {value ?? "Add season"}
+      <span className="inline-flex min-w-0 items-center gap-1.5">
+        {value ? <SeasonDot season={value} /> : null}
+        <span
+          className={cn(
+            "min-w-0 text-sm capitalize",
+            isEmpty ? "text-muted-foreground/55" : "text-muted-foreground",
+          )}
+        >
+          {value ?? "Add season"}
+        </span>
       </span>
       <span className={INSPECTOR_HOVER_PENCIL_CLASS} aria-hidden>
         <RefreshCw size={13} strokeWidth={1.75} />

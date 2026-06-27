@@ -1,13 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
-import { createPortal } from "react-dom";
+import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Trash2, X } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { AlertFiltersEditor } from "@/components/alert-filters-editor";
 import { AlertSubscriptionAvatar } from "@/components/alerts/alert-subscription-avatar";
 import type { AlertSubscriptionView } from "@/components/alerts/types";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { InlineError } from "@/components/ui/inline-error";
 import { InlineSpinner } from "@/components/ui/loading-indicator";
 import { updateSubscriptionAlertFilters } from "@/lib/actions/alerts";
@@ -22,8 +27,8 @@ import {
   isSubscriptionFieldCustomized,
   resolveSubscriptionFieldOverride,
 } from "@/lib/alerts/subscription-filters";
+import { alertSubscriptionTypeLabel } from "@/lib/alerts/subscription-type-label";
 import { alertTargetTypeLabelClass } from "@/components/alerts/filter-chip-styles";
-import { useMounted } from "@/lib/ui/use-mounted";
 import { cn } from "@/lib/utils";
 
 function fieldView(
@@ -66,7 +71,66 @@ function SectionHeaderAction({
   );
 }
 
-function AlertSubscriptionFilters({
+export function AlertSubscriptionDetailDialog({
+  subscription,
+  globalFilters,
+  open,
+  onOpenChange,
+  onUpdated,
+  onRemove,
+  removePending,
+}: {
+  subscription: AlertSubscriptionView | null;
+  globalFilters: AlertFilters;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onUpdated: () => void;
+  onRemove: (subscription: AlertSubscriptionView) => void;
+  removePending: boolean;
+}) {
+  if (!subscription) {
+    return null;
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[min(40rem,88dvh)] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+        <DialogHeader className="shrink-0 gap-0 border-b border-border px-5 py-4 pr-12 text-left">
+          <div className="flex items-start gap-3">
+            <AlertSubscriptionAvatar subscription={subscription} />
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="truncate text-lg font-semibold leading-tight">
+                {subscription.label}
+              </DialogTitle>
+              <p
+                className={cn(
+                  "mt-1 text-xs font-medium",
+                  alertTargetTypeLabelClass(subscription.type),
+                )}
+              >
+                {alertSubscriptionTypeLabel(subscription.type)}
+              </p>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <AlertSubscriptionEditor
+          key={`${subscription.id}:${JSON.stringify(subscription.filterOverride ?? null)}`}
+          subscription={subscription}
+          globalFilters={globalFilters}
+          onUpdated={onUpdated}
+          onRemove={() => {
+            onOpenChange(false);
+            onRemove(subscription);
+          }}
+          removePending={removePending}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AlertSubscriptionEditor({
   subscription,
   globalFilters,
   onUpdated,
@@ -76,7 +140,7 @@ function AlertSubscriptionFilters({
   subscription: AlertSubscriptionView;
   globalFilters: AlertFilters;
   onUpdated: () => void;
-  onRemove: (subscription: AlertSubscriptionView) => void;
+  onRemove: () => void;
   removePending: boolean;
 }) {
   const seasonsSaved = useMemo(
@@ -110,6 +174,7 @@ function AlertSubscriptionFilters({
   const seasonsDirty = !arraysEqual(draft.seasons, seasonsSaved.seasons);
   const countriesDirty = !arraysEqual(draft.countries, countriesSaved.countries);
   const isDirty = seasonsDirty || countriesDirty;
+  const footerDisabled = isPending || removePending;
 
   function persistOverride(override: Partial<AlertFilters> | null) {
     setError(null);
@@ -121,7 +186,7 @@ function AlertSubscriptionFilters({
         return;
       }
       onUpdated();
-      toast.success("Alert filters updated");
+      toast.success("Alert updated");
     });
   }
 
@@ -163,8 +228,6 @@ function AlertSubscriptionFilters({
   function clearLocationDraft() {
     setDraft((current) => ({ ...current, countries: [] }));
   }
-
-  const footerDisabled = isPending || removePending;
 
   return (
     <>
@@ -256,7 +319,7 @@ function AlertSubscriptionFilters({
             variant="outline"
             className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive"
             disabled={footerDisabled}
-            onClick={() => onRemove(subscription)}
+            onClick={onRemove}
           >
             {removePending ? (
               <>
@@ -266,7 +329,7 @@ function AlertSubscriptionFilters({
             ) : (
               <>
                 <Trash2 size={14} strokeWidth={1.75} className="mr-1.5" aria-hidden />
-                Remove
+                Remove alert
               </>
             )}
           </Button>
@@ -279,96 +342,5 @@ function AlertSubscriptionFilters({
         ) : null}
       </div>
     </>
-  );
-}
-
-export function AlertSubscriptionMobileSheet({
-  subscription,
-  globalFilters,
-  open,
-  onClose,
-  onUpdated,
-  onRemove,
-  removePending,
-}: {
-  subscription: AlertSubscriptionView;
-  globalFilters: AlertFilters;
-  open: boolean;
-  onClose: () => void;
-  onUpdated: () => void;
-  onRemove: (subscription: AlertSubscriptionView) => void;
-  removePending: boolean;
-}) {
-  const mounted = useMounted();
-
-  useEffect(() => {
-    if (!open) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  if (!open || !mounted) return null;
-
-  const typeLabel = subscription.type === "company" ? "Company" : "Bundle";
-
-  return createPortal(
-    <div
-      className="ds-overlay-enter fixed inset-0 z-50 flex justify-end bg-[color-mix(in_oklab,var(--ink)_25%,transparent)] md:hidden"
-      role="dialog"
-      aria-modal="true"
-      aria-label={subscription.label}
-    >
-      <button type="button" aria-label="Close" className="absolute inset-0" onClick={onClose} />
-      <aside className="ds-drawer-enter relative z-10 flex h-full w-full max-w-md flex-col border-l border-border bg-card shadow-[-16px_0_48px_-20px_color-mix(in_oklab,var(--ink)_22%,transparent)]">
-        <header className="relative shrink-0 border-b border-border px-5 py-4 pr-12">
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="absolute right-3 top-3 inline-flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            <X size={18} strokeWidth={1.75} />
-          </button>
-          <div className="flex items-start gap-3">
-            <AlertSubscriptionAvatar subscription={subscription} />
-            <div className="min-w-0 flex-1">
-              <h2 className="truncate text-lg font-semibold leading-tight text-foreground">
-                {subscription.label}
-              </h2>
-              <p
-                className={cn(
-                  "mt-1 text-xs font-medium",
-                  alertTargetTypeLabelClass(subscription.type),
-                )}
-              >
-                {typeLabel}
-              </p>
-            </div>
-          </div>
-        </header>
-
-        <AlertSubscriptionFilters
-          key={`${subscription.id}:${JSON.stringify(subscription.filterOverride ?? null)}`}
-          subscription={subscription}
-          globalFilters={globalFilters}
-          onUpdated={onUpdated}
-          onRemove={onRemove}
-          removePending={removePending}
-        />
-      </aside>
-    </div>,
-    document.body,
   );
 }

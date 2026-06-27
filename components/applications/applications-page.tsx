@@ -431,15 +431,7 @@ export function ApplicationsPage({
             onAddApplication={() => setDialogOpen(true)}
           />
 
-          <div className="relative flex h-full min-h-0 flex-1 flex-col">
-            {detail ? (
-              <div
-                role="presentation"
-                className="ds-overlay-enter absolute inset-0 z-10 hidden bg-background/20 backdrop-blur-[3px] xl:block"
-                onClick={() => setDetailId(null)}
-              />
-            ) : null}
-
+          <div className="flex h-full min-h-0 flex-1 flex-col">
             <ApplicationsRecordList
               applications={visibleApplications}
               totalCount={filtered.length}
@@ -465,23 +457,6 @@ export function ApplicationsPage({
               sortDirection={sortDirection}
               onSortChange={handleSortChange}
             />
-
-            {detail ? (
-              <aside className="ds-drawer-enter absolute inset-y-0 right-0 z-20 hidden w-[var(--app-inspector-width)] border-l border-border/80 shadow-[-16px_0_48px_-20px_color-mix(in_oklab,var(--ink)_22%,transparent)] xl:block">
-                <ApplicationInspector
-                  variant="panel"
-                  application={detail}
-                  companyWebsiteByName={companyWebsiteByName}
-                  companySlugByName={companySlugByName}
-                  companyLogoAssetByName={companyLogoAssetByName}
-                  archived={archivedIds.has(detail.id)}
-                  onArchiveChange={(archived) => void setApplicationArchived(detail.id, archived)}
-                  onDeleted={() => setDetailId(null)}
-                  onClose={() => setDetailId(null)}
-                  className="h-full"
-                />
-              </aside>
-            ) : null}
           </div>
         </section>
       </div>
@@ -494,7 +469,6 @@ export function ApplicationsPage({
 
       {detail ? (
         <ApplicationInspector
-          variant="overlay"
           application={detail}
           companyWebsiteByName={companyWebsiteByName}
           companySlugByName={companySlugByName}

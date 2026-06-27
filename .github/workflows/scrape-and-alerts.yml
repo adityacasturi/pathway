@@ -12,11 +12,41 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  SCRAPE_SHARD_COUNT: "5"
+  SCRAPE_COMPANY_CONCURRENCY: "16"
+
 jobs:
-  scrape-and-alerts:
-    name: Scrape postings and send instant alerts
+  scrape:
+    name: Scrape shard ${{ matrix.shard }}/${{ env.SCRAPE_SHARD_COUNT }}
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4]
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SCRAPE_SHARD_INDEX: ${{ matrix.shard }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+      - run: npm run scrape
+
+  alerts:
+    name: Send instant alerts
+    needs: scrape
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
@@ -34,5 +64,4 @@ jobs:
           cache: npm
 
       - run: npm ci
-      - run: npm run scrape
       - run: npm run alerts:instant

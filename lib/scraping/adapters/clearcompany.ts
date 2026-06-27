@@ -3,7 +3,7 @@ import { stripHtml } from "../html-utils.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchJsonWithTimeout, isHttpUrl, resolveBoardToken } from "./shared.ts";
+import { fetchJsonPayloadWithTimeout, isHttpUrl, resolveBoardToken } from "./shared.ts";
 
 /** Public ClearCompany career-site API (no auth); board_token is the site id. */
 export const CLEARCOMPANY_API_ORIGIN = "https://careers-api.clearcompany.com";
@@ -42,12 +42,13 @@ export function createClearCompanyAdapter(source: CompanySourceConfig): ScrapeAd
     source: resolvedSource,
     async fetchRoles() {
       const url = `${CLEARCOMPANY_API_ORIGIN}/v1/${siteId}`;
-      const res = await fetchJsonWithTimeout(url, { headers: CLEARCOMPANY_HEADERS });
+      const { response: res, data: payload } = await fetchJsonPayloadWithTimeout<ClearCompanyResponse>(url, {
+        headers: CLEARCOMPANY_HEADERS,
+      });
       if (!res.ok) {
         throw new Error(`ClearCompany returned ${res.status} for ${url}`);
       }
 
-      const payload = (await res.json()) as ClearCompanyResponse;
       const jobs = Array.isArray(payload.results) ? payload.results : [];
       return parseClearCompanyJobs(jobs, resolvedSource);
     },

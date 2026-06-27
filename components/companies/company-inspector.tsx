@@ -1,20 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { AlertCircle, Briefcase, Building2, Clock, ListFilter, X } from "lucide-react";
 import { CompanyLogo } from "@/components/company-logo";
 import { formatOpeningCount } from "@/components/companies/company-card";
 import { CountryFlag } from "@/components/country-flag";
 import { CountryFilterSection } from "@/components/country-filter-section";
 import { MetadataRow } from "@/components/inspector/metadata-row";
-import { MetadataStack } from "@/components/inspector/metadata-stack";
 import { SeasonBadge } from "@/components/season-badge";
 import { SeasonDot, SeasonFilterSection } from "@/components/season-filter-section";
 import { SearchInput } from "@/components/search-input";
 import { MotionStaggerItem, MotionStaggerList } from "@/components/design-system/motion-stagger";
 import { SectionStack } from "@/components/design-system/surface";
 import { FilterPill } from "@/components/design-system/toolbar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatCountryCode } from "@/lib/feed/country-filter";
 import type { CountryFilterOption } from "@/lib/feed/country-filter";
 import type { FeedSeason } from "@/lib/feed/types";
@@ -25,38 +24,39 @@ import { formatPostingRelativeTime } from "@/lib/feed/posted-display";
 import { formatCompactLocationSegments } from "@/lib/feed/us-locations";
 import type { DiscoverCompanyCard, ScrapedPostingRow } from "@/lib/discover/types";
 import { safeExternalHref } from "@/lib/url";
-import { useMounted } from "@/lib/ui/use-mounted";
 import { UI_TOOLBAR_FILTER_COUNT } from "@/lib/ui/selection-styles";
 import { cn } from "@/lib/utils";
 
-function CompanyInspectorMetadata({ company }: { company: DiscoverCompanyCard }) {
+function CompanyInspectorDetails({ company }: { company: DiscoverCompanyCard }) {
   const health = getCompanyHealth(company);
   const roleLabel = formatOpeningCount(company.openCount);
 
   return (
-    <MetadataStack className="mt-2">
-      <MetadataRow icon={Briefcase}>
-        <span className="text-muted-foreground">{roleLabel}</span>
-      </MetadataRow>
-      <MetadataRow icon={Building2}>
-        <span className="text-muted-foreground">{company.industryLabel}</span>
-      </MetadataRow>
-      {health.kind === "ok" ? (
-        <MetadataRow icon={Clock}>
-          <span className="text-muted-foreground">Updated {health.label}</span>
+    <section aria-label="Details" className="shrink-0 border-b border-border px-5 py-5">
+      <div className="space-y-2.5">
+        <MetadataRow icon={Briefcase}>
+          <span className="text-muted-foreground">{roleLabel}</span>
         </MetadataRow>
-      ) : null}
-      {health.kind === "pending" ? (
-        <MetadataRow icon={Clock}>
-          <span className="text-muted-foreground">{health.label}</span>
+        <MetadataRow icon={Building2}>
+          <span className="text-muted-foreground">{company.industryLabel}</span>
         </MetadataRow>
-      ) : null}
-      {health.kind === "failed" ? (
-        <MetadataRow icon={AlertCircle}>
-          <span className="text-muted-foreground">{health.label}</span>
-        </MetadataRow>
-      ) : null}
-    </MetadataStack>
+        {health.kind === "ok" ? (
+          <MetadataRow icon={Clock}>
+            <span className="text-muted-foreground">Updated {health.label}</span>
+          </MetadataRow>
+        ) : null}
+        {health.kind === "pending" ? (
+          <MetadataRow icon={Clock}>
+            <span className="text-muted-foreground">{health.label}</span>
+          </MetadataRow>
+        ) : null}
+        {health.kind === "failed" ? (
+          <MetadataRow icon={AlertCircle}>
+            <span className="text-muted-foreground">{health.label}</span>
+          </MetadataRow>
+        ) : null}
+      </div>
+    </section>
   );
 }
 
@@ -182,7 +182,6 @@ export function CompanyInspector({
   onClearPostingCountries,
   onOpenPosting,
   onClose,
-  variant = "panel",
   className,
 }: {
   company: DiscoverCompanyCard | null;
@@ -203,13 +202,11 @@ export function CompanyInspector({
   onClearPostingCountries: () => void;
   onOpenPosting: (posting: ScrapedPostingRow) => void;
   onClose: () => void;
-  variant?: "panel" | "overlay";
   className?: string;
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filtersRef = useRef<HTMLDivElement | null>(null);
-  const mobileFilterPanelRef = useRef<HTMLDivElement | null>(null);
-  const mounted = useMounted();
+  const filterPanelRef = useRef<HTMLDivElement | null>(null);
   const postingActiveFilterCount =
     selectedPostingSeasons.size + selectedPostingCountries.size;
   const hasActivePostingChips =
@@ -219,7 +216,7 @@ export function CompanyInspector({
   useEffect(() => {
     function onPointerDown(event: PointerEvent) {
       if (!filtersRef.current?.contains(event.target as Node)) {
-        if (!mobileFilterPanelRef.current?.contains(event.target as Node)) {
+        if (!filterPanelRef.current?.contains(event.target as Node)) {
           setFiltersOpen(false);
         }
       }
@@ -229,29 +226,11 @@ export function CompanyInspector({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [filtersOpen]);
 
-  useEffect(() => {
-    if (!open || variant === "panel") return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, [open, variant]);
-
-  useEffect(() => {
-    if (!open) return;
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
   if (!company || !open) return null;
 
   const panel = (
-    <aside
-      className={cn("relative flex h-full w-full flex-col overflow-hidden bg-card", className)}
+    <div
+      className={cn("relative flex min-h-0 flex-1 flex-col overflow-hidden bg-card", className)}
       aria-label={`${company.name} openings`}
     >
       <header className="relative shrink-0 border-b border-border px-5 py-5 pr-12">
@@ -267,7 +246,7 @@ export function CompanyInspector({
           <X size={18} strokeWidth={1.75} />
         </button>
 
-        <div className="flex items-start gap-4">
+        <div className="flex items-center gap-3">
           <CompanyLogo
             company={company.name}
             companySlug={company.slug}
@@ -276,14 +255,15 @@ export function CompanyInspector({
             size={56}
             lazy
           />
-          <div className="min-w-0 flex-1">
-            <h2 className="text-lg font-semibold leading-tight tracking-tight text-foreground">
+          <div className="flex min-h-14 min-w-0 flex-1 flex-col justify-center gap-0">
+            <h2 className="text-2xl font-semibold leading-tight tracking-tight text-foreground">
               {company.name}
             </h2>
-            <CompanyInspectorMetadata company={company} />
           </div>
         </div>
       </header>
+
+      <CompanyInspectorDetails company={company} />
 
       {postingsAvailable && postingsAvailable.length > 0 ? (
         <div className="shrink-0 border-b border-border">
@@ -310,37 +290,24 @@ export function CompanyInspector({
                   ) : null}
                 </FilterPill>
                 {filtersOpen ? (
-                  <CompanyInspectorFilterPanel
-                    selectedPostingSeasons={selectedPostingSeasons}
-                    onTogglePostingSeason={onTogglePostingSeason}
-                    onClearPostingSeasons={onClearPostingSeasons}
-                    postingSeasonCounts={postingSeasonCounts}
-                    countryFilterOptions={countryFilterOptions}
-                    selectedPostingCountries={selectedPostingCountries}
-                    onTogglePostingCountry={onTogglePostingCountry}
-                    onClearPostingCountries={onClearPostingCountries}
-                    className="absolute right-0 top-[calc(100%+6px)] z-[90] hidden w-[min(22rem,calc(100vw-2.5rem))] shadow-sm xl:block"
-                  />
+                  <div
+                    ref={filterPanelRef}
+                    className="absolute right-0 top-full z-[90] mt-1.5 w-[min(22rem,calc(100vw-2rem))]"
+                  >
+                    <CompanyInspectorFilterPanel
+                      selectedPostingSeasons={selectedPostingSeasons}
+                      onTogglePostingSeason={onTogglePostingSeason}
+                      onClearPostingSeasons={onClearPostingSeasons}
+                      postingSeasonCounts={postingSeasonCounts}
+                      countryFilterOptions={countryFilterOptions}
+                      selectedPostingCountries={selectedPostingCountries}
+                      onTogglePostingCountry={onTogglePostingCountry}
+                      onClearPostingCountries={onClearPostingCountries}
+                      className="shadow-sm"
+                    />
+                  </div>
                 ) : null}
               </div>
-              {filtersOpen ? (
-                <div
-                  ref={mobileFilterPanelRef}
-                  className="absolute right-0 top-full z-[90] mt-1.5 w-[min(22rem,calc(100vw-2rem))] xl:hidden"
-                >
-                  <CompanyInspectorFilterPanel
-                    selectedPostingSeasons={selectedPostingSeasons}
-                    onTogglePostingSeason={onTogglePostingSeason}
-                    onClearPostingSeasons={onClearPostingSeasons}
-                    postingSeasonCounts={postingSeasonCounts}
-                    countryFilterOptions={countryFilterOptions}
-                    selectedPostingCountries={selectedPostingCountries}
-                    onTogglePostingCountry={onTogglePostingCountry}
-                    onClearPostingCountries={onClearPostingCountries}
-                    className="shadow-sm"
-                  />
-                </div>
-              ) : null}
             </div>
           </div>
           {hasActivePostingChips ? (
@@ -416,26 +383,27 @@ export function CompanyInspector({
         )}
       </div>
 
-    </aside>
+    </div>
   );
 
-  if (variant === "panel") {
-    return panel;
-  }
-
-  if (!mounted) return null;
-
-  return createPortal(
-    <div
-      className="ds-overlay-enter fixed inset-0 z-50 flex justify-end bg-[color-mix(in_oklab,var(--ink)_25%,transparent)] xl:hidden"
-      role="dialog"
-      aria-modal="true"
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
     >
-      <button type="button" aria-label="Close" className="absolute inset-0" onClick={onClose} />
-      <div className="ds-drawer-enter relative z-10 h-full w-full max-w-[var(--app-company-inspector-width)] shadow-[-16px_0_48px_-20px_color-mix(in_oklab,var(--ink)_22%,transparent)]">
+      <DialogContent
+        showCloseButton={false}
+        className={cn(
+          "flex h-[min(42rem,88dvh)] max-h-[88dvh] w-full flex-col gap-0 overflow-hidden rounded-xl border-border bg-card p-0 shadow-[0_34px_110px_-64px_color-mix(in_oklab,var(--ink)_85%,transparent)] sm:max-w-[var(--app-company-inspector-width)]",
+        )}
+      >
+        <DialogHeader className="sr-only">
+          <DialogTitle>{company.name}</DialogTitle>
+        </DialogHeader>
         {panel}
-      </div>
-    </div>,
-    document.body,
+      </DialogContent>
+    </Dialog>
   );
 }

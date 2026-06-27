@@ -221,10 +221,20 @@ function parseAshbyResponse(payload: unknown, url: string): AshbyJob[] {
   return (payload as { jobs: AshbyJob[] }).jobs;
 }
 
+export function ashbyRoleHasApiUpdatedAt(role: {
+  atsDates?: { updatedAt?: string | null };
+}): boolean {
+  const updatedAt = role.atsDates?.updatedAt?.trim();
+  return Boolean(updatedAt && !Number.isNaN(Date.parse(updatedAt)));
+}
+
 async function enrichAshbyRolesWithUpdatedAt<T extends ReturnType<typeof buildScrapedRole>>(
   roles: T[],
 ): Promise<T[]> {
   return mapWithConcurrency(roles, ASHBY_DETAIL_CONCURRENCY, async (role) => {
+    if (ashbyRoleHasApiUpdatedAt(role)) {
+      return role;
+    }
     const updatedAt = await fetchAshbyPostingUpdatedAt(role.postingUrl);
     if (!updatedAt) {
       return role;

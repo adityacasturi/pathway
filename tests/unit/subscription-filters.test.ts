@@ -3,6 +3,7 @@ import test from "node:test";
 import { DEFAULT_ALERT_FILTERS, type AlertFilters } from "../../lib/alerts/filters.ts";
 import {
   isSubscriptionFieldCustomized,
+  isSubscriptionFiltersCustomized,
   resolveSubscriptionFieldOverride,
   subscriptionFieldValuesMatchDefault,
 } from "../../lib/alerts/subscription-filters.ts";
@@ -74,5 +75,24 @@ test("isSubscriptionFieldCustomized is false when override matches global defaul
   assert.equal(
     isSubscriptionFieldCustomized({ seasons: ["Summer"] }, globalWithSeasons, "seasons"),
     true,
+  );
+});
+
+test("isSubscriptionFiltersCustomized is true when any field differs from defaults", () => {
+  assert.equal(isSubscriptionFiltersCustomized(null, globalWithSeasons), false);
+  assert.equal(
+    isSubscriptionFiltersCustomized({ seasons: ["Summer"] }, globalWithSeasons),
+    true,
+  );
+  assert.equal(
+    isSubscriptionFiltersCustomized({ countries: ["IE"] }, globalWithCountries),
+    true,
+  );
+  assert.equal(
+    isSubscriptionFiltersCustomized(
+      { seasons: ["Summer", "Winter"] },
+      globalWithSeasons,
+    ),
+    false,
   );
 });

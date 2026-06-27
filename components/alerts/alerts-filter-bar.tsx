@@ -2,13 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Plus, Settings2 } from "lucide-react";
+import { AlertsHelpDialog } from "@/components/alerts/alerts-help-dialog";
 import {
-  AlertDefaultsActiveRail,
   AlertFiltersEditor,
   countActiveAlertFiltersView,
   hasActiveAlertFiltersView,
 } from "@/components/alert-filters-editor";
-import { AlertsDailyBriefingToolbarButton } from "@/components/alerts/alerts-daily-briefing-toolbar-button";
 import { SectionStack } from "@/components/design-system/surface";
 import { SearchInput } from "@/components/search-input";
 import { Button } from "@/components/ui/button";
@@ -25,7 +24,6 @@ export function AlertsFilterBar({
   onSearchFocusChange,
   globalFilters,
   onGlobalFiltersChange,
-  briefingEnabled,
   onOpenAddPanel,
 }: {
   searchRef: React.RefObject<HTMLDivElement | null>;
@@ -35,7 +33,6 @@ export function AlertsFilterBar({
   onSearchFocusChange: (focused: boolean) => void;
   globalFilters: AlertFiltersView;
   onGlobalFiltersChange: (next: AlertFiltersView) => void;
-  briefingEnabled: boolean;
   onOpenAddPanel: () => void;
 }) {
   const [defaultsOpen, setDefaultsOpen] = useState(false);
@@ -59,45 +56,30 @@ export function AlertsFilterBar({
 
   return (
     <div className={cn("relative shrink-0 bg-card", searchFocused && "z-30")}>
-      <div className="flex flex-col gap-2.5 border-b border-border px-5 py-3 md:flex-row md:flex-wrap md:items-center md:gap-2.5 md:px-4">
-        <div className="order-1 w-full min-w-0 md:order-2 md:min-w-[10rem] md:flex-1 [&_input]:h-8 [&_input]:rounded-md [&_input]:text-sm">
-          <SearchInput
-            ref={searchRef}
-            value={query}
-            onChange={onQueryChange}
-            placeholder="Search alerts…"
-            onFocusChange={onSearchFocusChange}
-          />
-        </div>
+      <div className="flex flex-col gap-2.5 border-b border-border px-5 py-3 md:flex-row md:items-center md:gap-2.5 md:px-4">
+        <Button
+          type="button"
+          size="sm"
+          className="h-8 w-full shrink-0 gap-1 rounded-md px-2 text-sm md:w-auto md:gap-1.5 md:px-3"
+          onClick={onOpenAddPanel}
+          aria-label="Add alert"
+        >
+          <Plus size={14} strokeWidth={2} />
+          <span className="truncate md:hidden">Add</span>
+          <span className="hidden md:inline">Add alert</span>
+        </Button>
 
-        <div className="relative order-2 grid w-full grid-cols-3 gap-2 md:contents">
-          <Button
-            type="button"
-            size="sm"
-            className="h-8 w-full gap-1 rounded-md px-2 text-sm md:order-1 md:w-auto md:gap-1.5 md:px-3"
-            onClick={onOpenAddPanel}
-            aria-label="Add alert"
-          >
-            <Plus size={14} strokeWidth={2} />
-            <span className="truncate md:hidden">Add</span>
-            <span className="hidden md:inline">Add alert</span>
-          </Button>
-
-          <AlertsDailyBriefingToolbarButton
-            key={briefingEnabled ? "on" : "off"}
-            enabled={briefingEnabled}
-            className="min-w-0 w-full md:order-3 md:w-auto [&>div]:w-full [&>div]:justify-center md:[&>div]:w-auto md:[&>div]:justify-start"
-          />
-
-          <div ref={defaultsRef} className="relative min-w-0 md:order-4">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <div ref={defaultsRef} className="relative shrink-0">
             <ToolbarButton
               active={defaultsOpen || globalActive}
               aria-expanded={defaultsOpen}
-              className="h-8 w-full justify-center gap-1.5 px-2 md:w-auto md:justify-start md:px-2.5"
+              aria-label="Edit default filters"
+              className="h-8 justify-center gap-1.5 px-2.5"
               onClick={() => setDefaultsOpen((open) => !open)}
             >
               <Settings2 size={14} strokeWidth={1.75} className="shrink-0 opacity-80" />
-              Defaults
+              <span className="hidden sm:inline">Default filters</span>
               {activeDefaultCount > 0 ? (
                 <span className={UI_TOOLBAR_FILTER_COUNT}>{activeDefaultCount}</span>
               ) : null}
@@ -106,24 +88,36 @@ export function AlertsFilterBar({
               <AlertsDefaultsPanel
                 globalFilters={globalFilters}
                 onGlobalFiltersChange={onGlobalFiltersChange}
-                className="absolute right-0 top-full z-40 mt-1.5 hidden w-[min(24rem,calc(100vw-2.5rem))] shadow-sm md:flex"
+                className="absolute left-0 top-full z-40 mt-1.5 hidden w-[min(36rem,calc(100vw-2rem))] shadow-sm sm:flex"
               />
             ) : null}
           </div>
 
-          {defaultsOpen ? (
-            <div
-              ref={mobileDefaultsPanelRef}
-              className="absolute right-0 top-full z-40 mt-1.5 w-[min(24rem,calc(100vw-2rem))] md:hidden"
-            >
-              <AlertsDefaultsPanel
-                globalFilters={globalFilters}
-                onGlobalFiltersChange={onGlobalFiltersChange}
-                className="shadow-sm"
-              />
-            </div>
-          ) : null}
+          <div className="min-w-0 flex-1 [&_input]:h-8 [&_input]:rounded-md [&_input]:text-sm">
+            <SearchInput
+              ref={searchRef}
+              value={query}
+              onChange={onQueryChange}
+              placeholder="Search alerts…"
+              onFocusChange={onSearchFocusChange}
+            />
+          </div>
+
+          <AlertsHelpDialog />
         </div>
+
+        {defaultsOpen ? (
+          <div
+            ref={mobileDefaultsPanelRef}
+            className="absolute left-5 top-full z-40 mt-1.5 w-[min(36rem,calc(100vw-2rem))] sm:hidden"
+          >
+            <AlertsDefaultsPanel
+              globalFilters={globalFilters}
+              onGlobalFiltersChange={onGlobalFiltersChange}
+              className="shadow-sm"
+            />
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -139,17 +133,13 @@ function AlertsDefaultsPanel({
   className?: string;
 }) {
   return (
-    <SectionStack
-      className={cn(
-        "flex max-h-[min(36rem,calc(100vh-5rem))] flex-col overflow-hidden",
-        className,
-      )}
-    >
-      <div className="shrink-0">
-        <AlertDefaultsActiveRail value={globalFilters} onChange={onGlobalFiltersChange} />
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:thin]">
-        <AlertFiltersEditor value={globalFilters} onChange={onGlobalFiltersChange} />
+    <SectionStack className={className}>
+      <div className="p-4">
+        <AlertFiltersEditor
+          value={globalFilters}
+          onChange={onGlobalFiltersChange}
+          sectionUnstyled
+        />
       </div>
     </SectionStack>
   );

@@ -56,13 +56,13 @@ function DialogContent({
       isDismissable
       isOpen={state.isOpen}
       onOpenChange={state.setOpen}
-      className="fixed inset-0 z-50 flex min-h-dvh items-center justify-center bg-foreground/14 p-4 duration-200 supports-backdrop-filter:backdrop-blur-[4px]"
+      className="fixed inset-0 z-50 flex min-h-dvh items-center justify-center bg-foreground/14 p-4 supports-backdrop-filter:backdrop-blur-[4px]"
     >
-      <Modal className="flex max-h-[calc(100dvh-2rem)] w-full justify-center overflow-y-auto outline-none">
+      <Modal className="pointer-events-none flex max-h-[calc(100dvh-2rem)] w-full justify-center overflow-y-auto outline-none">
         <AriaDialog
           data-slot="dialog-content"
           className={cn(
-            "relative grid w-full max-w-[calc(100%-2rem)] gap-4 rounded-2xl border border-rule-strong bg-popover p-5 text-sm text-popover-foreground shadow-[0_34px_110px_-64px_color-mix(in_oklab,var(--ink)_85%,transparent)] outline-none sm:max-w-sm",
+            "pointer-events-auto relative grid w-full max-w-[calc(100%-2rem)] gap-4 rounded-2xl border border-rule-strong bg-popover p-5 text-sm text-popover-foreground shadow-[0_34px_110px_-64px_color-mix(in_oklab,var(--ink)_85%,transparent)] outline-none sm:max-w-sm",
             className
           )}
           {...props}

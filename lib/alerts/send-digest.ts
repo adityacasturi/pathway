@@ -1,15 +1,21 @@
 import { dedupeAlertMatches } from "@/lib/alerts/dedupe-matches";
 import {
+  loadAlertFilterDefaults,
   loadAlertPostingCandidates,
   loadAlertSentKeys,
-  loadDigestEnabledUserIds,
+  loadAlertSubscriptions,
   loadUserEmails,
   recordAlertSentPostings,
   upsertAlertDigestState,
 } from "@/lib/alerts/load-alert-data";
-import { matchBriefingPostingsToUsers } from "@/lib/alerts/match-postings";
+import { matchFeedDigestPostingsToUsers } from "@/lib/alerts/match-postings";
 import type { AlertPostingCandidate } from "@/lib/alerts/types";
 import { DIGEST_LOOKBACK_MS, DIGEST_MAX_POSTINGS } from "@/lib/config/alerts";
+import {
+  isAlertFeedSlug,
+  MORNING_BRIEFING_FEED_SLUG,
+  type AlertFeedSlug,
+} from "@/lib/config/alert-feeds";
 import {
   handleResendBatchFailure,
   pauseBetweenResendSends,
@@ -22,15 +28,33 @@ import {
 } from "@/lib/email/templates/digest-alert";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export async function processDigestAlerts(now = new Date()): Promise<ResendBatchResult> {
+export async function processDigestAlerts(
+  now = new Date(),
+  options: { feedSlug?: AlertFeedSlug } = {},
+): Promise<ResendBatchResult> {
+  const feedSlug = options.feedSlug ?? MORNING_BRIEFING_FEED_SLUG;
+  if (!isAlertFeedSlug(feedSlug)) {
+    return { sent: 0, errors: 1 };
+  }
+
   if (!isEmailConfigured()) {
     return { sent: 0, errors: 0 };
   }
 
   const supabase = createAdminClient();
-  const digestUserIds = [...(await loadDigestEnabledUserIds(supabase))];
+  const [allSubscriptions, globalFiltersByUserId] = await Promise.all([
+    loadAlertSubscriptions(supabase),
+    loadAlertFilterDefaults(supabase),
+  ]);
+  const digestSubscriptions = allSubscriptions.filter(
+    (sub) =>
+      sub.targetType === "feed" &&
+      sub.targetId === feedSlug &&
+      sub.cadence === "digest" &&
+      !sub.paused,
+  );
 
-  if (digestUserIds.length === 0) {
+  if (digestSubscriptions.length === 0) {
     return { sent: 0, errors: 0 };
   }
 
@@ -43,10 +67,10 @@ export async function processDigestAlerts(now = new Date()): Promise<ResendBatch
 
   const postingIds = postings.map((posting) => posting.postingId);
   const sentKeys = await loadAlertSentKeys(supabase, postingIds);
-  const enabledUserIds = new Set(digestUserIds);
-  const rawMatches = matchBriefingPostingsToUsers(postings, {
-    enabledUserIds,
+  const rawMatches = matchFeedDigestPostingsToUsers(postings, digestSubscriptions, {
+    feedSlug,
     sentKeys,
+    globalFiltersByUserId,
   });
   const matches = dedupeAlertMatches(rawMatches);
 

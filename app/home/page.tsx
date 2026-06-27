@@ -12,7 +12,7 @@ import {
 } from "@/lib/home/briefing";
 import { buildSeasonSnapshot } from "@/lib/home/season-snapshot";
 import { assertSupabaseOk } from "@/lib/supabase/errors";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { currentUnixSeconds } from "@/lib/time";
 import type { FeedPosting } from "@/lib/feed/source";
 
@@ -32,13 +32,12 @@ function interactionDate(savedAtById: Map<string, string>, posting: FeedPosting)
 }
 
 export default async function HomeRoute() {
-  const supabase = await createClient();
   const nowUnix = currentUnixSeconds();
 
-  const userResult = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedUser();
 
-  if (!userResult.data.user) redirect("/login?next=/home");
-  const userId = userResult.data.user.id;
+  if (!user) redirect("/login?next=/home");
+  const userId = user.id;
 
   const [postings, alertActivity, appsRes, interactionsRes] = await Promise.all([
     fetchFeed(),

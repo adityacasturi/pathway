@@ -71,7 +71,6 @@ export function ApplicationInspector({
   onArchiveChange,
   onDeleted,
   onClose,
-  variant = "panel",
   className,
 }: {
   application: Application | null;
@@ -82,7 +81,6 @@ export function ApplicationInspector({
   onArchiveChange?: (archived: boolean) => void;
   onDeleted?: () => void;
   onClose: () => void;
-  variant?: "panel" | "overlay";
   className?: string;
 }) {
   const [eventType, setEventType] = useState<EventType>("oa");
@@ -146,24 +144,6 @@ export function ApplicationInspector({
       return normalizeApplicationState({ ...application, events });
     });
   }, [application]);
-
-  useEffect(() => {
-    if (!open || variant === "panel") return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, [open, variant]);
-
-  useEffect(() => {
-    if (!open) return;
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
 
   function startSync(label: string) {
     setError(null);
@@ -353,9 +333,9 @@ export function ApplicationInspector({
       : null;
 
   const panel = (
-    <aside
+    <div
       className={cn(
-        "relative flex h-full w-full flex-col overflow-hidden bg-card",
+        "relative flex min-h-0 flex-1 flex-col overflow-hidden bg-card",
         className,
       )}
       aria-label={`${optimisticApplication.company} details`}
@@ -509,7 +489,7 @@ export function ApplicationInspector({
           onDismiss={() => setSyncState({ status: "idle", label: null })}
         />
       )}
-    </aside>
+    </div>
   );
 
   const deleteDialog = (
@@ -560,38 +540,28 @@ export function ApplicationInspector({
     </Dialog>
   );
 
-  if (variant === "panel") {
-    return (
-      <>
-        {panel}
-        {addEventDialog}
-        {deleteDialog}
-      </>
-    );
-  }
-
-  if (!mounted) return null;
-
   return (
     <>
-      {createPortal(
-        <div
-          className="ds-overlay-enter fixed inset-0 z-50 flex justify-end bg-[color-mix(in_oklab,var(--ink)_25%,transparent)] xl:hidden"
-          role="dialog"
-          aria-modal="true"
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          if (!next) onClose();
+        }}
+      >
+        <DialogContent
+          showCloseButton={false}
+          className={cn(
+            "flex h-[min(42rem,88dvh)] max-h-[88dvh] w-full flex-col gap-0 overflow-hidden rounded-xl border-border bg-card p-0 shadow-[0_34px_110px_-64px_color-mix(in_oklab,var(--ink)_85%,transparent)] sm:max-w-[var(--app-inspector-width)]",
+          )}
         >
-          <button
-            type="button"
-            aria-label="Close"
-            className="absolute inset-0"
-            onClick={onClose}
-          />
-          <div className="ds-drawer-enter relative z-10 h-full w-full max-w-[var(--app-inspector-width)] shadow-[-16px_0_48px_-20px_color-mix(in_oklab,var(--ink)_22%,transparent)]">
-            {panel}
-          </div>
-        </div>,
-        document.body,
-      )}
+          <DialogHeader className="sr-only">
+            <DialogTitle>
+              {optimisticApplication.company} — {optimisticApplication.role}
+            </DialogTitle>
+          </DialogHeader>
+          {panel}
+        </DialogContent>
+      </Dialog>
       {addEventDialog}
       {deleteDialog}
     </>

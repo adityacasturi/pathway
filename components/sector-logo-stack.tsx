@@ -9,7 +9,7 @@ export interface SectorLogoCompany {
 }
 
 /** Fixed icon column width for alert follows and bundle rows. */
-const ALERT_FOLLOW_LOGO_SLOT = 36;
+export const ALERT_FOLLOW_LOGO_SLOT = 36;
 
 const GRID_GAP = 2;
 

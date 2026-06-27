@@ -1,16 +1,17 @@
 import { redirect } from "next/navigation";
 import { pageMetadata } from "@/lib/metadata/page";
 
-export const metadata = pageMetadata("Alerts", "Email alerts for new roles at companies and industry bundles you follow.");
+export const metadata = pageMetadata("Alerts", "Email alerts for new roles at companies and industries you follow.");
 import { AlertsPage } from "@/components/alerts/alerts-page";
 import type { AlertSubscriptionView } from "@/components/alerts/types";
-import { loadCuratedAlertSectors } from "@/lib/alerts/load-curated-sectors";
+import {
+  getCachedCuratedAlertSectors,
+  getCachedDiscoverCompanies,
+} from "@/lib/cache/catalog";
 import { resolveSectorCompanies, type SectorCompanyDisplay } from "@/lib/alerts/curated-sectors";
 import { alertFiltersFromPreferenceRow, parseFilterOverrideJson } from "@/lib/alerts/filters";
-import { loadDiscoverCompanies } from "@/lib/discover/companies";
-import { loadDiscoverIndustryCatalog } from "@/lib/discover/catalog";
 import { assertSupabaseOk } from "@/lib/supabase/errors";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedUser } from "@/lib/supabase/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -18,20 +19,19 @@ interface SubscriptionRow {
   id: string;
   target_type: "company" | "sector";
   target_id: string;
+  cadence: "instant" | "digest";
   filter_override: Record<string, unknown> | null;
   paused: boolean;
 }
 
 export default async function AlertsRoute() {
-  const supabase = await createClient();
-  const { data: userData } = await supabase.auth.getUser();
-  if (!userData.user) redirect("/login?next=/alerts");
-  const userId = userData.user.id;
+  const { supabase, user } = await getAuthenticatedUser();
+  if (!user) redirect("/login?next=/alerts");
+  const userId = user.id;
 
-  const industryCatalog = await loadDiscoverIndustryCatalog(supabase);
   const [companies, curatedAlertSectors, preferencesRes, subscriptionsRes] = await Promise.all([
-    loadDiscoverCompanies(supabase, industryCatalog),
-    loadCuratedAlertSectors(supabase),
+    getCachedDiscoverCompanies(),
+    getCachedCuratedAlertSectors(),
     supabase
       .from("alert_preferences")
       .select("emails_enabled, digest_enabled, alert_seasons, alert_countries, alert_include_remote")
@@ -39,10 +39,9 @@ export default async function AlertsRoute() {
       .maybeSingle(),
     supabase
       .from("alert_subscriptions")
-      .select("id, target_type, target_id, filter_override, paused")
+      .select("id, target_type, target_id, cadence, filter_override, paused")
       .eq("user_id", userId)
       .in("target_type", ["company", "sector"])
-      .eq("cadence", "instant")
       .order("created_at", { ascending: true }),
   ]);
 
@@ -88,10 +87,12 @@ export default async function AlertsRoute() {
         companyId: null,
         companySlug: null,
         sectorSlug: row.target_id,
+        feedSlug: null,
         websiteUrl: null,
         sectorCompanies: sector?.companies ?? [],
         filterOverride,
         paused: row.paused,
+        cadence: row.cadence,
       });
       continue;
     }
@@ -103,9 +104,11 @@ export default async function AlertsRoute() {
       companyId: row.target_id,
       companySlug: companySlugById.get(row.target_id) ?? null,
       sectorSlug: null,
+      feedSlug: null,
       websiteUrl: companyWebsiteById.get(row.target_id) ?? null,
       filterOverride,
       paused: row.paused,
+      cadence: row.cadence,
     });
   }
 
@@ -121,7 +124,6 @@ export default async function AlertsRoute() {
   return (
     <AlertsPage
       globalFilters={globalFilters}
-      briefingEnabled={preferencesRes.data?.digest_enabled ?? false}
       subscriptions={subscriptions}
       curatedSectors={curatedSectors}
       companies={companies.map((company) => ({

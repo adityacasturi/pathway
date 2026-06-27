@@ -5,6 +5,7 @@ import { DEFAULT_ALERT_FILTERS } from "../../lib/alerts/filters.ts";
 import {
   isAlertEligiblePosting,
   matchBriefingPostingsToUsers,
+  matchFeedDigestPostingsToUsers,
   matchPostingsToUsers,
 } from "../../lib/alerts/match-postings.ts";
 import type { AlertSubscription } from "../../lib/alerts/types.ts";
@@ -219,6 +220,69 @@ test("matchPostingsToUsers skips paused subscriptions", () => {
   ];
   const matches = matchPostingsToUsers([posting], subs, quantSectorMembers, matchOptions());
   assert.equal(matches.length, 0);
+});
+
+test("matchFeedDigestPostingsToUsers applies filters and skips paused feeds", () => {
+  const subs: AlertSubscription[] = [
+    {
+      id: "s1",
+      userId: "u1",
+      targetType: "feed",
+      targetId: "morning-briefing",
+      cadence: "digest",
+      filterOverride: null,
+      paused: false,
+    },
+  ];
+  const matches = matchFeedDigestPostingsToUsers([posting], subs, {
+    feedSlug: "morning-briefing",
+    sentKeys: new Set<string>(),
+    globalFiltersByUserId,
+  });
+  assert.equal(matches.length, 1);
+  assert.equal(matches[0].channel, "digest");
+});
+
+test("matchFeedDigestPostingsToUsers skips unlocated postings", () => {
+  const subs: AlertSubscription[] = [
+    {
+      id: "s1",
+      userId: "u1",
+      targetType: "feed",
+      targetId: "morning-briefing",
+      cadence: "digest",
+      filterOverride: null,
+      paused: false,
+    },
+  ];
+  const unlocated = { ...posting, location: "" };
+  const matches = matchFeedDigestPostingsToUsers([unlocated], subs, {
+    feedSlug: "morning-briefing",
+    sentKeys: new Set<string>(),
+    globalFiltersByUserId,
+  });
+  assert.equal(matches.length, 0);
+});
+
+test("matchFeedDigestPostingsToUsers matches nightly briefing feed", () => {
+  const subs: AlertSubscription[] = [
+    {
+      id: "s1",
+      userId: "u1",
+      targetType: "feed",
+      targetId: "nightly-briefing",
+      cadence: "digest",
+      filterOverride: null,
+      paused: false,
+    },
+  ];
+  const matches = matchFeedDigestPostingsToUsers([posting], subs, {
+    feedSlug: "nightly-briefing",
+    sentKeys: new Set<string>(),
+    globalFiltersByUserId,
+  });
+  assert.equal(matches.length, 1);
+  assert.equal(matches[0].channel, "digest");
 });
 
 test("matchBriefingPostingsToUsers includes postings without follows", () => {

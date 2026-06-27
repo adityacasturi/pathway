@@ -3,19 +3,15 @@
  * stored in `scraped_postings` (see `lib/feed/scraped-postings.ts`).
  */
 
-import { unstable_noStore } from "next/cache";
-import { loadScrapedFeedPostings } from "@/lib/feed/scraped-postings";
-import { createClient } from "@/lib/supabase/server";
+import { getCachedFeedPostings } from "@/lib/cache/catalog";
 
 export type { FeedPosting, FeedSeason } from "@/lib/feed/types";
 export { FEED_SEASONS } from "@/lib/feed/types";
 
 /**
- * Loads open scraped internships for Openings. Uses the request-scoped
- * Supabase client so RLS applies; scraped_postings are readable by authenticated users.
+ * Loads open scraped internships for Openings. Cached globally and shared
+ * across users because scraped_postings are the same catalog for everyone.
  */
 export async function fetchFeed() {
-  unstable_noStore();
-  const supabase = await createClient();
-  return loadScrapedFeedPostings(supabase);
+  return getCachedFeedPostings();
 }

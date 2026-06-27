@@ -27,6 +27,23 @@ export function atsJsonHeaders(): HeadersInit {
   };
 }
 
+/** Browser-like headers for HTML document fetches (careers pages behind edge WAFs). */
+export function scraperHtmlHeaders(referer?: string): HeadersInit {
+  return {
+    accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "accept-language": "en-US,en;q=0.9",
+    "cache-control": "no-cache",
+    pragma: "no-cache",
+    "sec-fetch-dest": "document",
+    "sec-fetch-mode": "navigate",
+    "sec-fetch-site": referer ? "same-origin" : "none",
+    ...(referer
+      ? { referer }
+      : { "sec-fetch-user": "?1", "upgrade-insecure-requests": "1" }),
+    "user-agent": SCRAPER_USER_AGENT,
+  };
+}
+
 export function isHttpUrl(value: string): boolean {
   try {
     const parsed = new URL(value);
@@ -109,7 +126,7 @@ export function isRetryableFetchError(error: unknown): boolean {
     typeof causeRecord?.message === "string" ? causeRecord.message : "",
   ].join(" ");
 
-  return /\b(fetch failed|network|timeout|ETIMEDOUT|ECONNRESET|ECONNREFUSED|EAI_AGAIN|ENOTFOUND|UND_ERR)\b/i.test(
+  return /\b(fetch failed|network|timeout|terminated|other side closed|ETIMEDOUT|ECONNRESET|ECONNREFUSED|EAI_AGAIN|ENOTFOUND|UND_ERR)\b/i.test(
     detail,
   );
 }
@@ -218,6 +235,72 @@ export async function fetchJsonWithTimeout(
     },
     options,
   );
+}
+
+export interface FetchPayloadResult<T> {
+  response: Response;
+  data: T;
+}
+
+/**
+ * Fetch JSON and parse the body inside the retry loop. Large ATS payloads (e.g.
+ * ClearCompany) can close the socket mid-read; retrying only the initial fetch
+ * does not help because body consumption happens afterward.
+ */
+export async function fetchJsonPayloadWithTimeout<T = unknown>(
+  url: string,
+  init: RequestInit = {},
+  options: FetchWithTimeoutOptions = {},
+): Promise<FetchPayloadResult<T>> {
+  return fetchResponsePayloadWithTimeout(url, init, (response) => response.json() as Promise<T>, options);
+}
+
+/** Same retry semantics as {@link fetchJsonPayloadWithTimeout} for HTML/text bodies. */
+export async function fetchTextPayloadWithTimeout(
+  url: string,
+  init: RequestInit = {},
+  options: FetchWithTimeoutOptions = {},
+): Promise<FetchPayloadResult<string>> {
+  return fetchResponsePayloadWithTimeout(url, init, (response) => response.text(), options);
+}
+
+async function fetchResponsePayloadWithTimeout<T>(
+  url: string,
+  init: RequestInit,
+  readBody: (response: Response) => Promise<T>,
+  options: FetchWithTimeoutOptions = {},
+): Promise<FetchPayloadResult<T>> {
+  const maxAttempts = options.maxAttempts ?? FETCH_MAX_ATTEMPTS;
+  const retryDelayMs = options.retryDelayMs ?? FETCH_RETRY_DELAY_MS;
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const response = await fetchJsonWithTimeout(url, init, {
+        ...options,
+        maxAttempts: 1,
+      });
+
+      if (!response.ok) {
+        if (isRetryableFetchStatus(response.status) && attempt < maxAttempts) {
+          await scraperDelay(computeFetchRetryDelayMs(attempt, response, retryDelayMs));
+          continue;
+        }
+        return { response, data: null as T };
+      }
+
+      const data = await readBody(response);
+      return { response, data };
+    } catch (error) {
+      lastError = error;
+      if (!isRetryableFetchError(error) || attempt >= maxAttempts) {
+        throw error;
+      }
+      await scraperDelay(computeFetchRetryDelayMs(attempt, null, retryDelayMs));
+    }
+  }
+
+  throw lastError;
 }
 
 function normalizeToken(value: string | null | undefined): string | null {

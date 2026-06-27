@@ -3,36 +3,38 @@ import { pageMetadata } from "@/lib/metadata/page";
 
 export const metadata = pageMetadata("Companies", "Explore companies and their open internship roles.");
 import { CompaniesPage as DiscoverCompanies } from "@/components/companies/companies-page";
-import { loadDiscoverIndustryCatalog } from "@/lib/discover/catalog";
-import { loadDiscoverCompanies } from "@/lib/discover/companies";
+import {
+  getCachedDiscoverCompanies,
+  getCachedDiscoverIndustryCatalog,
+} from "@/lib/cache/catalog";
 import { loadDiscoverCompanyFavoriteIds } from "@/lib/discover/favorites";
 import { assertSupabaseOk } from "@/lib/supabase/errors";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { normalizeUrl } from "@/lib/url";
 
 export const dynamic = "force-dynamic";
 
 export default async function CompaniesPage() {
-  const supabase = await createClient();
-  const { data: userData } = await supabase.auth.getUser();
-  if (!userData.user) redirect("/login?next=/companies");
-  const userId = userData.user.id;
+  const { supabase, user } = await getAuthenticatedUser();
+  if (!user) redirect("/login?next=/companies");
+  const userId = user.id;
 
-  const industryCatalog = await loadDiscoverIndustryCatalog(supabase);
-  const [companies, starredCompanyIds, interactionsRes, appsRes] = await Promise.all([
-    loadDiscoverCompanies(supabase, industryCatalog),
-    loadDiscoverCompanyFavoriteIds(supabase, userId),
-    supabase
-      .from("feed_interactions")
-      .select("posting_id")
-      .eq("user_id", userId)
-      .eq("kind", "dismissed"),
-    supabase
-      .from("applications")
-      .select("posting_url")
-      .eq("user_id", userId)
-      .is("archived_at", null),
-  ]);
+  const [industryCatalog, companies, starredCompanyIds, interactionsRes, appsRes] =
+    await Promise.all([
+      getCachedDiscoverIndustryCatalog(),
+      getCachedDiscoverCompanies(),
+      loadDiscoverCompanyFavoriteIds(supabase, userId),
+      supabase
+        .from("feed_interactions")
+        .select("posting_id")
+        .eq("user_id", userId)
+        .eq("kind", "dismissed"),
+      supabase
+        .from("applications")
+        .select("posting_url")
+        .eq("user_id", userId)
+        .is("archived_at", null),
+    ]);
 
   assertSupabaseOk(interactionsRes.error, "Load feed interactions");
   assertSupabaseOk(appsRes.error, "Load tracked applications");

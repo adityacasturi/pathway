@@ -1,7 +1,7 @@
 "use client";
 
-import type { AlertSubscriptionView } from "@/components/alerts/types";
 import { SectorLogoStack } from "@/components/sector-logo-stack";
+import type { AlertSubscriptionView } from "@/components/alerts/types";
 
 export function AlertSubscriptionAvatar({
   subscription,

@@ -66,7 +66,7 @@ export function AlertFiltersEditor({
   };
 
   return (
-    <div className={cn(disabled && "pointer-events-none opacity-60")}>
+    <div className={cn(disabled && "pointer-events-none opacity-60", sectionUnstyled && "space-y-4")}>
       {fields === "all" || fields === "seasons" ? (
         <SeasonFilterSection
           compact
