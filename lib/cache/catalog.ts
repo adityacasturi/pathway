@@ -4,8 +4,9 @@ import { loadDiscoverIndustryCatalog } from "@/lib/discover/catalog";
 import { loadDiscoverCompanies } from "@/lib/discover/companies";
 import { loadScrapedFeedPostings } from "@/lib/feed/scraped-postings";
 import {
+  companyLogoLookupRecordsFromLookups,
   loadCompanyWebsiteLookups,
-  type CompanyWebsiteLookups,
+  type CompanyLogoLookupRecords,
 } from "@/lib/logo/company-website-lookup";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { DiscoverCompanyCard } from "@/lib/discover/types";
@@ -50,11 +51,12 @@ export function getCachedFeedPostings(): Promise<FeedPosting[]> {
   )();
 }
 
-export function getCachedCompanyWebsiteLookups(): Promise<CompanyWebsiteLookups> {
+export function getCachedCompanyWebsiteLookups(): Promise<CompanyLogoLookupRecords> {
   return unstable_cache(
     async () => {
       const supabase = createAdminClient();
-      return loadCompanyWebsiteLookups(supabase);
+      const lookups = await loadCompanyWebsiteLookups(supabase);
+      return companyLogoLookupRecordsFromLookups(lookups);
     },
     ["company-website-lookups"],
     { ...catalogRevalidate, tags: [CACHE_TAGS.companyLookups, CACHE_TAGS.companies] },

@@ -5,11 +5,6 @@ export const metadata = pageMetadata("Applications", "Track internship applicati
 import { ApplicationsPage as Dashboard } from "@/components/applications/applications-page";
 import { Application } from "@/types/application";
 import { normalizeApplicationState } from "@/lib/config/application-state";
-import {
-  companyLogoAssetByNameFromLookups,
-  companySlugByNameFromLookups,
-  companyWebsiteByNameFromLookups,
-} from "@/lib/logo/company-website-lookup";
 import { getCachedCompanyWebsiteLookups } from "@/lib/cache/catalog";
 import { loadUserViewPreferences } from "@/lib/user-preferences/load-view-preferences";
 import { assertSupabaseOk } from "@/lib/supabase/errors";
@@ -21,7 +16,7 @@ export default async function ApplicationsPage() {
   if (!user) redirect("/login?next=/applications");
   const userId = user.id;
 
-  const [appsResult, websiteLookups, viewPrefs] = await Promise.all([
+  const [appsResult, companyLookups, viewPrefs] = await Promise.all([
     supabase
       .from("applications")
       .select("*, application_events(*)")
@@ -44,9 +39,9 @@ export default async function ApplicationsPage() {
   return (
     <Dashboard
       applications={applications}
-      companyWebsiteByName={companyWebsiteByNameFromLookups(websiteLookups)}
-      companySlugByName={companySlugByNameFromLookups(websiteLookups)}
-      companyLogoAssetByName={companyLogoAssetByNameFromLookups(websiteLookups)}
+      companyWebsiteByName={companyLookups.companyWebsiteByName}
+      companySlugByName={companyLookups.companySlugByName}
+      companyLogoAssetByName={companyLookups.companyLogoAssetByName}
       initialViewPrefs={viewPrefs.applications}
     />
   );

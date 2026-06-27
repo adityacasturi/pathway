@@ -1,4 +1,5 @@
 import { HOME_ACTIVITY_WINDOW_SECONDS } from "@/lib/home/briefing";
+import { assertSupabaseOk } from "@/lib/supabase/errors";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const HOME_ALERT_ACTIVITY_POOL = 100;
@@ -105,7 +106,7 @@ export async function loadHomeAlertActivity(
     .eq("user_id", userId)
     .in("target_type", ["company", "sector"]);
 
-  if (subscriptionsRes.error) throw subscriptionsRes.error;
+  assertSupabaseOk(subscriptionsRes.error, "Load home alert subscriptions");
 
   const subscriptions = (subscriptionsRes.data ?? []) as SubscriptionRow[];
   const activeSectorSlugs = [
@@ -130,8 +131,8 @@ export async function loadHomeAlertActivity(
       : Promise.resolve({ data: [], error: null }),
   ]);
 
-  if (sentRes.error) throw sentRes.error;
-  if (sectorMembersRes.error) throw sectorMembersRes.error;
+  assertSupabaseOk(sentRes.error, "Load home alert sent postings");
+  assertSupabaseOk(sectorMembersRes.error, "Load home alert sector members");
 
   const alertCountsByCompanyId = new Map<string, number>();
   const seenPostingByCompany = new Map<string, Set<string>>();
@@ -183,7 +184,7 @@ export async function loadHomeAlertActivity(
       .from("companies")
       .select("id, slug, name, website_url")
       .in("id", [...companyIds]);
-    if (byIdRes.error) throw byIdRes.error;
+    assertSupabaseOk(byIdRes.error, "Load home alert companies by id");
     for (const company of (byIdRes.data ?? []) as CompanyRow[]) {
       companiesById.set(company.id, company);
     }
@@ -197,7 +198,7 @@ export async function loadHomeAlertActivity(
       .from("companies")
       .select("id, slug, name, website_url")
       .in("slug", missingSectorSlugs);
-    if (bySlugRes.error) throw bySlugRes.error;
+    assertSupabaseOk(bySlugRes.error, "Load home alert companies by slug");
     for (const company of (bySlugRes.data ?? []) as CompanyRow[]) {
       companiesById.set(company.id, company);
     }

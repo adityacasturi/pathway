@@ -24,6 +24,16 @@ export type CompanySlugByName = Readonly<Record<string, string>>;
 /** `logo_asset_key` keyed by normalized company name. */
 export type CompanyLogoAssetByName = Readonly<Record<string, string>>;
 
+export interface CompanyLogoLookupRecords {
+  companyWebsiteByName: CompanyWebsiteByName;
+  companySlugByName: CompanySlugByName;
+  companyLogoAssetByName: CompanyLogoAssetByName;
+}
+
+function lookupMapToRecord(map: ReadonlyMap<string, string>): Record<string, string> {
+  return Object.fromEntries(map);
+}
+
 export async function loadCompanyWebsiteLookups(
   supabase: SupabaseClient,
 ): Promise<CompanyWebsiteLookups> {
@@ -70,17 +80,27 @@ export async function loadCompanyWebsiteLookups(
 export function companyWebsiteByNameFromLookups(
   lookups: CompanyWebsiteLookups,
 ): CompanyWebsiteByName {
-  return Object.fromEntries(lookups.byName);
+  return lookupMapToRecord(lookups.byName);
 }
 
 export function companySlugByNameFromLookups(lookups: CompanyWebsiteLookups): CompanySlugByName {
-  return Object.fromEntries(lookups.slugByName);
+  return lookupMapToRecord(lookups.slugByName);
 }
 
 export function companyLogoAssetByNameFromLookups(
   lookups: CompanyWebsiteLookups,
 ): CompanyLogoAssetByName {
-  return Object.fromEntries(lookups.logoAssetByName);
+  return lookupMapToRecord(lookups.logoAssetByName);
+}
+
+export function companyLogoLookupRecordsFromLookups(
+  lookups: CompanyWebsiteLookups,
+): CompanyLogoLookupRecords {
+  return {
+    companyWebsiteByName: companyWebsiteByNameFromLookups(lookups),
+    companySlugByName: companySlugByNameFromLookups(lookups),
+    companyLogoAssetByName: companyLogoAssetByNameFromLookups(lookups),
+  };
 }
 
 function isCompanyWebsiteLookups(

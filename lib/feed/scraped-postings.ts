@@ -15,6 +15,7 @@ import { expandLocationSegments } from "./us-locations.ts";
 import type { FeedPosting, FeedSeason } from "./types.ts";
 import { FEED_SEASONS } from "./types.ts";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { assertSupabaseOk } from "@/lib/supabase/errors";
 
 export interface ScrapedPostingFeedRow {
   id: string;
@@ -131,91 +132,10 @@ async function loadEnabledCountryCodes(supabase: SupabaseClient): Promise<string
     .select("country_code")
     .eq("enabled", true);
 
-  if (error) throw error;
+  assertSupabaseOk(error, "Load allowed countries");
   return (data ?? [])
     .map((row) => String(row.country_code ?? "").toUpperCase())
     .filter(Boolean);
-}
-
-async function loadEligibleCompanyIds(supabase: SupabaseClient): Promise<string[]> {
-  const { data, error } = await supabase
-    .from("companies")
-    .select("id, company_sources!inner ( enabled )")
-    .eq("is_active", true)
-    .eq("company_sources.enabled", true);
-
-  if (error) throw error;
-  return ((data ?? []) as { id: string }[]).map((row) => row.id);
-}
-
-export async function loadScrapedFeedPostings(supabase: SupabaseClient): Promise<FeedPosting[]> {
-  const [companyIds, enabledCountryCodes] = await Promise.all([
-    loadEligibleCompanyIds(supabase),
-    loadEnabledCountryCodes(supabase),
-  ]);
-  if (companyIds.length === 0) return [];
-
-  const { data, error } = await supabase
-    .from("scraped_postings")
-    .select(
-      `
-      id,
-      company_name,
-      role_name,
-      posting_url,
-      season,
-      location,
-      raw_location,
-      location_places,
-      countries,
-      first_seen_at,
-      posted_at,
-      last_seen_at,
-      updated_at,
-      companies!inner (
-        slug,
-        website_url,
-        logo_asset_key
-      )
-    `,
-    )
-    .eq("status", "open")
-    .in("company_id", companyIds);
-
-  if (error) throw error;
-
-  const postings: FeedPosting[] = [];
-
-  for (const raw of data ?? []) {
-    const company = Array.isArray(raw.companies) ? raw.companies[0] : raw.companies;
-    if (!company?.slug) continue;
-    const row: ScrapedPostingFeedRow = {
-      id: raw.id,
-      company_name: raw.company_name,
-      role_name: raw.role_name,
-      posting_url: raw.posting_url,
-      season: raw.season ?? null,
-      location: raw.location,
-      raw_location: raw.raw_location ?? null,
-      location_places: raw.location_places ?? null,
-      countries: raw.countries ?? null,
-      first_seen_at: raw.first_seen_at,
-      posted_at: raw.posted_at,
-      last_seen_at: raw.last_seen_at,
-      updated_at: raw.updated_at,
-      companies: {
-        slug: company.slug,
-        website_url: company.website_url ?? null,
-        logo_asset_key: company.logo_asset_key ?? null,
-      },
-    };
-    const posting = mapScrapedRowToFeedPosting(row, { enabledCountryCodes });
-    if (!posting) continue;
-    postings.push(posting);
-  }
-
-  postings.sort((a, b) => b.datePosted - a.datePosted);
-  return postings;
 }
 
 const FEED_POSTING_SELECT = `
@@ -236,6 +156,28 @@ const FEED_POSTING_SELECT = `
     slug,
     website_url,
     logo_asset_key
+  )
+`;
+
+const SCOPED_FEED_POSTING_SELECT = `
+  id,
+  company_name,
+  role_name,
+  posting_url,
+  season,
+  location,
+  raw_location,
+  location_places,
+  countries,
+  first_seen_at,
+  posted_at,
+  last_seen_at,
+  updated_at,
+  companies!inner (
+    slug,
+    website_url,
+    logo_asset_key,
+    company_sources!inner ( enabled )
   )
 `;
 
@@ -273,6 +215,32 @@ function mapRawScrapedFeedRow(raw: Record<string, unknown>): ScrapedPostingFeedR
   };
 }
 
+export async function loadScrapedFeedPostings(supabase: SupabaseClient): Promise<FeedPosting[]> {
+  const enabledCountryCodes = await loadEnabledCountryCodes(supabase);
+
+  const { data, error } = await supabase
+    .from("scraped_postings")
+    .select(SCOPED_FEED_POSTING_SELECT)
+    .eq("status", "open")
+    .eq("companies.is_active", true)
+    .eq("companies.company_sources.enabled", true);
+
+  assertSupabaseOk(error, "Load feed postings");
+
+  const postings: FeedPosting[] = [];
+
+  for (const raw of data ?? []) {
+    const row = mapRawScrapedFeedRow(raw as Record<string, unknown>);
+    if (!row) continue;
+    const posting = mapScrapedRowToFeedPosting(row, { enabledCountryCodes });
+    if (!posting) continue;
+    postings.push(posting);
+  }
+
+  postings.sort((a, b) => b.datePosted - a.datePosted);
+  return postings;
+}
+
 export async function loadFeedPostingsByPostingIds(
   supabase: SupabaseClient,
   postingIds: readonly string[],
@@ -288,7 +256,7 @@ export async function loadFeedPostingsByPostingIds(
     .in("id", [...postingIds])
     .eq("status", "open");
 
-  if (error) throw error;
+  assertSupabaseOk(error, "Load feed postings by id");
 
   const postings: FeedPosting[] = [];
   for (const raw of data ?? []) {
