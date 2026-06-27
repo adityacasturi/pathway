@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-import { processDigestAlerts } from "@/lib/alerts/send-digest";
-import { isAlertFeedSlug, MORNING_BRIEFING_FEED_SLUG } from "@/lib/config/alert-feeds";
-import { errorMessage } from "@/lib/observability";
+import { processDigestAlerts } from "../lib/alerts/send-digest.ts";
+import { isAlertFeedSlug, MORNING_BRIEFING_FEED_SLUG } from "../lib/config/alert-feeds.ts";
+import { errorMessage } from "../lib/observability.ts";
 import { loadDotEnvLocal } from "./discover-queue/env.ts";
 
 loadDotEnvLocal();

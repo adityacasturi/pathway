@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-import { processInstantAlerts } from "@/lib/alerts/send-instant";
-import { INSTANT_ALERT_LOOKBACK_MS } from "@/lib/config/alerts";
-import { errorMessage } from "@/lib/observability";
+import { processInstantAlerts } from "../lib/alerts/send-instant.ts";
+import { INSTANT_ALERT_LOOKBACK_MS } from "../lib/config/alerts.ts";
+import { errorMessage } from "../lib/observability.ts";
 import { loadDotEnvLocal } from "./discover-queue/env.ts";
 
 loadDotEnvLocal();
