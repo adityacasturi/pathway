@@ -17,12 +17,15 @@ export const LINKEDIN_JOBS_SEARCH_ORIGIN = "https://www.linkedin.com";
 export const LINKEDIN_DEFAULT_COMPANY_IDS = "1337,9202023,2561065,2587638,290903,39939";
 export const LINKEDIN_GUEST_JOB_POSTING_URL = `${LINKEDIN_JOBS_SEARCH_ORIGIN}/jobs-guest/jobs/api/jobPosting`;
 
+/** Avoid bare "intern" — LinkedIn keyword search matches "infrastructure", "internal", etc. */
 const LINKEDIN_SEARCH_KEYWORDS = [
   "software engineer intern",
   "engineering intern",
-  "intern",
+  "internship",
   "summer intern",
   "data science intern",
+  "co-op",
+  "university intern",
 ];
 
 const LINKEDIN_SEARCH_PAGE_SIZE = 25;
@@ -73,7 +76,7 @@ export function createLinkedInAdapter(source: CompanySourceConfig): ScrapeAdapte
       const summaries = await fetchAllLinkedInSummaries(board);
       const candidates = summaries.filter((summary) => shouldPrefetchLinkedInDetail(summary));
       const enriched = await enrichLinkedInJobs(candidates);
-      return parseLinkedInJobs(enriched, resolvedSource, summaries.length);
+      return parseLinkedInJobs(enriched, resolvedSource, candidates.length);
     },
   };
 }

@@ -71,7 +71,7 @@ const CO_OP_PATTERN = /\bco-?op\b|\bcooperative education\b/i;
 
 /** Full-time campus-hire titles: real roles, but not internships. */
 const NEW_GRAD_TITLE_PATTERN =
-  /\bnew\s*grad(?:uate)?\b|\bentry[-\s]?level\b|\bgraduate (?:program|scheme|engineer|analyst|hire)\b|\bcampus hire\b/i;
+  /\bnew\s*grad(?:uate)?\b|\bentry[-\s]?level\b|\bgraduate (?:program|scheme|engineer|analyst|hire)\b|\bcampus hire\b|\b(?:software\s+)?engineer\s+grad\b/i;
 
 /** Department/team names that indicate student programs. */
 const STUDENT_CONTEXT_PATTERN =
@@ -211,6 +211,15 @@ export function classifyScrapeRole(candidate: ScrapeRoleCandidate): RoleClassifi
     return rejected("no_student_signal", signals);
   }
 
+  // GH/ATS boards sometimes mark non-engineering roles (e.g. Production
+  // Technician - SkillBridge) as employmentType=Intern; do not inherit
+  // engineering scope from employer boilerplate when the title itself is not
+  // engineering.
+  if (scan.strength === "metadata" && !hasEngineeringSignal(title, "")) {
+    signals.push("negative:metadata_only_non_engineering_title");
+    return rejected("non_engineering_role", signals, scan.roleType);
+  }
+
   // Negative signals veto anything weaker than an explicit student title.
   if (scan.strength !== "title") {
     if (SENIORITY_TITLE_PATTERN.test(title)) {
@@ -262,10 +271,24 @@ function finishInclude(
     };
   }
 
-  const context = buildClassificationContext(descriptionPlain, candidate);
-  const engineering =
-    hasEngineeringSignal(title, context) ||
-    (candidate.team ? hasEngineeringSignal(candidate.team, context) : false);
+  const departmentText = (candidate.departments ?? [])
+    .map((department) => department.trim())
+    .filter(Boolean)
+    .join("\n");
+  const teamText = candidate.team?.trim() ?? "";
+  const orgContext = [teamText, departmentText].filter(Boolean).join("\n");
+
+  // Explicit intern/co-op titles must not inherit engineering scope from generic
+  // company boilerplate in the posting body (e.g. "machine learning" in About Us).
+  const studentFromExplicitTitle = signals.some(
+    (signal) => signal === "title:student_opportunity" || signal === "title:co_op",
+  );
+  const titleOrOrgEngineering =
+    hasEngineeringSignal(title, orgContext) ||
+    (orgContext.length > 0 && hasEngineeringSignal("", orgContext));
+  const descriptionOnlyEngineering =
+    !studentFromExplicitTitle && hasEngineeringSignal("", descriptionPlain);
+  const engineering = titleOrOrgEngineering || descriptionOnlyEngineering;
 
   if (!engineering) {
     signals.push("negative:missing_engineering_signal");
@@ -299,20 +322,4 @@ function normalizeDescription(description: string | null | undefined): string {
     return htmlToPlainText(trimmed);
   }
   return trimmed.replace(/\s+/g, " ").trim();
-}
-
-function buildClassificationContext(
-  descriptionPlain: string,
-  candidate: ScrapeRoleCandidate,
-): string {
-  const parts = [descriptionPlain];
-  if (candidate.team?.trim()) {
-    parts.push(candidate.team.trim());
-  }
-  for (const department of candidate.departments ?? []) {
-    if (department.trim()) {
-      parts.push(department.trim());
-    }
-  }
-  return parts.filter(Boolean).join("\n");
 }

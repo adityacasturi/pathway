@@ -1,21 +1,48 @@
 import { classifyForSource } from "../adapter-parse.ts";
-import { decodeBrassRingEntities } from "../html-utils.ts";
+import { decodeBrassRingEntities, decodeHtmlEntities, stripHtml } from "../html-utils.ts";
 import { mergeCookieHeaders } from "../http-utils.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
 import { buildRoleParseResult } from "../role-parse-result.ts";
+import { INTERNSHIP_LIST_TITLE_PATTERN } from "../list-filters.ts";
 import { htmlToPlainText } from "../plain-text.ts";
 import { inferSeason } from "../season.ts";
 import type { CompanySourceConfig, RoleParseResult, ScrapeAdapter } from "../types.ts";
-import { fetchWithTimeout, isHttpUrl } from "./shared.ts";
+import { fetchJsonWithTimeout, fetchWithTimeout, isHttpUrl, resolveBoardToken } from "./shared.ts";
 
 /**
- * Lockheed Martin careers use Kenexa BrassRing Talent Gateway (sjobs.brassring.com).
- * US postings: partnerid=25037, siteid=5010 (see lockheedmartin.com careers links).
+ * Lockheed Martin careers moved to Radancy TalentBrew (lockheedmartinjobs.com).
+ * Legacy BrassRing (sjobs.brassring.com) remains for older source_url rows.
  */
+export const LOCKHEED_MARTIN_JOBS_ORIGIN = "https://www.lockheedmartinjobs.com";
+export const LOCKHEED_MARTIN_DEFAULT_SEARCH_KEYWORD = "intern";
+export const LOCKHEED_MARTIN_DEFAULT_JOBS_SEARCH_URL = `${LOCKHEED_MARTIN_JOBS_ORIGIN}/search-jobs?k=intern&l=&listFilterMode=1`;
 export const LOCKHEED_MARTIN_BRASSRING_ORIGIN = "https://sjobs.brassring.com";
 export const LOCKHEED_MARTIN_DEFAULT_PARTNER_ID = "25037";
 export const LOCKHEED_MARTIN_DEFAULT_SITE_ID = "5010";
 export const LOCKHEED_MARTIN_CAREERS_URL = `${LOCKHEED_MARTIN_BRASSRING_ORIGIN}/TGnewUI/Search/Home/Home?partnerid=${LOCKHEED_MARTIN_DEFAULT_PARTNER_ID}&siteid=${LOCKHEED_MARTIN_DEFAULT_SITE_ID}`;
+
+const LOCKHEED_JOBS_PAGE_SIZE = 15;
+const LOCKHEED_JOBS_MAX_PAGES = 40;
+const LOCKHEED_JOBS_DETAIL_CONCURRENCY = 6;
+
+const LOCKHEED_JOBS_LISTING_PATTERN =
+  /<a href="(\/job\/[^"]+)"[^>]*>((?:(?!<\/a>)[\s\S])*?)<span class="job-title">([^<]+)<\/span>(?:(?!<\/a>)[\s\S])*?<span class="job-location[^"]*">([^<]*)<\/span>/gi;
+
+export type LockheedMartinPlatform = "jobs_portal" | "brassring";
+
+export interface LockheedJobsBoardConfig {
+  careersOrigin: string;
+  searchKeyword: string;
+  searchUrl: string;
+}
+
+export interface LockheedJobsListing {
+  title: string;
+  postingUrl: string;
+  location: string | null;
+  category: string | null;
+  description?: string | null;
+}
 
 const MATCHED_JOBS_URL = `${LOCKHEED_MARTIN_BRASSRING_ORIGIN}/TgNewUI/Search/Ajax/MatchedJobs`;
 const JOB_DETAILS_URL = `${LOCKHEED_MARTIN_BRASSRING_ORIGIN}/TgNewUI/Search/Ajax/JobDetails`;
@@ -99,6 +126,25 @@ export interface BrassRingSession {
 }
 
 export function createLockheedMartinAdapter(source: CompanySourceConfig): ScrapeAdapter {
+  const platform = resolveLockheedMartinPlatform(source);
+
+  if (platform === "jobs_portal") {
+    const board = resolveLockheedJobsBoard(source);
+    const resolvedSource =
+      source.boardToken === board.searchKeyword && source.sourceUrl === board.searchUrl
+        ? source
+        : { ...source, boardToken: board.searchKeyword, sourceUrl: board.searchUrl };
+
+    return {
+      source: resolvedSource,
+      async fetchRoles() {
+        const listings = await fetchAllLockheedJobsListings(board);
+        const enriched = await enrichLockheedJobsListings(listings, board);
+        return parseLockheedJobsListings(enriched, resolvedSource);
+      },
+    };
+  }
+
   const board = resolveLockheedMartinBoard(source);
   const boardToken = `${board.partnerId}:${board.siteId}`;
   const resolvedSource =
@@ -116,6 +162,178 @@ export function createLockheedMartinAdapter(source: CompanySourceConfig): Scrape
       return parseLockheedMartinJobs(details, resolvedSource, summaries.length);
     },
   };
+}
+
+export function resolveLockheedMartinPlatform(source: CompanySourceConfig): LockheedMartinPlatform {
+  if (parseLockheedJobsOrigin(source.sourceUrl)) {
+    return "jobs_portal";
+  }
+  if (parseLockheedBoardFromUrl(source.sourceUrl)) {
+    return "brassring";
+  }
+  return "jobs_portal";
+}
+
+export function resolveLockheedJobsBoard(source: CompanySourceConfig): LockheedJobsBoardConfig {
+  const searchKeyword =
+    resolveBoardToken(source, parseLockheedJobsSearchKeywordFromUrl) ||
+    LOCKHEED_MARTIN_DEFAULT_SEARCH_KEYWORD;
+  const searchUrl = normalizeLockheedJobsSearchUrl(source.sourceUrl, searchKeyword);
+
+  return {
+    careersOrigin: LOCKHEED_MARTIN_JOBS_ORIGIN,
+    searchKeyword,
+    searchUrl,
+  };
+}
+
+export function parseLockheedJobsSearchHtml(html: string, careersOrigin: string): LockheedJobsListing[] {
+  const listings: LockheedJobsListing[] = [];
+
+  for (const match of html.matchAll(LOCKHEED_JOBS_LISTING_PATTERN)) {
+    const relativePath = decodeHtmlEntities(match[1]?.trim() ?? "");
+    const title = decodeHtmlEntities(stripHtml(match[3] ?? ""));
+    const location = decodeHtmlEntities(stripHtml(match[4] ?? "")) || null;
+    if (!relativePath || !title || !isLockheedJobsJobPath(relativePath)) {
+      continue;
+    }
+
+    const postingUrl = buildLockheedJobsPostingUrl(careersOrigin, relativePath);
+    if (!postingUrl) {
+      continue;
+    }
+
+    listings.push({
+      title,
+      postingUrl,
+      location: normalizeLockheedJobsListLocation(location),
+      category: null,
+    });
+  }
+
+  return dedupeLockheedJobsByUrl(listings);
+}
+
+export function parseLockheedJobsDetailFields(html: string): {
+  category: string | null;
+  location: string | null;
+  description: string;
+} {
+  const category =
+    html.match(/<span class="job-category[^"]*"[^>]*>\s*<b>Category<\/b>\s*([^<]+)/i)?.[1]?.trim() ??
+    null;
+
+  const location =
+    html.match(/<p class="ajd_header__location">([^<]+)/i)?.[1]?.trim() ??
+    html.match(/<span class="job-location-jd[^"]*"[^>]*>[\s\S]*?<b>Location<\/b>\s*([^<]+)/i)?.[1]?.trim() ??
+    null;
+
+  const descriptionBlock =
+    html.match(/<div class="ats-description">([\s\S]*?)<div class="qualifications"/i)?.[1] ??
+    html.match(/<div class="ats-description">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/i)?.[1];
+  const description = descriptionBlock ? htmlToPlainText(descriptionBlock) : "";
+
+  return { category, location, description };
+}
+
+export function parseLockheedJobsListings(
+  listings: LockheedJobsListing[],
+  source: CompanySourceConfig,
+): RoleParseResult {
+  const roles: ReturnType<typeof buildScrapedRole>[] = [];
+  const rejected: RoleParseResult["stats"]["rejected"] = [];
+
+  for (const listing of listings) {
+    const roleName = listing.title.trim();
+    const postingUrl = listing.postingUrl.trim();
+    const description = buildLockheedJobsClassificationDescription(listing);
+    const locations = listing.location ? [listing.location] : [];
+    const departments = listing.category ? [listing.category] : [];
+
+    const classification = classifyForSource(source, {
+      title: roleName,
+      description,
+      departments,
+      locations,
+    });
+
+    if (!classification.include) {
+      if (roleName) {
+        rejected.push({ title: roleName, reason: classification.reason });
+      }
+      continue;
+    }
+
+    if (!postingUrl || !isHttpUrl(postingUrl)) {
+      rejected.push({ title: roleName, reason: "invalid_url" });
+      continue;
+    }
+
+    roles.push(
+      buildScrapedRole({
+        postingUrl,
+        roleName,
+        companyName: source.companyName,
+        companySlug: source.companySlug,
+        classification,
+        description,
+        season: inferSeason([roleName, listing.category, description].filter(Boolean).join(" ")),
+      }),
+    );
+  }
+
+  return buildRoleParseResult(listings.length, roles, rejected);
+}
+
+export function shouldPrefetchLockheedJobsDetail(
+  listing: LockheedJobsListing,
+  searchKeyword: string,
+): boolean {
+  if (/^intern(?:ship)?$/i.test(searchKeyword.trim())) {
+    return true;
+  }
+
+  const haystack = [listing.title, listing.category, listing.location].filter(Boolean).join(" ");
+  return INTERNSHIP_LIST_TITLE_PATTERN.test(haystack);
+}
+
+export function buildLockheedJobsSearchUrl(
+  careersOrigin: string,
+  searchKeyword: string,
+  page: number,
+): string {
+  const url = new URL(`${careersOrigin.replace(/\/$/, "")}/search-jobs`);
+  url.searchParams.set("k", searchKeyword);
+  url.searchParams.set("l", "");
+  url.searchParams.set("listFilterMode", "1");
+  if (page > 1) {
+    url.searchParams.set("p", String(page));
+  }
+  return url.toString();
+}
+
+export function buildLockheedJobsPostingUrl(careersOrigin: string, relativePath: string): string | null {
+  const trimmed = relativePath.trim();
+  if (!trimmed.startsWith("/job/") || !isLockheedJobsJobPath(trimmed)) {
+    return null;
+  }
+  return `${careersOrigin.replace(/\/$/, "")}${trimmed}`;
+}
+
+export function isLockheedJobsJobPath(relativePath: string): boolean {
+  return /\/\d+\/\d+\/?$/i.test(relativePath);
+}
+
+export function parseLockheedJobsOrigin(sourceUrl: string): string | null {
+  try {
+    const parsed = new URL(sourceUrl);
+    if (parsed.hostname.toLowerCase() === "www.lockheedmartinjobs.com") {
+      return `${parsed.protocol}//${parsed.host}`;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export function resolveLockheedMartinBoard(source: CompanySourceConfig): LockheedMartinBoardConfig {
@@ -617,4 +835,170 @@ function dedupeSummariesByReqId(summaries: BrassRingJobSummary[]): BrassRingJobS
     byReqId.set(summary.reqId, summary);
   }
   return Array.from(byReqId.values());
+}
+
+async function fetchAllLockheedJobsListings(board: LockheedJobsBoardConfig): Promise<LockheedJobsListing[]> {
+  const all: LockheedJobsListing[] = [];
+  let totalPages = 1;
+
+  for (let page = 1; page <= LOCKHEED_JOBS_MAX_PAGES; page += 1) {
+    const url = buildLockheedJobsSearchUrl(board.careersOrigin, board.searchKeyword, page);
+    const html = await fetchLockheedJobsHtml(url);
+    const batch = parseLockheedJobsSearchHtml(html, board.careersOrigin);
+    all.push(...batch);
+
+    const parsedTotalPages = parseLockheedJobsTotalPages(html);
+    if (parsedTotalPages !== null) {
+      totalPages = parsedTotalPages;
+    }
+
+    if (page >= totalPages || batch.length < LOCKHEED_JOBS_PAGE_SIZE) {
+      break;
+    }
+  }
+
+  return dedupeLockheedJobsByUrl(all);
+}
+
+async function enrichLockheedJobsListings(
+  listings: LockheedJobsListing[],
+  board: LockheedJobsBoardConfig,
+): Promise<LockheedJobsListing[]> {
+  const targets = listings.filter((listing) =>
+    shouldPrefetchLockheedJobsDetail(listing, board.searchKeyword),
+  );
+  if (targets.length === 0) {
+    return listings;
+  }
+
+  const details = new Map<string, ReturnType<typeof parseLockheedJobsDetailFields>>();
+  let index = 0;
+
+  async function worker(): Promise<void> {
+    while (index < targets.length) {
+      const current = targets[index];
+      index += 1;
+      if (!current) {
+        continue;
+      }
+      try {
+        const html = await fetchLockheedJobsHtml(current.postingUrl);
+        details.set(current.postingUrl, parseLockheedJobsDetailFields(html));
+      } catch {
+        details.set(current.postingUrl, {
+          category: null,
+          location: null,
+          description: "",
+        });
+      }
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(LOCKHEED_JOBS_DETAIL_CONCURRENCY, targets.length) }, () => worker()),
+  );
+
+  return listings.map((listing) => {
+    const detail = details.get(listing.postingUrl);
+    if (!detail) {
+      return listing;
+    }
+    return {
+      ...listing,
+      category: detail.category ?? listing.category,
+      location: detail.location ?? listing.location,
+      description: detail.description || listing.description,
+    };
+  });
+}
+
+async function fetchLockheedJobsHtml(url: string): Promise<string> {
+  const res = await fetchJsonWithTimeout(url, {
+    headers: { accept: "text/html,application/xhtml+xml" },
+  });
+  if (!res.ok) {
+    throw new Error(`Lockheed Martin careers returned ${res.status} for ${url}`);
+  }
+  return res.text();
+}
+
+function parseLockheedJobsTotalPages(html: string): number | null {
+  const match = html.match(/data-total-pages="(\d+)"/i);
+  if (!match) {
+    return null;
+  }
+  const parsed = Number.parseInt(match[1] ?? "", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function parseLockheedJobsSearchKeywordFromUrl(sourceUrl: string): string | null {
+  try {
+    const parsed = new URL(sourceUrl);
+    if (parsed.hostname.toLowerCase() !== "www.lockheedmartinjobs.com") {
+      return null;
+    }
+    const keyword = parsed.searchParams.get("k")?.trim();
+    if (keyword) {
+      return keyword;
+    }
+    const pathMatch = parsed.pathname.match(/\/search-jobs\/([^/]+)\/?$/i);
+    return pathMatch?.[1]?.replace(/-/g, " ") ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeLockheedJobsSearchUrl(sourceUrl: string, searchKeyword: string): string {
+  const trimmed = sourceUrl.trim();
+  if (trimmed) {
+    try {
+      const parsed = new URL(trimmed);
+      if (
+        parsed.hostname.toLowerCase() === "www.lockheedmartinjobs.com" &&
+        parsed.pathname.includes("search-jobs")
+      ) {
+        parsed.pathname = "/search-jobs";
+        parsed.searchParams.set("k", searchKeyword);
+        parsed.searchParams.set("l", "");
+        parsed.searchParams.set("listFilterMode", "1");
+        parsed.searchParams.delete("p");
+        return parsed.toString();
+      }
+    } catch {
+      // fall through
+    }
+  }
+
+  return buildLockheedJobsSearchUrl(LOCKHEED_MARTIN_JOBS_ORIGIN, searchKeyword, 1);
+}
+
+function normalizeLockheedJobsListLocation(location: string | null): string | null {
+  if (!location) {
+    return null;
+  }
+  const trimmed = location.trim();
+  if (!trimmed || /^multiple locations$/i.test(trimmed)) {
+    return trimmed || null;
+  }
+  return trimmed;
+}
+
+function buildLockheedJobsClassificationDescription(listing: LockheedJobsListing): string {
+  const boost: string[] = [];
+  if (listing.category && /internship|student|university|co op/i.test(listing.category)) {
+    boost.push(listing.category);
+  }
+  if (/\bintern(?:ship)?\b/i.test(listing.title)) {
+    boost.push("internship program");
+  }
+
+  return [...boost, listing.description ?? ""].filter(Boolean).join("\n");
+}
+
+function dedupeLockheedJobsByUrl(listings: LockheedJobsListing[]): LockheedJobsListing[] {
+  const byUrl = new Map<string, LockheedJobsListing>();
+  for (const listing of listings) {
+    byUrl.set(listing.postingUrl, listing);
+  }
+  return Array.from(byUrl.values());
 }

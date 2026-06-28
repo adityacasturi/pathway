@@ -11,13 +11,29 @@ export interface GreenhouseBoardJob {
   location?: {
     name?: string;
   };
+  offices?: Array<{
+    name?: string;
+    location?: string;
+  }>;
   departments?: Array<{ name?: string }>;
   metadata?: Array<{
     name?: string;
-    value?: string | null;
+    value?: string | string[] | null;
   }>;
   updated_at?: string;
   first_published?: string;
+}
+
+/** Flatten Greenhouse metadata values (single_select and multi_select). */
+export function flattenGreenhouseMetadataValues(value: string | string[] | null | undefined): string[] {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed ? [trimmed] : [];
+  }
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.flatMap((entry) => flattenGreenhouseMetadataValues(entry));
 }
 
 export function parseGreenhouseEmploymentMetadata(
@@ -28,8 +44,8 @@ export function parseGreenhouseEmploymentMetadata(
 
   for (const item of metadata ?? []) {
     const label = item.name?.trim().toLowerCase() ?? "";
-    const value = typeof item.value === "string" ? item.value.trim() : "";
-    if (!value) {
+    const values = flattenGreenhouseMetadataValues(item.value);
+    if (values.length === 0) {
       continue;
     }
 
@@ -41,7 +57,7 @@ export function parseGreenhouseEmploymentMetadata(
       label === "worker type" ||
       label === "worker sub-type"
     ) {
-      employmentType ??= value;
+      employmentType ??= values[0] ?? null;
     }
     if (
       label.includes("commitment") ||
@@ -51,7 +67,7 @@ export function parseGreenhouseEmploymentMetadata(
       label === "time type" ||
       label === "term length"
     ) {
-      commitment ??= value;
+      commitment ??= values[0] ?? null;
     }
   }
 

@@ -1,5 +1,6 @@
 import { classifyForSource } from "../adapter-parse.ts";
 import {
+  flattenGreenhouseMetadataValues,
   type GreenhouseBoardJob,
   parseGreenhouseEmploymentMetadata,
 } from "../greenhouse-board.ts";
@@ -105,25 +106,37 @@ export function collectGreenhouseLocationSegments(
   source: CompanySourceConfig,
 ): string[] {
   const segments: string[] = [];
+  const context = { companyName: source.companyName };
+
+  const pushSegment = (segment: string) => {
+    const trimmed = segment.trim();
+    if (!trimmed || /^location$/i.test(trimmed) || isInvalidScrapedLocationToken(trimmed, context)) {
+      return;
+    }
+    segments.push(trimmed);
+  };
+
   const fromBoard = job.location?.name?.trim() || "";
-  if (fromBoard && !isInvalidScrapedLocationToken(fromBoard, { companyName: source.companyName })) {
-    segments.push(fromBoard);
+  pushSegment(fromBoard);
+
+  for (const office of job.offices ?? []) {
+    pushSegment(office.location?.trim() || office.name?.trim() || "");
   }
 
   for (const item of job.metadata ?? []) {
     const label = item.name?.trim().toLowerCase() ?? "";
-    const value = typeof item.value === "string" ? item.value.trim() : "";
-    if (!value || /^location$/i.test(value)) {
+    if (
+      !label.includes("location") &&
+      label !== "office" &&
+      !label.includes("work location") &&
+      !label.includes("primary location") &&
+      !label.includes("job location")
+    ) {
       continue;
     }
-    if (
-      label.includes("location") ||
-      label === "office" ||
-      label.includes("work location") ||
-      label.includes("primary location") ||
-      label.includes("job location")
-    ) {
-      segments.push(value);
+
+    for (const value of flattenGreenhouseMetadataValues(item.value)) {
+      pushSegment(value);
     }
   }
 

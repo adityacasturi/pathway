@@ -1,3 +1,4 @@
+import type { GreenhouseBoardJob } from "../greenhouse-board.ts";
 import type { CompanySourceConfig, ScrapeAdapter } from "../types.ts";
 import { createFilteredGreenhouseAdapter } from "../greenhouse-filtered.ts";
 
@@ -8,12 +9,7 @@ export const REPLICATE_CLOUDFLARE_BOARD_TOKEN = "cloudflare";
 export const REPLICATE_CAREERS_URL = "https://replicate.com/about";
 export const REPLICATE_CLOUDFLARE_GREENHOUSE_URL = "https://boards.greenhouse.io/cloudflare";
 
-export function isReplicateGreenhouseJob(job: {
-  title?: string;
-  content?: string;
-  departments?: Array<{ name?: string }>;
-  metadata?: Array<{ name?: string; value?: string | null }>;
-}): boolean {
+export function isReplicateGreenhouseJob(job: GreenhouseBoardJob): boolean {
   const haystack = [
     job.title ?? "",
     job.content ?? "",

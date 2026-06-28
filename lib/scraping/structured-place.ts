@@ -7,6 +7,8 @@ import type {
 } from "./adapters/workday.ts";
 
 const WORKDAY_DESCRIPTOR_PATTERN = /^([A-Z]{2})-([A-Z]{2})-([A-Z]+)/i;
+/** Ashby boards often use `CC-City-Site` or `US-DC-Remote` location tokens. */
+const ASHBY_DESCRIPTOR_PATTERN = /^([A-Z]{2})-(.+)$/i;
 
 export function structuredPlaceFromPostalAddress(
   address: AtsPostalAddress | null | undefined,
@@ -22,6 +24,38 @@ export function structuredPlaceFromPostalAddress(
   if (!city && !region && !countryCode) return null;
 
   return { city, region, countryCode, remote };
+}
+
+export function parseAshbyDescriptor(descriptor: string): StructuredPlaceInput | null {
+  const trimmed = descriptor.trim();
+  const match = trimmed.match(ASHBY_DESCRIPTOR_PATTERN);
+  if (!match) return null;
+
+  const countryCode = match[1]?.toUpperCase() ?? "";
+  const rest = match[2]?.trim() ?? "";
+  if (!countryCode || !rest) return null;
+
+  const remote = /\bremote\b/i.test(rest);
+  const segments = rest.split("-").map((segment) => segment.trim()).filter(Boolean);
+
+  if (countryCode === "US" && segments[0]?.length === 2 && /^[A-Z]{2}$/i.test(segments[0])) {
+    return {
+      region: segments[0].toUpperCase(),
+      countryCode,
+      remote,
+    };
+  }
+
+  const cityRaw = segments[0] ?? "";
+  const city = cityRaw
+    ? cityRaw.charAt(0).toUpperCase() + cityRaw.slice(1).toLowerCase()
+    : null;
+
+  return {
+    city,
+    countryCode,
+    remote,
+  };
 }
 
 export function parseWorkdayDescriptor(descriptor: string): StructuredPlaceInput | null {

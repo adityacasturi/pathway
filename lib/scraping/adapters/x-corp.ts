@@ -1,3 +1,4 @@
+import type { GreenhouseBoardJob } from "../greenhouse-board.ts";
 import type { CompanySourceConfig, ScrapeAdapter } from "../types.ts";
 import { createFilteredGreenhouseAdapter } from "../greenhouse-filtered.ts";
 
@@ -12,12 +13,7 @@ export const X_CORP_GREENHOUSE_URL = "https://job-boards.greenhouse.io/xai";
 const X_CORP_TITLE_PATTERN =
   /\b- x\b|\bx payments\b|\bx money\b|\bx core\b|\bx search\b|\bx api\b|\bx developer\b|^x\s/i;
 
-export function isXCorpGreenhouseJob(job: {
-  title?: string;
-  content?: string;
-  departments?: Array<{ name?: string }>;
-  metadata?: Array<{ name?: string; value?: string | null }>;
-}): boolean {
+export function isXCorpGreenhouseJob(job: GreenhouseBoardJob): boolean {
   const haystack = [
     job.title ?? "",
     job.content ?? "",

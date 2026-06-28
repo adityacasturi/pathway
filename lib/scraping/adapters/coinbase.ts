@@ -36,7 +36,7 @@ export interface CoinbaseJob {
   content?: string;
   location?: { name?: string };
   updated_at?: string;
-  metadata?: Array<{ name?: string; value?: string | null }>;
+  metadata?: Array<{ name?: string; value?: string | string[] | null }>;
   absolute_url?: string;
 }
 

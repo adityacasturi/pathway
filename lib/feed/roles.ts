@@ -30,6 +30,7 @@ export const TARGET_ROLE_PATTERNS = [
   /\btrading\b/i,
   /\bcompilers?\b/i,
   /\bresearch(?:er)?\b/i,
+  /\balgorithms?\b/i,
   /\bmachine learning\b/i,
   /\bml\b/i,
   /\bai\b/i,
@@ -143,7 +144,11 @@ export function hasEngineeringSignal(title: string, context = ""): boolean {
     return false;
   }
 
-  const contextHead = context.trim().slice(0, ENGINEERING_CONTEXT_HEAD_CHARS);
+  const contextHead = context
+    .trim()
+    .slice(0, ENGINEERING_CONTEXT_HEAD_CHARS)
+    // Wealth-management branch interns mention "market research", not R&D.
+    .replace(/\bmarket\s+research\b/gi, "");
   return TARGET_ROLE_PATTERNS.some(
     (pattern) => pattern.test(titleText) || (contextHead.length > 0 && pattern.test(contextHead)),
   );

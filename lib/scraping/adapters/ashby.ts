@@ -1,5 +1,5 @@
 import { formatUsAtsPostalAddress, type AtsPostalAddress } from "../ats-postal-address.ts";
-import { structuredPlaceFromPostalAddress } from "../structured-place.ts";
+import { parseAshbyDescriptor, structuredPlaceFromPostalAddress } from "../structured-place.ts";
 import type { StructuredPlaceInput } from "../../geo/types.ts";
 import { classifyForSource } from "../adapter-parse.ts";
 import { buildScrapedRole } from "../scraped-role-build.ts";
@@ -21,7 +21,7 @@ interface AshbyJob {
   title?: string;
   jobUrl?: string;
   location?: string;
-  secondaryLocations?: (string | { location?: string; name?: string })[];
+  secondaryLocations?: (string | { location?: string; name?: string; address?: { postalAddress?: AtsPostalAddress } })[];
   description?: string;
   descriptionHtml?: string;
   descriptionPlain?: string;
@@ -163,21 +163,14 @@ export function collectAshbyStructuredPlaces(job: AshbyJob): StructuredPlaceInpu
   const fromPostal = structuredPlaceFromPostalAddress(job.address?.postalAddress, remote);
   if (fromPostal) {
     out.push(fromPostal);
-    return out;
-  }
-
-  const primary = job.location?.trim();
-  if (primary) out.push({ rawLabel: primary, remote });
-
-  for (const sec of job.secondaryLocations ?? []) {
-    if (typeof sec === "string") {
-      const trimmed = sec.trim();
-      if (trimmed) out.push({ rawLabel: trimmed, remote });
-    } else if (sec && typeof sec === "object") {
-      const val = (sec.location || sec.name || "").trim();
-      if (val) out.push({ rawLabel: val, remote });
+  } else {
+    const primary = job.location?.trim();
+    if (primary) {
+      out.push(parseAshbyDescriptor(primary) ?? { rawLabel: primary, remote });
     }
   }
+
+  appendAshbySecondaryStructuredPlaces(out, job, remote);
 
   if (remote && out.length === 0) {
     // Remote with no stated geography: keep the remote flag, never invent a country.
@@ -185,6 +178,35 @@ export function collectAshbyStructuredPlaces(job: AshbyJob): StructuredPlaceInpu
   }
 
   return out;
+}
+
+function appendAshbySecondaryStructuredPlaces(
+  out: StructuredPlaceInput[],
+  job: AshbyJob,
+  remote: boolean,
+): void {
+  for (const sec of job.secondaryLocations ?? []) {
+    if (typeof sec === "string") {
+      const trimmed = sec.trim();
+      if (trimmed) out.push(parseAshbyDescriptor(trimmed) ?? { rawLabel: trimmed, remote });
+      continue;
+    }
+    if (!sec || typeof sec !== "object") {
+      continue;
+    }
+
+    const fromPostal = structuredPlaceFromPostalAddress(
+      (sec as { address?: { postalAddress?: AtsPostalAddress } }).address?.postalAddress,
+      remote,
+    );
+    if (fromPostal) {
+      out.push(fromPostal);
+      continue;
+    }
+
+    const val = (sec.location || sec.name || "").trim();
+    if (val) out.push({ rawLabel: val, remote });
+  }
 }
 
 export function collectAshbyLocations(job: AshbyJob): string[] {

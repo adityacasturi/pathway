@@ -24,7 +24,7 @@ export interface JaneStreetGreenhouseJob {
   };
   metadata?: Array<{
     name?: string;
-    value?: string | null;
+    value?: string | string[] | null;
   }>;
   updated_at?: string;
   first_published?: string;

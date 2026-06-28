@@ -353,7 +353,7 @@ export function normalizeCountryCode(countryCode: string | null | undefined): st
   if (value.length === 2) {
     return upper;
   }
-  return upper;
+  return parseCountryToken(value) ?? upper;
 }
 
 /** When country is absent, callers may still emit a location string for downstream trim. */
@@ -368,11 +368,12 @@ export function countriesFromPlaces(
   const seen = new Set<string>();
   const out: string[] = [];
   for (const place of places) {
-    const code = place.countryCode.toUpperCase();
-    if (!seen.has(code)) {
-      seen.add(code);
-      out.push(code);
+    const code = normalizeCountryCode(place.countryCode);
+    if (!code || seen.has(code)) {
+      continue;
     }
+    seen.add(code);
+    out.push(code);
   }
   return out.sort();
 }

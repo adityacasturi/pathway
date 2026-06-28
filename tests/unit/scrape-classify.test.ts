@@ -141,6 +141,7 @@ test("rejects new grad roles while new-grad support is off", () => {
     "Software Engineer - New Grad",
     "Entry Level Software Engineer",
     "Software Engineer, Entry-Level",
+    "Software Engineer Grad",
   ]) {
     const result = classifyScrapeRole({
       title,
@@ -151,6 +152,33 @@ test("rejects new grad roles while new-grad support is off", () => {
     assert.equal(result.reason, "new_grad_excluded", title);
     assert.equal(result.roleType, "new_grad", title);
   }
+});
+
+test("rejects metadata-only intern employment on non-engineering titles", () => {
+  const result = classifyScrapeRole({
+    title: "Production Technician - SkillBridge",
+    employmentType: "Intern",
+    description:
+      "Anduril Industries is a defense technology company powered by Lattice OS, an AI-powered operating system.",
+    locations: ["Costa Mesa, CA"],
+  });
+
+  assert.equal(result.include, false);
+  assert.equal(result.reason, "non_engineering_role");
+  assert.ok(result.signals.includes("negative:metadata_only_non_engineering_title"));
+});
+
+test("rejects wealth-management branch interns that only mention market research", () => {
+  const result = classifyScrapeRole({
+    title: "Intern",
+    description:
+      "Develop business skills for global wealth management. Provide marketing and sales support. Perform market research.",
+    departments: ["Intern - Non-Program"],
+    locations: ["Pasadena, CA"],
+  });
+
+  assert.equal(result.include, false);
+  assert.equal(result.reason, "non_engineering_role");
 });
 
 test("rejects early-career full-time titles (often new grad, not intern)", () => {
@@ -210,6 +238,19 @@ test("classification carries raw location inputs through unchanged", () => {
   assert.equal(result.structuredLocations.length, 1);
 });
 
+test("video algorithms intern in engineering department is included", () => {
+  const result = classifyScrapeRole({
+    title: "Video Algorithms Intern, Video Coding (Gaussian Splatting), Fall 2026",
+    description:
+      "Gaussian Splatting (GS) is a 3D/4D scene reconstruction technique that enables photorealistic novel-view synthesis.",
+    departments: ["Engineering"],
+    locations: ["Los Gatos, California, United States of America"],
+  });
+
+  assert.equal(result.include, true);
+  assert.equal(result.reason, "included");
+});
+
 test("every decision exposes machine-readable signals", () => {
   const included = classifyScrapeRole({
     title: "Machine Learning Intern",
@@ -224,4 +265,49 @@ test("every decision exposes machine-readable signals", () => {
   });
   assert.equal(rejectedRole.include, false);
   assert.ok(rejectedRole.signals.some((signal) => signal.startsWith("negative:")));
+});
+
+test("rejects explicit intern titles that only match engineering via company boilerplate", () => {
+  for (const candidate of [
+    {
+      title: "Vendor Management Internship",
+      description:
+        "As an Intern in the Vendor Management Team, you will support vendor partnerships that power our banking infrastructure.",
+      departments: ["Operations"],
+    },
+    {
+      title: "Social Media Intern",
+      description:
+        "At Skild AI, we are building robotic intelligence through data-driven machine learning at massive scale.",
+      departments: ["Marketing"],
+    },
+    {
+      title: "Logistics Intern",
+      description:
+        "At Lucid, we are creating exceptional mobility experiences through innovation and software-defined vehicles.",
+      departments: ["Transportation"],
+    },
+  ]) {
+    const result = classifyScrapeRole(candidate);
+    assert.equal(result.include, false, candidate.title);
+    assert.equal(result.reason, "non_engineering_role", candidate.title);
+    assert.ok(result.signals.includes("negative:missing_engineering_signal"), candidate.title);
+  }
+});
+
+test("still includes explicit intern titles with engineering in title or department", () => {
+  const byDepartment = classifyScrapeRole({
+    title: "Video Algorithms Intern, Fall 2026",
+    description: "Gaussian Splatting is a 3D scene reconstruction technique.",
+    departments: ["Engineering"],
+    locations: ["Los Gatos, CA"],
+  });
+  assert.equal(byDepartment.include, true);
+
+  const byTitle = classifyScrapeRole({
+    title: "Software Engineering Intern",
+    description: "About our company and culture.",
+    locations: ["San Francisco, CA"],
+  });
+  assert.equal(byTitle.include, true);
 });

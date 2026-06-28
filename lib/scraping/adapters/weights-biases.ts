@@ -1,3 +1,4 @@
+import type { GreenhouseBoardJob } from "../greenhouse-board.ts";
 import type { CompanySourceConfig, ScrapeAdapter } from "../types.ts";
 import { createFilteredGreenhouseAdapter } from "../greenhouse-filtered.ts";
 
@@ -7,9 +8,7 @@ export const WEIGHTS_BIASES_GREENHOUSE_API_URL =
 export const WEIGHTS_BIASES_COREWEAVE_BOARD_TOKEN = "coreweave";
 export const WEIGHTS_BIASES_CAREERS_URL = "https://www.coreweave.com/careers/weights-biases";
 
-export function isWeightsBiasesGreenhouseJob(job: {
-  metadata?: Array<{ name?: string; value?: string | null }>;
-}): boolean {
+export function isWeightsBiasesGreenhouseJob(job: GreenhouseBoardJob): boolean {
   for (const item of job.metadata ?? []) {
     const label = item.name?.trim().toLowerCase() ?? "";
     const value = typeof item.value === "string" ? item.value.trim() : "";
