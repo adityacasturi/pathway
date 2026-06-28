@@ -69,6 +69,8 @@ export const SOURCE_TYPES = [
   "weights_biases",
   "one_x_technologies",
   "synopsys",
+  "disney",
+  "bank_of_america",
   "x_corp",
   "pinpoint",
   "rippling",

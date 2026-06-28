@@ -143,6 +143,11 @@ export function parseSynopsysJobs(
   const rejected: RoleParseResult["stats"]["rejected"] = [];
 
   for (const listing of listings) {
+    if (!matchesSynopsysBrandScope(listing, source.companySlug)) {
+      rejected.push({ title: listing.title, reason: "brand_scope" });
+      continue;
+    }
+
     const roleName = listing.title.trim();
     const postingUrl = listing.postingUrl.trim();
     const description = buildSynopsysClassificationDescription(listing);
@@ -360,6 +365,20 @@ function normalizeSynopsysSearchUrl(sourceUrl: string, searchKeyword: string): s
   }
 
   return buildSynopsysSearchUrl(SYNOPSYS_CAREERS_ORIGIN, searchKeyword, 1);
+}
+
+export function matchesSynopsysBrandScope(
+  listing: Pick<SynopsysListing, "title" | "category" | "description">,
+  companySlug: string,
+): boolean {
+  const haystack = [listing.title, listing.category, listing.description].filter(Boolean).join(" ");
+  const hasAnsysBrand = /\bansys\b/i.test(haystack);
+
+  if (companySlug === "synopsys" && hasAnsysBrand) {
+    return false;
+  }
+
+  return true;
 }
 
 function normalizeSynopsysListLocation(location: string | null): string | null {

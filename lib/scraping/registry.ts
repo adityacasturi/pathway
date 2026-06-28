@@ -12,6 +12,8 @@ import { createGeneralDynamicsAdapter } from "./adapters/general-dynamics.ts";
 import { createBaeSystemsAdapter } from "./adapters/bae-systems.ts";
 import { createL3HarrisAdapter } from "./adapters/l3harris.ts";
 import { createArmAdapter } from "./adapters/arm.ts";
+import { createBankOfAmericaAdapter } from "./adapters/bank-of-america.ts";
+import { createDisneyAdapter } from "./adapters/disney.ts";
 import { createSynopsysAdapter } from "./adapters/synopsys.ts";
 import { createValveAdapter } from "./adapters/valve.ts";
 import { createRivianAdapter } from "./adapters/rivian.ts";
@@ -149,6 +151,8 @@ const ADAPTER_FACTORIES = {
   weights_biases: createWeightsBiasesAdapter,
   one_x_technologies: createOneXTechnologiesAdapter,
   synopsys: createSynopsysAdapter,
+  disney: createDisneyAdapter,
+  bank_of_america: createBankOfAmericaAdapter,
   x_corp: createXCorpAdapter,
   pinpoint: createPinpointAdapter,
   rippling: createRipplingAdapter,

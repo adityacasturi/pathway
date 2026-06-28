@@ -194,7 +194,7 @@ async function upsertScrapedRoles(
 
   for (const chunk of chunkArray(rows, UPSERT_CHUNK_SIZE)) {
     const { error } = await supabase.from("scraped_postings").upsert(chunk, {
-      onConflict: "posting_url",
+      onConflict: "company_id,posting_url",
     });
     if (error) {
       throw error;
@@ -302,6 +302,7 @@ async function loadExistingPostingState(
     const { data, error } = await supabase
       .from("scraped_postings")
       .select("id, posting_url, first_seen_at, posted_at, role_name, season, status, last_seen_at")
+      .eq("company_id", companyId)
       .in("posting_url", chunk);
 
     if (error) {

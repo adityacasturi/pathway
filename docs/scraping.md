@@ -123,7 +123,13 @@ Canonical list: `SOURCE_TYPES` / `SourceType` in `lib/scraping/types.ts`. Regist
 
 **1X Technologies:** 1X moved from the stale Recruitee API to Ashby. As of hosted migration `fix_serious_scrape_source_health_20260621` (2026-06-21), the enabled source is `source_type: ashby` with board token `1x`.
 
-**LinkedIn:** The public LinkedIn guest jobs search is unstable from scraper environments and can return inconsistent raw counts or zero-result pages. As of hosted migration `triage_teradata_and_linkedin_scrape_sources_20260621` (2026-06-21), the LinkedIn source is disabled until a stable replacement source is identified.
+**LinkedIn:** The public LinkedIn guest jobs search is unstable from scraper environments and can return inconsistent raw counts or zero-result pages. As of hosted migration `triage_teradata_and_linkedin_scrape_sources_20260621` (2026-06-21), the LinkedIn source is disabled until a stable replacement source is identified. The adapter remains in the repo (keyword fix from audit `20260627140000`) but `company_sources.enabled = false`.
+
+**Disney:** Campus/professional roles live on Radancy TalentBrew at `www.disneycareers.com` (`source_type: disney`), not the legacy Greenhouse stub or `jobs.disneycareers.com` (homepage redirect only).
+
+**Bank of America:** Campus internships and analyst programs are on Oleeo/TAL (`bankcampuscareers.tal.net`, `source_type: bank_of_america`), not the lateral Workday board.
+
+**Ansys / Synopsys:** Both scrape `careers.synopsys.com`; Ansys uses `k=ansys+intern`, Synopsys uses `k=intern` and excludes Ansys-branded titles. `scraped_postings` is unique on `(company_id, posting_url)` so shared URLs can exist under both companies.
 
 Adding a **new** `source_type` requires:
 
