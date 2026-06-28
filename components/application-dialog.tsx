@@ -119,8 +119,11 @@ interface Props {
 export function ApplicationDialog({ open, onClose, initialValues, onCreated }: Props) {
   return (
     <Dialog open={open} onOpenChange={(value) => !value && onClose()}>
-      <DialogContent className="gap-0 p-0 sm:max-w-lg" showCloseButton>
-        <DialogHeader className="border-b border-border px-6 py-5">
+      <DialogContent
+        className="flex max-h-[min(42rem,88dvh)] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg"
+        showCloseButton
+      >
+        <DialogHeader className="shrink-0 border-b border-border px-6 py-5">
           <DialogTitle className="text-lg font-semibold tracking-tight sm:text-xl">
             Add application
           </DialogTitle>
@@ -230,7 +233,10 @@ function ApplicationDialogForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5 px-6 py-5">
+    <form
+      onSubmit={handleSubmit}
+      className="min-w-0 space-y-5 overflow-y-auto overscroll-contain px-6 py-5"
+    >
       <Field id="application-company" label="Company">
         <Input
           id="application-company"
@@ -259,14 +265,15 @@ function ApplicationDialogForm({
         />
       </Field>
 
-      <div className="grid gap-5 sm:grid-cols-2">
-        <Field id="application-date-applied" label="Applied date">
+      <div className="grid min-w-0 gap-5 sm:grid-cols-2">
+        <Field id="application-date-applied" label="Applied date" className="min-w-0">
           <Input
             id="application-date-applied"
             name="date_applied"
             type="date"
             required
             value={dateApplied}
+            className="min-w-0 max-w-full"
             onChange={(event) => {
               clearErrorOnEdit();
               setDateApplied(event.target.value);
@@ -274,7 +281,7 @@ function ApplicationDialogForm({
           />
         </Field>
 
-        <Field id="application-location" label="Location" optional>
+        <Field id="application-location" label="Location" optional className="min-w-0">
           <Input
             id="application-location"
             name="location"
@@ -318,7 +325,7 @@ function ApplicationDialogForm({
 
       {error ? <InlineError message={error} /> : null}
 
-      <div className="-mx-6 flex items-center justify-end gap-2.5 border-t border-border px-6 pt-5">
+      <div className="-mx-6 flex shrink-0 items-center justify-end gap-2.5 border-t border-border px-6 pt-5">
         <Button type="button" variant="ghost" onClick={onClose} disabled={state === "pending"}>
           Cancel
         </Button>

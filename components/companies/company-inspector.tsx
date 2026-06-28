@@ -82,35 +82,47 @@ function CompanyInspectorPostingRow({
         data-testid="posting-row"
         data-posting-id={posting.feedId}
         onClick={onOpen}
-        className="flex w-full cursor-pointer items-center gap-3 px-5 py-2.5 text-left transition-colors hover:bg-muted/30"
+        className="flex w-full min-w-0 cursor-pointer items-start gap-3 px-5 py-3 text-left transition-colors hover:bg-muted/30 sm:items-center sm:py-2.5"
       >
-        <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-center gap-2">
+        <div className="min-w-0 flex-1 space-y-1 sm:space-y-0">
+          <div className="min-w-0 sm:flex sm:items-center sm:gap-2">
             {postingHref ? (
               <a
                 href={postingHref}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(event) => event.stopPropagation()}
-                className="min-w-0 truncate text-sm font-medium text-[var(--link)] transition-colors hover:text-[var(--link-hover)] hover:underline"
+                className="line-clamp-2 text-sm font-medium leading-snug text-[var(--link)] transition-colors hover:text-[var(--link-hover)] hover:underline sm:line-clamp-none sm:truncate"
               >
                 {posting.roleName}
               </a>
             ) : (
-              <span className="min-w-0 truncate text-sm font-medium text-foreground">
+              <span className="line-clamp-2 text-sm font-medium leading-snug text-foreground sm:line-clamp-none sm:truncate">
                 {posting.roleName}
               </span>
             )}
             {posting.season ? (
-              <SeasonBadge season={posting.season} variant="plain" className="shrink-0" />
+              <SeasonBadge
+                season={posting.season}
+                variant="plain"
+                className="mt-1 shrink-0 sm:mt-0"
+              />
             ) : null}
           </div>
-          {locationLabel ? (
-            <p className="mt-1 truncate text-xs text-muted-foreground">{locationLabel}</p>
-          ) : null}
+          <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground sm:mt-1">
+            {locationLabel ? <span className="min-w-0 truncate">{locationLabel}</span> : null}
+            {locationLabel && ageLabel ? (
+              <span aria-hidden className="shrink-0 text-foreground/60 sm:hidden">
+                ·
+              </span>
+            ) : null}
+            {ageLabel ? (
+              <span className="shrink-0 tabular-nums sm:hidden">{ageLabel}</span>
+            ) : null}
+          </div>
         </div>
         {ageLabel ? (
-          <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+          <span className="hidden shrink-0 text-xs tabular-nums text-muted-foreground sm:inline">
             {ageLabel}
           </span>
         ) : null}
@@ -207,6 +219,7 @@ export function CompanyInspector({
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filtersRef = useRef<HTMLDivElement | null>(null);
   const filterPanelRef = useRef<HTMLDivElement | null>(null);
+  const mobileFilterPanelRef = useRef<HTMLDivElement | null>(null);
   const postingActiveFilterCount =
     selectedPostingSeasons.size + selectedPostingCountries.size;
   const hasActivePostingChips =
@@ -216,7 +229,10 @@ export function CompanyInspector({
   useEffect(() => {
     function onPointerDown(event: PointerEvent) {
       if (!filtersRef.current?.contains(event.target as Node)) {
-        if (!filterPanelRef.current?.contains(event.target as Node)) {
+        if (
+          !filterPanelRef.current?.contains(event.target as Node) &&
+          !mobileFilterPanelRef.current?.contains(event.target as Node)
+        ) {
           setFiltersOpen(false);
         }
       }
@@ -268,7 +284,7 @@ export function CompanyInspector({
       {postingsAvailable && postingsAvailable.length > 0 ? (
         <div className="shrink-0 border-b border-border">
           <div className="px-5 py-3">
-            <div className="relative flex items-center gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <div className="min-w-0 flex-1 [&_input]:h-8 [&_input]:text-sm">
                 <SearchInput
                   value={postingQuery}
@@ -276,12 +292,12 @@ export function CompanyInspector({
                   placeholder="Search role or location…"
                 />
               </div>
-              <div ref={filtersRef} className="relative shrink-0">
+              <div ref={filtersRef} className="relative w-full shrink-0 sm:w-auto">
                 <FilterPill
                   active={filtersOpen || postingActiveFilterCount > 0}
                   onClick={() => setFiltersOpen((value) => !value)}
                   aria-expanded={filtersOpen}
-                  className="rounded-md"
+                  className="w-full justify-center rounded-md sm:w-auto"
                 >
                   <ListFilter size={14} strokeWidth={1.75} />
                   Filter
@@ -292,7 +308,7 @@ export function CompanyInspector({
                 {filtersOpen ? (
                   <div
                     ref={filterPanelRef}
-                    className="absolute right-0 top-full z-[90] mt-1.5 w-[min(22rem,calc(100vw-2rem))]"
+                    className="absolute right-0 top-full z-[90] mt-1.5 hidden w-[min(22rem,calc(100vw-2rem))] sm:block"
                   >
                     <CompanyInspectorFilterPanel
                       selectedPostingSeasons={selectedPostingSeasons}
@@ -309,6 +325,21 @@ export function CompanyInspector({
                 ) : null}
               </div>
             </div>
+            {filtersOpen ? (
+              <div ref={mobileFilterPanelRef} className="mt-2 sm:hidden">
+                <CompanyInspectorFilterPanel
+                  selectedPostingSeasons={selectedPostingSeasons}
+                  onTogglePostingSeason={onTogglePostingSeason}
+                  onClearPostingSeasons={onClearPostingSeasons}
+                  postingSeasonCounts={postingSeasonCounts}
+                  countryFilterOptions={countryFilterOptions}
+                  selectedPostingCountries={selectedPostingCountries}
+                  onTogglePostingCountry={onTogglePostingCountry}
+                  onClearPostingCountries={onClearPostingCountries}
+                  className="shadow-sm"
+                />
+              </div>
+            ) : null}
           </div>
           {hasActivePostingChips ? (
             <div className="flex flex-wrap items-center gap-1.5 border-t border-border px-5 py-2">

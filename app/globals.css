@@ -224,6 +224,10 @@
     color: var(--foreground);
   }
   input[type="date"] {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
     color: var(--foreground);
     -webkit-text-fill-color: var(--foreground);
     accent-color: var(--foreground);
