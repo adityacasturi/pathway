@@ -16,6 +16,9 @@ import { APPLICATION_SEASONS, ApplicationEvent, ApplicationSeason } from "@/type
 import { validateExternalHttpUrl } from "@/lib/url";
 import { cn } from "@/lib/utils";
 
+const APPLICATION_DATE_INPUT_CLASS =
+  "date-input h-9 w-full min-w-0 max-w-full appearance-none rounded-lg border border-border bg-[color-mix(in_oklab,var(--foreground)_4%,transparent)] px-3 py-1.5 text-sm text-foreground outline-none transition-[border-color,background-color,box-shadow] duration-150 focus-visible:border-[color-mix(in_oklab,var(--primary)_40%,var(--border))] focus-visible:ring-2 focus-visible:ring-[color-mix(in_oklab,var(--primary)_25%,transparent)]";
+
 function Field({
   id,
   label,
@@ -30,7 +33,7 @@ function Field({
   className?: string;
 }) {
   return (
-    <label htmlFor={id} className={cn("block space-y-2", className)}>
+    <label htmlFor={id} className={cn("block space-y-2.5", className)}>
       <span className="text-sm font-medium text-foreground/80">
         {label}
         {optional ? (
@@ -268,20 +271,18 @@ function ApplicationDialogForm({
 
       <div className="grid min-w-0 gap-5 sm:grid-cols-2">
         <Field id="application-date-applied" label="Applied date" className="min-w-0">
-          <div className="min-w-0 overflow-hidden">
-            <Input
-              id="application-date-applied"
-              name="date_applied"
-              type="date"
-              required
-              value={dateApplied}
-              className="min-w-0 max-w-full text-sm"
-              onChange={(event) => {
-                clearErrorOnEdit();
-                setDateApplied(event.target.value);
-              }}
-            />
-          </div>
+          <input
+            id="application-date-applied"
+            name="date_applied"
+            type="date"
+            required
+            value={dateApplied}
+            className={APPLICATION_DATE_INPUT_CLASS}
+            onChange={(event) => {
+              clearErrorOnEdit();
+              setDateApplied(event.target.value);
+            }}
+          />
         </Field>
 
         <Field id="application-location" label="Location" optional className="min-w-0">
@@ -298,7 +299,7 @@ function ApplicationDialogForm({
         </Field>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         <span className="text-sm font-medium text-foreground/80">
           Season <span className="font-normal text-muted-foreground/70">· optional</span>
         </span>

@@ -271,6 +271,11 @@
 
   /* Neutral date inputs — override browser default blue/purple datetime text. */
   .date-input {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
     color: var(--foreground);
     -webkit-text-fill-color: var(--foreground);
     accent-color: var(--foreground);
@@ -286,6 +291,7 @@
   .date-input::-webkit-datetime-edit-month-field,
   .date-input::-webkit-datetime-edit-day-field,
   .date-input::-webkit-datetime-edit-year-field {
+    min-width: 0;
     color: var(--foreground);
     -webkit-text-fill-color: var(--foreground);
   }
