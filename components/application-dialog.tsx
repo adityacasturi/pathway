@@ -120,7 +120,7 @@ export function ApplicationDialog({ open, onClose, initialValues, onCreated }: P
   return (
     <Dialog open={open} onOpenChange={(value) => !value && onClose()}>
       <DialogContent
-        className="flex max-h-[min(42rem,88dvh)] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg"
+        className="flex max-h-[88dvh] flex-col gap-0 overflow-hidden p-0 sm:max-h-[min(42rem,88dvh)] sm:max-w-lg"
         showCloseButton
       >
         <DialogHeader className="shrink-0 border-b border-border px-6 py-5">
@@ -235,8 +235,9 @@ function ApplicationDialogForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="min-w-0 space-y-5 overflow-y-auto overscroll-contain px-6 py-5"
+      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden sm:block sm:flex-none sm:space-y-5 sm:overflow-y-auto sm:overscroll-contain sm:px-6 sm:py-5"
     >
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-6 py-5 [scrollbar-width:thin] sm:flex-none sm:overflow-visible sm:p-0">
       <Field id="application-company" label="Company">
         <Input
           id="application-company"
@@ -267,18 +268,20 @@ function ApplicationDialogForm({
 
       <div className="grid min-w-0 gap-5 sm:grid-cols-2">
         <Field id="application-date-applied" label="Applied date" className="min-w-0">
-          <Input
-            id="application-date-applied"
-            name="date_applied"
-            type="date"
-            required
-            value={dateApplied}
-            className="min-w-0 max-w-full"
-            onChange={(event) => {
-              clearErrorOnEdit();
-              setDateApplied(event.target.value);
-            }}
-          />
+          <div className="min-w-0 overflow-hidden">
+            <Input
+              id="application-date-applied"
+              name="date_applied"
+              type="date"
+              required
+              value={dateApplied}
+              className="min-w-0 max-w-full text-sm"
+              onChange={(event) => {
+                clearErrorOnEdit();
+                setDateApplied(event.target.value);
+              }}
+            />
+          </div>
         </Field>
 
         <Field id="application-location" label="Location" optional className="min-w-0">
@@ -324,8 +327,9 @@ function ApplicationDialogForm({
       </Field>
 
       {error ? <InlineError message={error} /> : null}
+      </div>
 
-      <div className="-mx-6 flex shrink-0 items-center justify-end gap-2.5 border-t border-border px-6 pt-5">
+      <div className="flex shrink-0 items-center justify-end gap-2.5 border-t border-border bg-card px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:-mx-6 sm:px-6 sm:pt-5">
         <Button type="button" variant="ghost" onClick={onClose} disabled={state === "pending"}>
           Cancel
         </Button>
