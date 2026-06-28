@@ -51,6 +51,7 @@ Production scraping and instant alerts run in `.github/workflows/scrape-and-aler
 | `RESEND_API_KEY` | Outbound email |
 | `RESEND_FROM_EMAIL` | Verified sender |
 | `ALERT_UNSUBSCRIBE_SECRET` | Signed unsubscribe tokens |
+| `CATALOG_REVALIDATE_SECRET` | Bearer secret for post-scrape catalog cache bust |
 
 Manual runs: use **Actions → workflow → Run workflow**, or locally:
 
@@ -67,8 +68,13 @@ If a specific source needs immediate attention, run `npm run scrape -- <slug>` l
 LOGO_DEV_TOKEN=...              # /api/logo — publishable pk_ for img.logo.dev
 NEXT_PUBLIC_SITE_URL=https://www.trypathway.app   # Referer sent to logo.dev (required if key has domain restrictions)
 UPSTASH_REDIS_REST_URL=...      # Distributed rate limits (server actions, unsubscribe)
-UPSTASH_REDIS_REST_TOKEN=...    # Falls back to in-memory limits when unset
+UPSTASH_REDIS_REST_TOKEN=...    # Falls back to in-memory limits when unset — not reliable on serverless
+CATALOG_REVALIDATE_SECRET=...   # Bearer secret for POST /api/revalidate-catalog (hourly scrape cache bust)
 ```
+
+**Rate limiting:** set Upstash Redis in production. Without it, `lib/rate-limit-distributed.ts` falls back to per-instance in-memory buckets, which do not enforce global limits across Vercel isolates.
+
+**Catalog freshness:** hourly scrape workflow calls `npm run revalidate-catalog` after shards finish. Set `CATALOG_REVALIDATE_SECRET` on Vercel and in GitHub Actions (same value) so Openings/Companies/Home reflect new postings immediately instead of waiting for the catalog TTL.
 
 **Static company logos:** `npm run company-logos` (all active slugs) or `npm run company-logos -- --slug <slug>` after Discover onboarding. Commits `public/company-logos/*.png` and `lib/logo/static-slug-manifest.json`. In-app surfaces use static files when the slug is in the manifest; otherwise `/api/logo` proxy. Static logo responses are served with long-lived browser cache headers, so navigation should not refetch the full logo grid.
 

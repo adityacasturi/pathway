@@ -1,7 +1,7 @@
 "use server";
 
-import { revalidatePath, updateTag } from "next/cache";
-import { CACHE_TAGS } from "@/lib/cache/tags";
+import { revalidatePath } from "next/cache";
+import { invalidateCatalogCacheTags } from "@/lib/cache/invalidate-catalog";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { formatSupabaseMutationError } from "@/lib/supabase/errors";
 import { limitServerActionByIp } from "@/lib/rate-limit";
@@ -137,8 +137,9 @@ export async function refreshFeed() {
   const { user } = await getAuthenticatedUser();
   if (!user) return { error: "Not authenticated" };
 
-  updateTag(CACHE_TAGS.feed);
+  invalidateCatalogCacheTags();
   revalidatePath("/openings");
   revalidatePath("/home");
+  revalidatePath("/companies");
   return { ok: true };
 }

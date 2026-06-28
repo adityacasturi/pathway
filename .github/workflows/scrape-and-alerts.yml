@@ -42,9 +42,30 @@ jobs:
       - run: npm ci
       - run: npm run scrape
 
+  revalidate:
+    name: Revalidate catalog cache
+    needs: scrape
+    if: ${{ always() && !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
+      CATALOG_REVALIDATE_SECRET: ${{ secrets.CATALOG_REVALIDATE_SECRET }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+      - run: npm run revalidate-catalog
+
   alerts:
     name: Send instant alerts
-    needs: scrape
+    needs: revalidate
     # Run after scrape finishes even when one or more shards fail; only skip on cancel.
     if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-latest

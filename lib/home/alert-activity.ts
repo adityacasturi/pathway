@@ -45,6 +45,10 @@ export function buildHomeAlertActivity(input: {
   alertCountsByCompanyId: Map<string, number>;
 }): HomeAlertActivityRow[] {
   const rowsByCompanyId = new Map<string, HomeAlertActivityRow>();
+  const companyBySlug = new Map<string, CompanyRow>();
+  for (const company of input.companiesById.values()) {
+    companyBySlug.set(company.slug, company);
+  }
 
   function ensureCompany(companyId: string): HomeAlertActivityRow | null {
     const company = input.companiesById.get(companyId);
@@ -78,13 +82,13 @@ export function buildHomeAlertActivity(input: {
       continue;
     }
 
-    for (const [companyId, count] of input.alertCountsByCompanyId) {
-      if (count <= 0) continue;
-      const company = input.companiesById.get(companyId);
+    for (const [companySlug, sectors] of input.sectorSlugsByCompanySlug) {
+      if (!sectors.has(subscription.target_id)) continue;
+      const company = companyBySlug.get(companySlug);
       if (!company) continue;
-      const sectors = input.sectorSlugsByCompanySlug.get(company.slug);
-      if (!sectors?.has(subscription.target_id)) continue;
-      ensureCompany(companyId);
+      const count = input.alertCountsByCompanyId.get(company.id) ?? 0;
+      if (count <= 0) continue;
+      ensureCompany(company.id);
     }
   }
 

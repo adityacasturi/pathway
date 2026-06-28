@@ -10,11 +10,6 @@ export const SALESFORCE_JOBS_PAGE_ORIGIN = "https://www.salesforce.com/company/c
 export const SALESFORCE_DEFAULT_ENV = "prod";
 export const SALESFORCE_DEFAULT_SOURCE_URL = `${SALESFORCE_CAREERS_CDN_ORIGIN}/${SALESFORCE_DEFAULT_ENV}/jobs_2.json`;
 
-/** @deprecated Legacy Umbraco RSS export — careers moved to static JSON on a.sfdcstatic.com. */
-export const SALESFORCE_CAREERS_ORIGIN = "https://careers.salesforce.com";
-export const SALESFORCE_DEFAULT_LOCALE = "en";
-export const SALESFORCE_DEFAULT_RSS_URL = `${SALESFORCE_CAREERS_ORIGIN}/${SALESFORCE_DEFAULT_LOCALE}/jobs/xml/?rss=true`;
-
 const VALID_SALESFORCE_ENVS = new Set(["prod", "qa", "uat"]);
 
 /** List titles must look internship-related before classification. */
@@ -40,19 +35,6 @@ export interface SalesforceCareersJob {
   structuredCountries?: string[];
   structuredRegions?: string[];
   structuredLocations?: string[];
-}
-
-/** @deprecated RSS-era job shape kept for Slack filter helpers during migration. */
-export interface SalesforceRssJob {
-  title: string;
-  url: string;
-  description: string;
-  city: string | null;
-  state: string | null;
-  country: string | null;
-  datePosted: string | null;
-  jobType: string | null;
-  category: string | null;
 }
 
 interface SalesforceJobsFeed {
@@ -325,46 +307,4 @@ function compareSalesforcePostedDates(left: SalesforceCareersJob, right: Salesfo
   const leftValue = Number.isNaN(leftMs) ? Number.NEGATIVE_INFINITY : leftMs;
   const rightValue = Number.isNaN(rightMs) ? Number.NEGATIVE_INFINITY : rightMs;
   return leftValue - rightValue;
-}
-
-/** @deprecated Legacy RSS URL builder — kept for Slack default constant compatibility. */
-export function buildSalesforceRssUrl(locale: string): string {
-  const normalized = normalizeSalesforceLocale(locale) ?? SALESFORCE_DEFAULT_LOCALE;
-  return `${SALESFORCE_CAREERS_ORIGIN}/${normalized}/jobs/xml/?rss=true`;
-}
-
-export function normalizeSalesforceRssUrl(sourceUrl: string, locale: string): string {
-  const trimmed = sourceUrl.trim();
-  if (trimmed && isSalesforceRssUrl(trimmed)) {
-    return trimmed;
-  }
-  return buildSalesforceRssUrl(locale);
-}
-
-export function isSalesforceRssUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    return (
-      parsed.hostname.toLowerCase() === "careers.salesforce.com" &&
-      /\/jobs\/xml\/?$/i.test(parsed.pathname.replace(/\/$/, "")) &&
-      parsed.searchParams.get("rss") === "true"
-    );
-  } catch {
-    return false;
-  }
-}
-
-function normalizeSalesforceLocale(value: string | null | undefined): string | null {
-  if (!value) {
-    return null;
-  }
-  const trimmed = value.trim().toLowerCase();
-  if (!trimmed) {
-    return null;
-  }
-  if (trimmed === "en-us" || trimmed === "en_us") {
-    return "en";
-  }
-  const pathLocale = trimmed.split(/[/?#]/)[0];
-  return pathLocale.length > 0 ? pathLocale : null;
 }

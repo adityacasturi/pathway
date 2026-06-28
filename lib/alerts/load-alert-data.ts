@@ -8,6 +8,7 @@ import {
 import { buildSentKey } from "./match-postings.ts";
 import type { AlertPostingCandidate, AlertSubscription } from "./types.ts";
 import type { AlertCadence, AlertTargetType } from "../config/alerts.ts";
+import { ALERT_CADENCES, ALERT_TARGET_TYPES } from "../config/alerts.ts";
 
 interface SubscriptionRow {
   id: string;
@@ -128,7 +129,9 @@ export async function loadAlertFilterDefaults(
 export async function loadAlertSubscriptions(supabase: SupabaseClient): Promise<AlertSubscription[]> {
   const { data, error } = await supabase
     .from("alert_subscriptions")
-    .select("id, user_id, target_type, target_id, cadence, filter_override, paused");
+    .select("id, user_id, target_type, target_id, cadence, filter_override, paused")
+    .in("target_type", [...ALERT_TARGET_TYPES])
+    .in("cadence", [...ALERT_CADENCES]);
 
   if (error) {
     throw error;

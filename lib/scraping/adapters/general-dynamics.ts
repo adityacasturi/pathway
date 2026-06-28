@@ -36,6 +36,8 @@ const GENERAL_DYNAMICS_PAGE_SIZE = 100;
 const GENERAL_DYNAMICS_MAX_PAGES_PER_KEYWORD = 20;
 const GENERAL_DYNAMICS_DETAIL_CONCURRENCY = 6;
 const GENERAL_DYNAMICS_REQUEST_DELAY_MS = 150;
+const GENERAL_DYNAMICS_WAF_MAX_ATTEMPTS = 3;
+const GENERAL_DYNAMICS_WAF_RETRY_DELAY_MS = 1500;
 
 const INTERNSHIP_LIST_TITLE_PATTERN =
   /\bintern(?:ship|ships)?\b|\bco-?op\b|\bfellowship\b|\buniversity\b|\bstudent\b/i;
@@ -426,20 +428,13 @@ export async function warmGeneralDynamicsSession(
 ): Promise<GeneralDynamicsSession> {
   let cookie: string | null = null;
   const careersReferer = `${board.careersOrigin}/careers`;
-  const warmupSteps = [
-    { url: board.careersOrigin, referer: board.careersOrigin },
-    { url: careersReferer, referer: board.careersOrigin },
-  ];
-
-  for (const step of warmupSteps) {
-    const { response } = await fetchGeneralDynamicsHtmlResponse(step.url, {
-      referer: step.referer,
-      cookie,
-    });
-    cookie = accumulateCookieHeaders(cookie, response.headers.getSetCookie?.() ?? []);
-    if (!response.ok) {
-      throw new Error(`General Dynamics careers warmup returned ${response.status} for ${step.url}`);
-    }
+  const { response } = await fetchGeneralDynamicsHtmlResponse(careersReferer, {
+    referer: board.careersOrigin,
+    cookie,
+  });
+  cookie = accumulateCookieHeaders(cookie, response.headers.getSetCookie?.() ?? []);
+  if (!response.ok) {
+    throw new Error(`General Dynamics careers warmup returned ${response.status} for ${careersReferer}`);
   }
 
   return { cookie, referer: careersReferer };
@@ -508,9 +503,28 @@ async function fetchGeneralDynamicsHtmlResponse(
   url: string,
   session: Pick<GeneralDynamicsSession, "referer" | "cookie">,
 ): Promise<Awaited<ReturnType<typeof fetchTextPayloadWithTimeout>>> {
-  return fetchTextPayloadWithTimeout(url, {
-    headers: generalDynamicsBrowserHeaders(session.referer, session.cookie),
-  });
+  let lastResult: Awaited<ReturnType<typeof fetchTextPayloadWithTimeout>> | null = null;
+
+  for (let attempt = 1; attempt <= GENERAL_DYNAMICS_WAF_MAX_ATTEMPTS; attempt += 1) {
+    const result = await fetchTextPayloadWithTimeout(url, {
+      headers: generalDynamicsBrowserHeaders(session.referer, session.cookie),
+    });
+    lastResult = result;
+
+    if (result.response.ok || !isGeneralDynamicsRetryableWafStatus(result.response.status)) {
+      return result;
+    }
+
+    if (attempt < GENERAL_DYNAMICS_WAF_MAX_ATTEMPTS) {
+      await scraperDelay(GENERAL_DYNAMICS_WAF_RETRY_DELAY_MS * attempt);
+    }
+  }
+
+  return lastResult!;
+}
+
+export function isGeneralDynamicsRetryableWafStatus(status: number): boolean {
+  return status === 403 || status === 401;
 }
 
 async function enrichGeneralDynamicsListings(

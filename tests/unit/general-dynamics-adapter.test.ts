@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  isGeneralDynamicsRetryableWafStatus,
   parseGeneralDynamicsApiAuthFromHtml,
   parseGeneralDynamicsJobDetailFields,
   parseGeneralDynamicsJobs,
@@ -73,6 +74,13 @@ test("parseGeneralDynamicsJobs resolves Other / Non-US, CA as Canada", () => {
   assert.deepEqual(result.roles[0]?.countries, ["CA"]);
   assert.match(result.roles[0]?.location ?? "", /Cole Harbour/);
   assert.doesNotMatch(result.roles[0]?.location ?? "", /United States/);
+});
+
+test("isGeneralDynamicsRetryableWafStatus retries Azure Front Door blocks", () => {
+  assert.equal(isGeneralDynamicsRetryableWafStatus(403), true);
+  assert.equal(isGeneralDynamicsRetryableWafStatus(401), true);
+  assert.equal(isGeneralDynamicsRetryableWafStatus(404), false);
+  assert.equal(isGeneralDynamicsRetryableWafStatus(500), false);
 });
 
 test("parseGeneralDynamicsApiAuthFromHtml reads CareerSearch API auth attributes", () => {

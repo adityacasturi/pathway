@@ -42,6 +42,39 @@ test("mapScrapedRowToFeedPosting displays only enabled-country locations", () =>
   assert.equal(posting.canonicalPlaces.length, 2);
 });
 
+test("mapScrapedRowToFeedPosting scopes feed ids by company for shared apply URLs", () => {
+  const sharedUrl = "https://careers.synopsys.com/job/sunnyvale/summer-2026-internship/44408/96806947728";
+  const ansys = mapScrapedRowToFeedPosting(
+    row({
+      id: "ansys-row",
+      posting_url: sharedUrl,
+      companies: {
+        slug: "ansys",
+        website_url: "https://www.ansys.com",
+        logo_asset_key: "ansys",
+      },
+    }),
+  );
+  const synopsys = mapScrapedRowToFeedPosting(
+    row({
+      id: "synopsys-row",
+      posting_url: sharedUrl,
+      companies: {
+        slug: "synopsys",
+        website_url: "https://www.synopsys.com",
+        logo_asset_key: "synopsys",
+      },
+    }),
+  );
+
+  assert.ok(ansys);
+  assert.ok(synopsys);
+  assert.notEqual(ansys.id, synopsys.id);
+  assert.equal(ansys.interactionIds[0], synopsys.interactionIds[0]);
+  assert.equal(ansys.interactionIds[1], "ansys-row");
+  assert.equal(synopsys.interactionIds[1], "synopsys-row");
+});
+
 test("mapScrapedRowToFeedPosting uses posted_at for republished roles", () => {
   const posting = mapScrapedRowToFeedPosting(
     row({

@@ -8,7 +8,7 @@ Pathway is a Next.js 16 App Router app backed by Supabase Auth and Postgres. Stu
 | --- | --- |
 | Framework | Next.js 16 App Router, React 19, Server Components, Server Actions |
 | Styling | Tailwind CSS v4 (`app/globals.css` tokens) |
-| UI | HeroUI-backed primitives in `components/ui/`, design-system surfaces, TanStack Table, Recharts, Framer Motion, Lucide icons, Sonner |
+| UI | HeroUI-backed primitives in `components/ui/`, design-system surfaces, Framer Motion, Lucide icons, Sonner |
 | Data | Supabase Auth, Postgres, RLS, SQL functions/triggers |
 | Scraping | Node scripts + GitHub Actions (`lib/scraping/`) |
 | Tests | Node test runner (unit), Playwright public smoke (e2e) |
@@ -68,6 +68,7 @@ Shared scrape catalog (authenticated read; writes via service role / scripts):
 | `discover_industries` | Industry taxonomy (`slug`, `label`, `description`, `sort_order`) |
 | `company_sources` | ATS config: `source_type`, `source_url`, `board_token`, scrape health |
 | `scraped_postings` | Open roles from scrapes |
+| `scrape_runs` | Per-run scrape health summary (service-role writes; used for ops dashboards) |
 
 Other:
 
@@ -123,7 +124,7 @@ Loader: `lib/feed/scraped-postings.ts` → `FeedPosting` (`lib/feed/source.ts`).
 - `countries` on `scraped_postings` stores ISO codes when known. The catalog is global: roles from any country are stored and shown, and per-user country filter pills (Openings/Companies/Alerts) handle narrowing. Unknown locations are stored honestly (`location` null, `raw_location` preserved, UI shows "Unknown") rather than guessed.
 - **Posted vs Discovered:** see [scraped-posted-dates.md](./scraped-posted-dates.md). **NEW** badge uses `posted_at` vs `user_preferences.live_last_seen_at`.
 - Applied postings hidden by default when posting URL matches an active application.
-- `refreshFeed()` revalidates `/openings` only — it does **not** scrape.
+- `refreshFeed()` busts shared catalog cache tags and revalidates `/openings`, `/home`, and `/companies` — it does **not** scrape.
 
 ## Companies
 

@@ -52,6 +52,9 @@ Internship search and application tracking for students. **Home** briefing, **Ap
    UPSTASH_REDIS_REST_URL=...
    UPSTASH_REDIS_REST_TOKEN=...
 
+   # Post-scrape catalog cache bust (production / GitHub Actions)
+   CATALOG_REVALIDATE_SECRET=any-long-random-string
+
    # Optional
    LOGO_DEV_TOKEN=...
    ```
@@ -89,9 +92,9 @@ You do **not** need to run SQL files from git — the hosted database is already
 | `npm run test:preprod:full` | lint + verify + e2e |
 | `npm run verify` | lint + typecheck + audit + unit + build |
 | `npm run scrape` | Scrape boards → `scraped_postings` (same pipeline as GitHub Actions) |
+| `npm run revalidate-catalog` | Bust shared catalog caches on deployed site (after scrape) |
 | `npm run scrape:audit-posted-dates` | Audit `posted_at` / republish semantics |
-| `npm run alerts:instant` | Send instant alert email for new matching postings |
-| `npm run alerts:instant` | Send instant alert emails |
+| `npm run alerts:instant` | Send instant alert emails for new matching postings |
 | `npm run discover-company` | Onboard one company (dry-run or `--apply --scrape`) |
 | `npm run discover-queue` | Bulk Discover onboarding queue CLI |
 | `npm run company-logos` | Download static PNGs + manifest |

@@ -26,3 +26,12 @@ function stableHash(input: string): string {
 export function stablePostingId(url: string): string {
   return `job_${stableHash(urlDedupeKey(url))}`;
 }
+
+/** Unique per catalog company when the same apply URL appears on multiple company rows. */
+export function companyScopedPostingId(companySlug: string, url: string): string {
+  const slug = companySlug.trim().toLowerCase();
+  if (!slug) {
+    return stablePostingId(url);
+  }
+  return `job_${stableHash(`${slug}\0${urlDedupeKey(url)}`)}`;
+}

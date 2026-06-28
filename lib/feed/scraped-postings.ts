@@ -3,7 +3,7 @@ import {
   resolvePostedDisplay,
   toUnixSeconds,
 } from "./posted-display.ts";
-import { stablePostingId } from "./ids.ts";
+import { companyScopedPostingId, stablePostingId } from "./ids.ts";
 import { formatCanonicalPlace, placesFromJson } from "../geo/format.ts";
 import { countriesFromPlaces } from "../geo/countries.ts";
 import type { LocationPlaceJson } from "../geo/types.ts";
@@ -97,7 +97,8 @@ export function mapScrapedRowToFeedPosting(
   const hasRemote =
     canonicalPlaces.some((place) => place.remote) ||
     hasRemoteLocation(locations);
-  const id = stablePostingId(url);
+  const urlStableId = stablePostingId(url);
+  const id = companyScopedPostingId(row.companies.slug, url);
   const datePosted = resolveEffectivePostedUnix(row);
   const postedDisplay = resolvePostedDisplay(row);
   const dateUpdated = Math.max(
@@ -108,7 +109,7 @@ export function mapScrapedRowToFeedPosting(
 
   return {
     id,
-    interactionIds: [id, row.id],
+    interactionIds: [urlStableId, row.id],
     sourceId: `company:${row.companies.slug}`,
     company,
     companyWebsiteUrl: row.companies.website_url?.trim() || null,
