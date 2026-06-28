@@ -65,6 +65,7 @@ If a specific source needs immediate attention, run `npm run scrape -- <slug>` l
 **Optional (Vercel):**
 
 ```bash
+MAINTENANCE_MODE=true             # Site-wide maintenance screen (503); remove or set false to reopen
 LOGO_DEV_TOKEN=...              # /api/logo — publishable pk_ for img.logo.dev
 NEXT_PUBLIC_SITE_URL=https://www.trypathway.app   # Referer sent to logo.dev (required if key has domain restrictions)
 UPSTASH_REDIS_REST_URL=...      # Distributed rate limits (server actions, unsubscribe)

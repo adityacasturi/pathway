@@ -9,6 +9,7 @@ import {
 } from "@/lib/config/accent";
 import { loadAppearancePreferences } from "@/lib/settings/load-appearance-preferences";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
+import { isMaintenanceMode } from "@/lib/config/maintenance-mode";
 import "./globals.css";
 
 /** Hex approximation of `--paper` for mobile browser chrome and overscroll. */
@@ -99,7 +100,10 @@ async function getLayoutChrome(): Promise<{ accentColor: AccentColor; userEmail:
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const { accentColor, userEmail } = await getLayoutChrome();
+  const maintenance = isMaintenanceMode();
+  const { accentColor, userEmail } = maintenance
+    ? { accentColor: DEFAULT_ACCENT_COLOR, userEmail: null }
+    : await getLayoutChrome();
 
   return (
     <html
@@ -113,7 +117,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className="flex min-h-full flex-col overscroll-none">
         <Providers>
-          <AppChrome userEmail={userEmail}>{children}</AppChrome>
+          <AppChrome userEmail={userEmail} maintenance={maintenance}>
+            {children}
+          </AppChrome>
         </Providers>
       </body>
     </html>
