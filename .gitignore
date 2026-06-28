@@ -27,6 +27,9 @@
 /discover-queue/queue.sqlite
 /discover-queue/queue.sqlite-*
 
+# cursor agent audit shards (ephemeral DB snapshots for parallel browser audits)
+.cursor/audit-shards/
+
 # misc
 .DS_Store
 *.pem

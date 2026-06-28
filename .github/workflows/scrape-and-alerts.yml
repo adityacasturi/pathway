@@ -45,6 +45,8 @@ jobs:
   alerts:
     name: Send instant alerts
     needs: scrape
+    # Run after scrape finishes even when one or more shards fail; only skip on cancel.
+    if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
